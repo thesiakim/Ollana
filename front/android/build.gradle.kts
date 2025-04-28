@@ -5,17 +5,19 @@ allprojects {
     }
 }
 
-val newBuildDir: Directory = rootProject.layout.buildDirectory.dir("../../build").get()
-rootProject.layout.buildDirectory.value(newBuildDir)
+// 빌드 디렉토리 설정 단순화
+rootProject.buildDir = File("${rootProject.projectDir}/../build")
 
 subprojects {
-    val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
-    project.layout.buildDirectory.value(newSubprojectBuildDir)
+    project.buildDir = File("${rootProject.buildDir}/${project.name}")
 }
+
+// 의존성 설정
 subprojects {
     project.evaluationDependsOn(":app")
 }
 
-tasks.register<Delete>("clean") {
-    delete(rootProject.layout.buildDirectory)
+// clean 태스크
+tasks.register("clean", Delete::class) {
+    delete(rootProject.buildDir)
 }
