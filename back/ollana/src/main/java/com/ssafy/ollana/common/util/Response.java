@@ -1,4 +1,4 @@
-package com.ssafy.ollana.util;
+package com.ssafy.ollana.common.util;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Getter;
