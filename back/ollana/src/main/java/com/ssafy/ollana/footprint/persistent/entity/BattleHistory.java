@@ -5,8 +5,7 @@ import com.ssafy.ollana.footprint.persistent.entity.enums.BattleResult;
 import com.ssafy.ollana.footprint.persistent.entity.enums.BattleType;
 import com.ssafy.ollana.mountain.persistent.entity.Mountain;
 import com.ssafy.ollana.mountain.persistent.entity.Path;
-import com.ssafy.ollana.user.persistent.entity.User;
-
+import com.ssafy.ollana.user.entity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

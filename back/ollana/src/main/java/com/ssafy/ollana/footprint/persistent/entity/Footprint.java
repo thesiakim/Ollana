@@ -2,8 +2,7 @@ package com.ssafy.ollana.footprint.persistent.entity;
 
 import com.ssafy.ollana.common.BaseEntity;
 import com.ssafy.ollana.mountain.persistent.entity.Mountain;
-import com.ssafy.ollana.user.persistent.entity.User;
-
+import com.ssafy.ollana.user.entity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
