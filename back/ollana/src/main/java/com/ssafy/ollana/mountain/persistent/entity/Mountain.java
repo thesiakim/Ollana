@@ -21,7 +21,7 @@ public class Mountain {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(name = "mountain_id")
-	private Long id;
+	private Integer id;
 
 	private String mountainName;
 	private String mountainLoc;
