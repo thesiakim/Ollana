@@ -1,4 +1,4 @@
-package com.ssafy.ollana.security.auth;
+package com.ssafy.ollana.security;
 
 import com.ssafy.ollana.user.entity.User;
 import org.springframework.security.core.GrantedAuthority;

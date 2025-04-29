@@ -1,4 +1,4 @@
-package com.ssafy.ollana.security.auth.dto.request;
+package com.ssafy.ollana.auth.dto.request;
 
 import lombok.Getter;
 

@@ -1,5 +1,6 @@
 package com.ssafy.ollana.user.entity;
 
+import com.ssafy.ollana.common.BaseEntity;
 import com.ssafy.ollana.user.enums.Gender;
 import com.ssafy.ollana.user.enums.Grade;
 import jakarta.persistence.*;
@@ -18,7 +19,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class User {
+public class User extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -41,35 +42,31 @@ public class User {
     private Gender gender;
 
     @Column(nullable = false)
-    @ColumnDefault("0.0")
-    private double totalDistance;
+    @Builder.Default
+    private double totalDistance = 0.0;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Grade grade;
+    @Builder.Default
+    private Grade grade = Grade.SEED;
 
     @Column(nullable = false)
-    @ColumnDefault("0")
-    private int exp;
+    @Builder.Default
+    private int exp = 0;
 
     @Column
     private String profileImage;
 
-    // 디폴트 false
     @Column(nullable = false)
-    private boolean isSurvey;
+    private boolean isSurvey = false;
 
-    // 디폴트 false
     @Column(nullable = false)
-    private boolean isSocial;
+    @Builder.Default
+    private boolean isSocial = false;
 
-    // 디폴트 true
     @Column(nullable = false)
-    private boolean isAgree;
-
-    @CreatedDate
-    @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    @Builder.Default
+    private boolean isAgree = true;
 
     // exp 증가 및 그에 따른 grade 업데이트
     public void addExp(int exp) {

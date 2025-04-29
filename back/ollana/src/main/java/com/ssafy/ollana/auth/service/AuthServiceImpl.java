@@ -1,19 +1,18 @@
-package com.ssafy.ollana.security.auth.service;
+package com.ssafy.ollana.auth.service;
 
-import com.ssafy.ollana.security.auth.dto.request.LoginRequestDto;
-import com.ssafy.ollana.security.auth.dto.request.SignupRequestDto;
+import com.ssafy.ollana.auth.dto.request.LoginRequestDto;
+import com.ssafy.ollana.auth.dto.request.SignupRequestDto;
+import com.ssafy.ollana.auth.dto.response.LoginResponseDto;
 import com.ssafy.ollana.security.jwt.JwtUtil;
+import com.ssafy.ollana.user.dto.UserInfoDto;
+import com.ssafy.ollana.user.dto.LatestRecordDto;
 import com.ssafy.ollana.user.entity.User;
 import com.ssafy.ollana.user.enums.Gender;
-import com.ssafy.ollana.user.enums.Grade;
+import com.ssafy.ollana.user.exception.DuplicateEmailException;
 import com.ssafy.ollana.user.repository.UserRepository;
-import com.ssafy.ollana.util.Response;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -24,11 +23,11 @@ public class AuthServiceImpl implements AuthService {
     private final JwtUtil jwtUtil;
 
     @Override
-    public ResponseEntity<?> signup(SignupRequestDto request) {
+    public void signup(SignupRequestDto request) {
 
         // 이메일 중복 검사
         if (userRepository.existsByEmail(request.getEmail())) {
-            return ResponseEntity.badRequest().body(Response.fail("이미 가입한 이메일입니다.", 400));
+            throw new DuplicateEmailException();
         }
 
         // 비밀번호 암호화
@@ -41,17 +40,14 @@ public class AuthServiceImpl implements AuthService {
                 .nickname(request.getNickname())
                 .birth(request.getBirth())
                 .gender(Gender.valueOf(request.getGender()))
-                .grade(Grade.SEED)
                 .profileImage(request.getProfileImageUrl() != null ? request.getProfileImageUrl() : null)
                 .build();
 
         userRepository.save(user);
-
-        return ResponseEntity.ok(Response.success());
     }
 
     @Override
-    public ResponseEntity<?> login(LoginRequestDto request) {
+    public LoginResponseDto login(LoginRequestDto request) {
         // 이메일로 사용자 찾기
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("존재하지 않는 이메일입니다."));
@@ -65,6 +61,25 @@ public class AuthServiceImpl implements AuthService {
         String accessToken = jwtUtil.createAccessToken(user.getEmail());
         String refreshToken = jwtUtil.createRefreshToken(user.getEmail());
 
-        return ResponseEntity.ok()
+        // 사용자 정보
+        UserInfoDto userInfo = UserInfoDto.builder()
+                .email(user.getEmail())
+                .nickname(user.getNickname())
+                .exp(user.getExp())
+                .grade(String.valueOf(user.getGrade()))
+                .totalDistance(user.getTotalDistance())
+                .build();
+
+        // 최근 등산 기록
+        LatestRecordDto latestRecord = LatestRecordDto.builder().build();
+
+        LoginResponseDto response = LoginResponseDto.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .user(userInfo)
+                .latestRecord(latestRecord)
+                .build();
+
+        return response;
     }
 }

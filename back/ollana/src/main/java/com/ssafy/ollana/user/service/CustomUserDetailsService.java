@@ -1,6 +1,6 @@
 package com.ssafy.ollana.user.service;
 
-import com.ssafy.ollana.security.auth.CustomUserDetails;
+import com.ssafy.ollana.security.CustomUserDetails;
 import com.ssafy.ollana.user.repository.UserRepository;
 import com.ssafy.ollana.user.entity.User;
 import lombok.RequiredArgsConstructor;

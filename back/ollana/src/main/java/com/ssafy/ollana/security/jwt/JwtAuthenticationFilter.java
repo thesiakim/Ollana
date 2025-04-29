@@ -1,6 +1,6 @@
 package com.ssafy.ollana.security.jwt;
 
-import com.ssafy.ollana.security.auth.CustomUserDetails;
+import com.ssafy.ollana.security.CustomUserDetails;
 import com.ssafy.ollana.user.service.CustomUserDetailsService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
