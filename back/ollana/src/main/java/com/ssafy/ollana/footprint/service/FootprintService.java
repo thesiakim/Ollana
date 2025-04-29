@@ -4,7 +4,6 @@ import com.ssafy.ollana.common.util.PageResponse;
 import com.ssafy.ollana.common.util.PaginateUtil;
 import com.ssafy.ollana.footprint.persistent.entity.Footprint;
 import com.ssafy.ollana.footprint.persistent.repository.FootprintRepository;
-import com.ssafy.ollana.footprint.web.dto.response.FootprintListResponseDto;
 import com.ssafy.ollana.footprint.web.dto.response.FootprintResponseDto;
 import com.ssafy.ollana.user.UserRepository;
 import com.ssafy.ollana.user.entity.User;
