@@ -6,12 +6,34 @@
 
 import 'package:flutter/material.dart';
 
+// 트래킹 단계를 나타내는 열거형
+enum TrackingStage {
+  search, // 산 검색 단계
+  routeSelect, // 등산로 선택 단계
+  modeSelect, // 모드 선택 단계
+  tracking // 실시간 트래킹 단계
+}
+
 class AppState extends ChangeNotifier {
   bool _isLoggedIn = false;
   int _currentPageIndex = 0;
 
+  // 트래킹 관련 상태
+  TrackingStage _trackingStage = TrackingStage.search;
+  bool _isTracking = false;
+  String? _selectedMountain;
+  String? _selectedRoute;
+  String? _selectedMode;
+
   bool get isLoggedIn => _isLoggedIn;
   int get currentPageIndex => _currentPageIndex;
+
+  // 트래킹 관련 getter
+  TrackingStage get trackingStage => _trackingStage;
+  bool get isTracking => _isTracking;
+  String? get selectedMountain => _selectedMountain;
+  String? get selectedRoute => _selectedRoute;
+  String? get selectedMode => _selectedMode;
 
   void toggleLogin() {
     try {
@@ -27,5 +49,57 @@ class AppState extends ChangeNotifier {
   void changePage(int index) {
     _currentPageIndex = index;
     notifyListeners();
+  }
+
+  // 산 선택 시 호출
+  void selectMountain(String mountain) {
+    _selectedMountain = mountain;
+    _trackingStage = TrackingStage.routeSelect;
+    notifyListeners();
+  }
+
+  // 등산로 선택 시 호출
+  void selectRoute(String route) {
+    _selectedRoute = route;
+    _trackingStage = TrackingStage.modeSelect;
+    notifyListeners();
+  }
+
+  // 모드 선택 및 트래킹 시작 시 호출
+  void startTracking(String mode) {
+    _selectedMode = mode;
+    _isTracking = true;
+    _trackingStage = TrackingStage.tracking;
+    notifyListeners();
+  }
+
+  // 트래킹 종료 시 호출
+  void endTracking() {
+    _isTracking = false;
+    _trackingStage = TrackingStage.search;
+    _selectedMountain = null;
+    _selectedRoute = null;
+    _selectedMode = null;
+    notifyListeners();
+  }
+
+  // 트래킹 단계 초기화 (뒤로가기 등)
+  void resetTrackingStage() {
+    if (!_isTracking) {
+      _trackingStage = TrackingStage.search;
+      _selectedMountain = null;
+      _selectedRoute = null;
+      _selectedMode = null;
+      notifyListeners();
+    }
+  }
+
+  // 등산로 선택 화면으로 돌아가기 (산 정보 유지)
+  void backToRouteSelect() {
+    if (!_isTracking) {
+      _trackingStage = TrackingStage.search;
+      // 산과 등산로 정보는 유지
+      notifyListeners();
+    }
   }
 }
