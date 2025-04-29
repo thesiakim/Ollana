@@ -4,6 +4,7 @@ import com.ssafy.ollana.common.util.PageResponse;
 import com.ssafy.ollana.common.util.PaginateUtil;
 import com.ssafy.ollana.footprint.persistent.entity.Footprint;
 import com.ssafy.ollana.footprint.persistent.repository.FootprintRepository;
+import com.ssafy.ollana.footprint.service.exception.NotFoundException;
 import com.ssafy.ollana.footprint.web.dto.response.FootprintResponseDto;
 import com.ssafy.ollana.user.UserRepository;
 import com.ssafy.ollana.user.entity.User;
@@ -23,12 +24,12 @@ public class FootprintService {
     private final UserRepository userRepository;
 
     /*
-     * 나의 발자취 조회
+     * 발자취 목록 조회
      */
     @Transactional(readOnly = true)
-    public PageResponse<FootprintResponseDto> getMyFootprints(Integer userId, Pageable pageable) {
+    public PageResponse<FootprintResponseDto> getFootprintList(Integer userId, Pageable pageable) {
         User user = userRepository.findById(userId)
-                .orElseThrow();   // 유저 예외 처리 필요
+                                  .orElseThrow();   // 유저 예외 처리 필요
         Page<Footprint> page = footprintRepository.findByUserId(userId, pageable);
 
         List<FootprintResponseDto> mountainDtos = page.getContent().stream()
@@ -43,6 +44,16 @@ public class FootprintService {
                 mountainDtos, pageable.getPageNumber(), pageable.getPageSize());
 
         return new PageResponse<>("mountains", paginateResult);
+    }
+
+    /*
+     * 특정 발자취 조회
+     */
+    @Transactional(readOnly = true)
+    public Footprint getFootprint(Integer footprintId) {
+        Footprint footprint = footprintRepository.findById(footprintId)
+                                                 .orElseThrow(NotFoundException::new);
+        return footprint;
     }
 }
 

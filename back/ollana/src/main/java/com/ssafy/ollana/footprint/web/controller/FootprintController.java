@@ -22,14 +22,14 @@ public class FootprintController {
     private final FootprintService footprintService;
 
     /*
-     * 나의 발자취 조회
+     * 발자취 목록 조회
      */
     @GetMapping
-    public ResponseEntity<Response<PageResponse<FootprintResponseDto>>> getMyFootprints(
+    public ResponseEntity<Response<PageResponse<FootprintResponseDto>>> getFootprintList(
             @AuthenticationPrincipal Integer userId,
             @PageableDefault(size = 9) Pageable pageable) {
 
-        PageResponse<FootprintResponseDto> response = footprintService.getMyFootprints(userId, pageable);
+        PageResponse<FootprintResponseDto> response = footprintService.getFootprintList(userId, pageable);
         return ResponseEntity.ok(Response.success(response));
     }
 
