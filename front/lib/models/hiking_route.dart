@@ -11,6 +11,7 @@ class HikingRoute {
   final String description;
   final List<String> waypoints;
   final String mapImageUrl;
+  final List<Map<String, double>> path; // 경로 좌표 정보
 
   HikingRoute({
     required this.id,
@@ -22,6 +23,7 @@ class HikingRoute {
     this.description = '',
     this.waypoints = const [],
     this.mapImageUrl = '',
+    this.path = const [], // 기본값으로 빈 리스트 설정
   });
 
   factory HikingRoute.fromJson(Map<String, dynamic> json) {
@@ -35,6 +37,7 @@ class HikingRoute {
       description: json['description'] ?? '',
       waypoints: List<String>.from(json['waypoints'] ?? []),
       mapImageUrl: json['mapImageUrl'] ?? '',
+      path: List<Map<String, double>>.from(json['path'] ?? []),
     );
   }
 
@@ -49,6 +52,7 @@ class HikingRoute {
       'description': description,
       'waypoints': waypoints,
       'mapImageUrl': mapImageUrl,
+      'path': path,
     };
   }
 }

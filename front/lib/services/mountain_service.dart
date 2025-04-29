@@ -70,6 +70,12 @@ class MountainService {
             description: '북한산의 대표적인 코스로 백운대 정상까지 이어집니다.',
             waypoints: ['백운대입구', '용암문', '백운대'],
             mapImageUrl: 'https://example.com/bukhansan_baegundae.jpg',
+            path: [
+              {'latitude': 37.6584, 'longitude': 126.9443}, // 백운대입구
+              {'latitude': 37.6600, 'longitude': 126.9450}, // 중간지점
+              {'latitude': 37.6615, 'longitude': 126.9460}, // 용암문
+              {'latitude': 37.6630, 'longitude': 126.9470}, // 백운대
+            ],
           ),
           HikingRoute(
             id: 'r2',
@@ -81,6 +87,12 @@ class MountainService {
             description: '암벽 등반 구간이 포함된 도전적인 코스입니다.',
             waypoints: ['북한산성입구', '대동문', '인수봉'],
             mapImageUrl: 'https://example.com/bukhansan_insubong.jpg',
+            path: [
+              {'latitude': 37.6584, 'longitude': 126.9443}, // 북한산성입구
+              {'latitude': 37.6590, 'longitude': 126.9450}, // 중간지점
+              {'latitude': 37.6600, 'longitude': 126.9460}, // 대동문
+              {'latitude': 37.6610, 'longitude': 126.9470}, // 인수봉
+            ],
           ),
         ];
       } else if (mountainId == 'm2') {
@@ -96,6 +108,28 @@ class MountainService {
             description: '설악산의 주봉인 대청봉까지 가는 장거리 코스입니다.',
             waypoints: ['소공원', '중청봉', '대청봉'],
             mapImageUrl: 'https://example.com/seoraksan_daecheongbong.jpg',
+            path: [
+              {'latitude': 38.1100, 'longitude': 128.4650}, // 소공원
+              {'latitude': 38.1150, 'longitude': 128.4700}, // 중간지점
+              {'latitude': 38.1200, 'longitude': 128.4750}, // 중청봉
+              {'latitude': 38.1250, 'longitude': 128.4800}, // 대청봉
+            ],
+          ),
+          HikingRoute(
+            id: 'r5',
+            mountainId: mountainId,
+            name: '울산바위 코스',
+            distance: 6.2,
+            estimatedTime: 180,
+            difficulty: '중',
+            description: '설악산의 상징인 울산바위를 볼 수 있는 코스입니다.',
+            waypoints: ['설악동', '비룡폭포', '울산바위'],
+            mapImageUrl: 'https://example.com/seoraksan_ulsanbawi.jpg',
+            path: [
+              {'latitude': 38.1200, 'longitude': 128.4700}, // 설악동
+              {'latitude': 38.1250, 'longitude': 128.4750}, // 비룡폭포
+              {'latitude': 38.1300, 'longitude': 128.4800}, // 울산바위
+            ],
           ),
         ];
       } else {
@@ -110,6 +144,28 @@ class MountainService {
             description: '기본적인 등산로입니다.',
             waypoints: ['입구', '중간지점', '정상'],
             mapImageUrl: 'https://example.com/default_route.jpg',
+            path: [
+              {'latitude': 37.5000, 'longitude': 127.0000}, // 입구
+              {'latitude': 37.5050, 'longitude': 127.0050}, // 중간지점
+              {'latitude': 37.5100, 'longitude': 127.0100}, // 정상
+            ],
+          ),
+          HikingRoute(
+            id: 'r6',
+            mountainId: mountainId,
+            name: '둘레길 코스',
+            distance: 5.5,
+            estimatedTime: 150,
+            difficulty: '하',
+            description: '산 주변을 둘러보는 편안한 코스입니다.',
+            waypoints: ['입구', '쉼터', '전망대', '입구'],
+            mapImageUrl: 'https://example.com/default_route2.jpg',
+            path: [
+              {'latitude': 37.5000, 'longitude': 127.0000}, // 입구
+              {'latitude': 37.5030, 'longitude': 127.0070}, // 쉼터
+              {'latitude': 37.5060, 'longitude': 127.0040}, // 전망대
+              {'latitude': 37.5000, 'longitude': 127.0000}, // 입구 (원점 회귀)
+            ],
           ),
         ];
       }

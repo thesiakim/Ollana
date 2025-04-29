@@ -14,38 +14,53 @@ class ModeSelectScreen extends StatelessWidget {
     final appState = Provider.of<AppState>(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('트래킹 모드 선택'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            // 등산로 선택 화면으로 돌아가기 (산 정보 유지)
-            appState.backToRouteSelect();
-          },
-        ),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 산 및 등산로 정보
-            Text(
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(kToolbarHeight),
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 4.0),
+          child: AppBar(
+            title: Text(
               '${appState.selectedMountain ?? '선택된 산 없음'} - ${appState.selectedRoute ?? '선택된 등산로 없음'}',
               style: const TextStyle(
-                fontSize: 20,
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 8),
-
-            const Text(
-              '어떤 모드로 등산하시겠습니까?',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () {
+                // 등산로 선택 화면으로 돌아가기 (산 정보 유지)
+                appState.backToRouteSelect();
+              },
+              padding: EdgeInsets.zero,
+              constraints: BoxConstraints(),
+              visualDensity: VisualDensity.compact,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(100),
+            ),
+            titleSpacing: 0,
+            elevation: 0,
+          ),
+        ),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 산 및 등산로 정보는 이미 AppBar에 표시했으므로 제거
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+              child: const Text(
+                '어떤 모드로 등산하시겠습니까?',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey,
+                ),
               ),
             ),
             const SizedBox(height: 16),

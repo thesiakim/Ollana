@@ -7,7 +7,6 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../models/app_state.dart';
 
 // 현재 flutter_naver_map 라이브러리가 설치되지 않아 임시 UI로 대체
@@ -25,12 +24,27 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   // NaverMapController? _mapController;
   Timer? _timer;
   int _elapsedSeconds = 0;
+  int _elapsedMinutes = 0;
   double _currentAltitude = 120;
-  double _distance = 0.0;
+  double _distance = 3.7;
 
   // 현재 위치 (테스트용 임시 데이터)
   double _currentLat = 37.5665;
   double _currentLng = 126.9780;
+
+  // 최고/평균 심박수
+  int _maxHeartRate = 120;
+  int _avgHeartRate = 86;
+
+  // 경쟁 모드 데이터 (테스트용)
+  final Map<String, dynamic> _competitorData = {
+    'name': '내가바로락선',
+    'distance': 4.1,
+    'time': 47,
+    'maxHeartRate': 120,
+    'avgHeartRate': 86,
+    'isAhead': true, // 경쟁자가 앞서는지 여부
+  };
 
   // 임시 경로 데이터
   final List<Map<String, double>> _routeCoordinates = [
@@ -40,22 +54,48 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
     {'lat': 37.5760, 'lng': 126.9876},
   ];
 
-  // 사용자 이동 경로 기록 - 네이버 지도 SDK 설치 후 LatLng 클래스로 대체
+  // 사용자 이동 경로 기록
   final List<Map<String, double>> _userPath = [];
 
   // 페이지 상태
-  // final bool _isMapInitialized = false; // 사용되지 않는 변수
-  bool _isPaused = false;
+  final bool _isPaused = false;
+  bool _isSheetExpanded = false;
+
+  // 바텀 시트 컨트롤러
+  final DraggableScrollableController _sheetController =
+      DraggableScrollableController();
 
   @override
   void initState() {
     super.initState();
     _startTracking();
+
+    // 초기 경로 데이터 설정
+    _userPath.add({'lat': _currentLat, 'lng': _currentLng});
+
+    // 시트 컨트롤러 리스너 설정
+    _sheetController.addListener(_onSheetChanged);
+  }
+
+  void _onSheetChanged() {
+    final isExpanded = _sheetController.size >= 0.5;
+    if (isExpanded != _isSheetExpanded) {
+      setState(() {
+        _isSheetExpanded = isExpanded;
+      });
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _sheetController.removeListener(_onSheetChanged);
+    _sheetController.dispose();
     super.dispose();
   }
 
@@ -65,6 +105,9 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
       if (!_isPaused) {
         setState(() {
           _elapsedSeconds++;
+          if (_elapsedSeconds % 60 == 0) {
+            _elapsedMinutes++;
+          }
 
           // 테스트용 데이터 업데이트 - 실제로는 GPS 데이터 사용
           if (_elapsedSeconds % 10 == 0) {
@@ -74,16 +117,11 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
           // 고도 변경 (테스트용)
           _currentAltitude += (math.Random().nextDouble() * 2 - 1);
 
-          // 진행률 계산 (테스트용)
-          if (_routeCoordinates.isNotEmpty) {
-            _distance = (_elapsedSeconds / 10) * 0.1; // 임시 거리 계산
+          // 심박수 업데이트 (테스트용)
+          if (_elapsedSeconds % 5 == 0) {
+            _updateHeartRate();
           }
         });
-
-        // 맵 업데이트 - 네이버 지도 SDK 설치 후 주석 해제
-        // if (_isMapInitialized && _mapController != null) {
-        //   _updateMap();
-        // }
       }
     });
   }
@@ -98,238 +136,282 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
 
     // 경로에 현재 위치 추가
     _userPath.add({'lat': _currentLat, 'lng': _currentLng});
+
+    // 거리 업데이트 (테스트용)
+    setState(() {
+      _distance -= 0.1;
+      if (_distance < 0) _distance = 0;
+    });
   }
 
-  // 지도 업데이트 (네이버 지도 SDK 설치 후 사용)
-  /*
-  void _updateMap() {
-    final controller = _mapController!;
-    
-    // 기존 오버레이 제거
-    controller.clearOverlays();
-    
-    // 원래 경로 그리기 (파란색)
-    final routeCoords = _routeCoordinates.map((point) => 
-      LatLng(point['lat']!, point['lng']!)
-    ).toList();
-    
-    controller.addOverlay(
-      PathOverlay(
-        PathOverlayId('original_route'),
-        routeCoords,
-        width: 5,
-        color: Colors.blue.withOpacity(0.7),
-        outlineColor: Colors.white,
-      ),
-    );
-    
-    // 사용자 경로 그리기 (빨간색)
-    if (_userPath.length > 1) {
-      controller.addOverlay(
-        PathOverlay(
-          PathOverlayId('user_path'),
-          _userPath,
-          width: 5,
-          color: Colors.red,
-          outlineColor: Colors.white,
-        ),
-      );
+  // 심박수 업데이트 (테스트용)
+  void _updateHeartRate() {
+    // 현재 심박수 (80~140 사이 랜덤값)
+    int currentHeartRate = 80 + math.Random().nextInt(60);
+
+    // 최고 심박수 업데이트
+    if (currentHeartRate > _maxHeartRate) {
+      _maxHeartRate = currentHeartRate;
     }
-    
-    // 현재 위치 마커
-    controller.addOverlay(
-      Marker(
-        markerId: MarkerId('current_location'),
-        position: LatLng(_currentLat, _currentLng),
-        icon: OverlayImage.fromAssetImage('lib/assets/images/current_location.png'),
-      ),
-    );
-    
-    // 맵 카메라 이동
-    controller.moveCamera(
-      CameraUpdate.scrollTo(LatLng(_currentLat, _currentLng)),
-    );
+
+    // 평균 심박수 업데이트 (간단한 시뮬레이션)
+    _avgHeartRate = ((_avgHeartRate * 9) + currentHeartRate) ~/ 10; // 가중 평균
   }
-  */
 
   // 포맷팅된 시간 문자열
   String get _formattedTime {
-    final hours = (_elapsedSeconds ~/ 3600).toString().padLeft(2, '0');
-    final minutes = ((_elapsedSeconds % 3600) ~/ 60).toString().padLeft(2, '0');
-    final seconds = (_elapsedSeconds % 60).toString().padLeft(2, '0');
-    return '$hours:$minutes:$seconds';
+    final minutes = _elapsedMinutes;
+    return '$minutes분';
   }
 
   @override
   Widget build(BuildContext context) {
-    final appState = Provider.of<AppState>(context);
-
     return Scaffold(
-      appBar: AppBar(
-        title: Text('${appState.selectedMode} 트래킹'),
-        automaticallyImplyLeading: false, // 뒤로가기 버튼 제거
-      ),
-      body: Column(
+      body: Stack(
         children: [
           // 지도 영역
-          Expanded(
-            flex: 3,
-            child: Stack(
-              children: [
-                // 네이버 지도 (임시 UI로 대체)
-                Container(
-                  color: Colors.grey[200],
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          '지도 영역\n(네이버 지도 SDK 설치 후 구현)',
-                          textAlign: TextAlign.center,
+          Container(
+            padding: EdgeInsets.only(bottom: 127),
+            color: Colors.grey[200],
+            child: CustomPaint(
+              painter: RoutePainter(),
+              child: Stack(
+                children: [
+                  // 현재 위치 표시
+                  SafeArea(
+                    child: Align(
+                      alignment: Alignment.topCenter,
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 20),
+                        child: Text(
+                          '전체 지도 + 내 위치 핀',
                           style: TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
                             fontSize: 16,
-                            color: Colors.grey,
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          '현재 위치: $_currentLat, $_currentLng',
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                        Text(
-                          '경로 진행: ${_userPath.length}/${_routeCoordinates.length} 지점',
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // 정보 패널
-                Positioned(
-                  top: 16,
-                  left: 16,
-                  right: 16,
-                  child: Card(
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          _buildInfoItem(
-                              FontAwesomeIcons.clock, _formattedTime, '소요 시간'),
-                          _buildInfoItem(
-                              FontAwesomeIcons.mountain,
-                              '${_currentAltitude.toStringAsFixed(1)}m',
-                              '현재 고도'),
-                          _buildInfoItem(FontAwesomeIcons.personWalking,
-                              '${_distance.toStringAsFixed(1)}km', '이동 거리'),
-                        ],
                       ),
                     ),
                   ),
-                ),
-              ],
+
+                  // 추가적인 지도 오버레이 요소들은 여기에 배치할 수 있습니다.
+                ],
+              ),
             ),
           ),
 
-          // 하단 컨트롤 영역
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black12,
-                  blurRadius: 5,
-                  offset: Offset(0, -3),
+          // 드래그 가능한 바텀 시트
+          DraggableScrollableSheet(
+            controller: _sheetController,
+            initialChildSize: 0.25,
+            minChildSize: 0.25,
+            maxChildSize: 0.9,
+            builder: (BuildContext context, ScrollController scrollController) {
+              return Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 10,
+                      spreadRadius: 0,
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: Column(
-              children: [
-                // 등산로 정보
-                Text(
-                  '${appState.selectedMountain} - ${appState.selectedRoute}',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // 버튼 영역
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                child: Column(
                   children: [
-                    // 일시정지/재개 버튼
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        setState(() {
-                          _isPaused = !_isPaused;
-                        });
-                      },
-                      icon: Icon(_isPaused ? Icons.play_arrow : Icons.pause),
-                      label: Text(_isPaused ? '재개' : '일시정지'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
+                    // 바텀 시트 핸들 - 고정 영역
+                    Center(
+                      child: Container(
+                        margin: EdgeInsets.symmetric(vertical: 8),
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[400],
+                          borderRadius: BorderRadius.circular(10),
                         ),
                       ),
                     ),
+                    // 스크롤 가능한 내용 영역
+                    Expanded(
+                      child: ListView(
+                        controller: scrollController,
+                        padding: EdgeInsets.zero,
+                        children: [
+                          // 정보 패널
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // 기본 정보 (항상 표시)
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '남은 거리 : ${_distance.toStringAsFixed(1)}km',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                      '예상 남은 시간 : $_formattedTime',
+                                      style: TextStyle(fontSize: 14),
+                                    ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                      '현재 고도 : ${_currentAltitude.toStringAsFixed(1)}m',
+                                      style: TextStyle(fontSize: 14),
+                                    ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                      '최고 심박수 : $_maxHeartRate bpm',
+                                      style: TextStyle(fontSize: 14),
+                                    ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                      '평균 심박수 : $_avgHeartRate bpm',
+                                      style: TextStyle(fontSize: 14),
+                                    ),
+                                  ],
+                                ),
 
-                    // 종료 버튼
-                    ElevatedButton.icon(
-                      onPressed: () => _showEndTrackingDialog(context),
-                      icon: const Icon(Icons.stop),
-                      label: const Text('등산 종료'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
+                                // 올려진 상태에서만 보이는 정보
+                                if (_isSheetExpanded) ...[
+                                  SizedBox(height: 20),
+                                  Row(
+                                    children: [
+                                      Text(
+                                        '내 정보',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.blue,
+                                        ),
+                                      ),
+                                      SizedBox(width: 10),
+                                      Text(
+                                        'vs',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 10),
+                                  Text(
+                                    '내가바로락선',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.purple,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    '(지금 재연이 나바봐 또는 진구 네바리)',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.green,
+                                    ),
+                                  ),
+                                  SizedBox(height: 10),
+                                  Text(
+                                    '남은 거리 : ${_competitorData['distance']}km',
+                                    style: TextStyle(fontSize: 14),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    '예상 남은 시간 : ${_competitorData['time']}분',
+                                    style: TextStyle(fontSize: 14),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    '최고 심박수 : ${_competitorData['maxHeartRate']} bpm',
+                                    style: TextStyle(fontSize: 14),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    '평균 심박수 : ${_competitorData['avgHeartRate']} bpm',
+                                    style: TextStyle(fontSize: 14),
+                                  ),
+
+                                  // 피드백 메시지
+                                  Container(
+                                    margin: EdgeInsets.only(top: 12),
+                                    padding: EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[400],
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          '0.4km 앞서는 중!',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        SizedBox(width: 4),
+                                        Icon(
+                                          Icons.arrow_upward,
+                                          color: Colors.green,
+                                          size: 16,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+
+                                  // 등산 종료 버튼
+                                  SizedBox(height: 30),
+                                  Container(
+                                    margin:
+                                        EdgeInsets.symmetric(horizontal: 50),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red,
+                                      borderRadius: BorderRadius.circular(50),
+                                    ),
+                                    child: TextButton.icon(
+                                      onPressed: () =>
+                                          _showEndTrackingDialog(context),
+                                      icon: Icon(
+                                        _isPaused
+                                            ? Icons.play_arrow
+                                            : Icons.pause,
+                                        color: Colors.white,
+                                      ),
+                                      label: Text(
+                                        '등산 종료',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  // 여분의 공간 추가해서 스크롤이 잘 되도록 함
+                                  SizedBox(height: 30),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-              ],
-            ),
+              );
+            },
           ),
         ],
       ),
-    );
-  }
-
-  // 정보 아이템 위젯
-  Widget _buildInfoItem(IconData icon, String value, String label) {
-    return Column(
-      children: [
-        Icon(icon, color: Colors.blue),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
-        ),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.grey[600],
-            fontSize: 12,
-          ),
-        ),
-      ],
     );
   }
 
@@ -337,24 +419,211 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   void _showEndTrackingDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('등산 종료'),
-        content: const Text('정말로 등산을 종료하시겠습니까?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('취소'),
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        insetPadding: EdgeInsets.symmetric(horizontal: 10),
+        child: Container(
+          padding: EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '등산 종료',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 20),
+              Text(
+                '정말로 등산을 \n종료하시겠습니까?',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16),
+              ),
+              SizedBox(height: 30),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    child: Container(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      child: Text(
+                        '취소',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      // 등산 종료 처리
+                      Provider.of<AppState>(context, listen: false)
+                          .endTracking();
+                    },
+                    child: Container(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      child: Text(
+                        '종료',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              // 등산 종료 처리
-              Provider.of<AppState>(context, listen: false).endTracking();
-            },
-            child: const Text('종료', style: TextStyle(color: Colors.red)),
-          ),
-        ],
+        ),
       ),
     );
   }
+}
+
+// 임시 등산로 페인터
+class RoutePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    // 경로 그리기 (검은색)
+    final routePaint = Paint()
+      ..color = Colors.black
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+
+    // 현재 진행 경로 (노란색)
+    final currentPathPaint = Paint()
+      ..color = Colors.yellow
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3;
+
+    // 경로 경계 그리기
+    final path = Path();
+    path.moveTo(size.width * 0.1, size.height * 0.8);
+    path.quadraticBezierTo(
+      size.width * 0.3,
+      size.height * 0.4,
+      size.width * 0.5,
+      size.height * 0.2,
+    );
+    path.quadraticBezierTo(
+      size.width * 0.7,
+      size.height * 0.25,
+      size.width * 0.6,
+      size.height * 0.5,
+    );
+    path.quadraticBezierTo(
+      size.width * 0.5,
+      size.height * 0.7,
+      size.width * 0.7,
+      size.height * 0.6,
+    );
+
+    canvas.drawPath(path, routePaint);
+
+    // 현재 진행 경로 그리기
+    final currentPath = Path();
+    currentPath.moveTo(size.width * 0.1, size.height * 0.8);
+    currentPath.quadraticBezierTo(
+      size.width * 0.3,
+      size.height * 0.4,
+      size.width * 0.5,
+      size.height * 0.2,
+    );
+
+    canvas.drawPath(currentPath, currentPathPaint);
+
+    // 종점 표시 (파란색 원)
+    final endPointPaint = Paint()
+      ..color = Colors.blue
+      ..style = PaintingStyle.fill;
+
+    canvas.drawCircle(
+      Offset(size.width * 0.5, size.height * 0.2),
+      20,
+      endPointPaint,
+    );
+
+    // 종점 텍스트
+    const endPointText = "End Point";
+    final endPointSpan = TextSpan(
+      text: endPointText,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 10,
+        fontWeight: FontWeight.bold,
+      ),
+    );
+
+    final endPointPainter = TextPainter(
+      text: endPointSpan,
+      textDirection: TextDirection.ltr,
+      textAlign: TextAlign.center,
+    );
+
+    endPointPainter.layout();
+    endPointPainter.paint(
+      canvas,
+      Offset(
+        size.width * 0.5 - endPointPainter.width / 2,
+        size.height * 0.2 - endPointPainter.height / 2,
+      ),
+    );
+
+    // 현재 위치 표시 (빨간색 원)
+    final currentPointPaint = Paint()
+      ..color = Colors.red
+      ..style = PaintingStyle.fill;
+
+    canvas.drawCircle(
+      Offset(size.width * 0.1, size.height * 0.8),
+      15,
+      currentPointPaint,
+    );
+
+    // 현재 위치 텍스트
+    const currentPointText = "내 위치";
+    final currentPointSpan = TextSpan(
+      text: currentPointText,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 8,
+        fontWeight: FontWeight.bold,
+      ),
+    );
+
+    final currentPointPainter = TextPainter(
+      text: currentPointSpan,
+      textDirection: TextDirection.ltr,
+      textAlign: TextAlign.center,
+    );
+
+    currentPointPainter.layout();
+    currentPointPainter.paint(
+      canvas,
+      Offset(
+        size.width * 0.1 - currentPointPainter.width / 2,
+        size.height * 0.8 - currentPointPainter.height / 2,
+      ),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }

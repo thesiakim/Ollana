@@ -16,7 +16,7 @@ void main() async {
 
   // 네이버 지도 초기화 - NaverMapSdk는 deprecated지만 현재 가장 안정적으로 작동함
   // ignore: deprecated_member_use
-  await NaverMapSdk.instance.initialize(
+  await FlutterNaverMap().init(
     clientId: dotenv.get('NAVER_MAP_CLIENT_ID'),
     onAuthFailed: (ex) {
       // ex는 NAuthFailedException
