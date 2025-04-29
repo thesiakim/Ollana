@@ -27,11 +27,12 @@ public class Mountain {
 	private String mountainLoc;
 	private double mountainHeight;
 
-	@Column(columnDefinition = "TEXT", nullable = false)
+	@Column(columnDefinition = "TEXT")
 	private String mountainDescription;
 
 	@Enumerated(EnumType.STRING)
 	private Level level;
+
 	private double mountainLatitude;
 	private double mountainLongitude;
 
