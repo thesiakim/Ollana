@@ -6,7 +6,7 @@ import lombok.Getter;
 @Getter
 @Builder
 public class FootprintResponseDto {
-    private Long footprintId;
+    private Integer footprintId;
     private String mountainName;
     private String imgUrl;
 }
