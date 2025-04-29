@@ -22,18 +22,18 @@ public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id;
+    private Integer id;
 
-    @Column(unique = true, nullable = false)
+    @Column(unique = true, nullable = false, length = 50)
     private String email;
 
     @Column
     private String password;
 
-    @Column(unique = true, nullable = false)
+    @Column(unique = true, nullable = false, length = 10)
     private String nickname;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 10)
     private String birth;
 
     @Enumerated(EnumType.STRING)
