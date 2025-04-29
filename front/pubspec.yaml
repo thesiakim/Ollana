@@ -39,6 +39,10 @@ dependencies:
   flutter_custom_carousel: ^0.1.0+1
   stacked_card_carousel: ^0.0.4
   font_awesome_flutter: ^10.4.0
+  flutter_naver_map: ^1.2.0
+  dio: ^5.4.0
+  flutter_dotenv: ^5.1.0
+  change_app_package_name: ^1.5.0
 
 dev_dependencies:
   flutter_test:
@@ -62,13 +66,14 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # 이미지 리소스 등록 (assets/images 디렉터리 아래 모든 파일)
+  # env 및 이미지 리소스 등록 (assets/images 디렉터리 아래 모든 파일)
   assets:
     - lib/assets/images/alps.jpg
     - lib/assets/images/beginner.jpg
     - lib/assets/images/cablecar.jpg
     - lib/assets/images/spring.jpg
     - lib/assets/images/seed.png
+    - .env
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
