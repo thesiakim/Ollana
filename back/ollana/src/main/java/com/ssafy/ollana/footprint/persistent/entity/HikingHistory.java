@@ -19,11 +19,11 @@ import lombok.NoArgsConstructor;
 @Entity
 @AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class PastClimbHistory extends BaseEntity {
+public class HikingHistory extends BaseEntity {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	@Column(name = "past_climb_history_id")
+	@Column(name = "hiking_history_id")
 	private Integer id;
 
 	@ManyToOne(fetch = FetchType.LAZY)
@@ -34,7 +34,7 @@ public class PastClimbHistory extends BaseEntity {
 	@JoinColumn(name = "footprint_id")
 	private Footprint footprint;
 
-	private int climbTime;
+	private int hikingTime;
 	private double averageHeartRate;
 	private int maxHeartRate;
 }

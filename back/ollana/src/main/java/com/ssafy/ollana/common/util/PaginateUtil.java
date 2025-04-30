@@ -7,7 +7,6 @@ import org.springframework.data.domain.PageRequest;
 import java.util.List;
 
 public class PaginateUtil {
-    // 가져온 목록을 페이지네이션하기
     public static <T> Page<T> paginate(List<T> allItems, int page, int size) {
         int total = allItems.size();
         int start = Math.min(page * size, total);
