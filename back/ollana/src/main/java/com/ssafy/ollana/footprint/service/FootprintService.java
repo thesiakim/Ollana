@@ -29,8 +29,6 @@ public class FootprintService {
      */
     @Transactional(readOnly = true)
     public PageResponse<FootprintResponseDto> getFootprintList(Integer userId, Pageable pageable) {
-        User user = userRepository.findById(userId)
-                                  .orElseThrow();   // 유저 예외 처리 필요
         Page<Footprint> page = footprintRepository.findByUserId(userId, pageable);
 
         List<FootprintResponseDto> mountainDtos = page.getContent().stream()

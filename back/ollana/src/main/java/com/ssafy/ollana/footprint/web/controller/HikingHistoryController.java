@@ -4,7 +4,9 @@ package com.ssafy.ollana.footprint.web.controller;
 import com.ssafy.ollana.common.util.Response;
 import com.ssafy.ollana.footprint.service.HikingHistoryService;
 import com.ssafy.ollana.footprint.web.dto.response.HikingHistoryResponseDto;
+import com.ssafy.ollana.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
@@ -13,7 +15,8 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/footprint")
+@RequestMapping("/footprint")
+@Slf4j
 public class HikingHistoryController {
 
     private final HikingHistoryService hikingHistoryService;
@@ -23,11 +26,11 @@ public class HikingHistoryController {
      */
     @GetMapping("/{footprintId}")
     public ResponseEntity<Response<HikingHistoryResponseDto>> getClimbHistory(
-                                                @AuthenticationPrincipal Integer userId,
-                                                //@RequestParam Integer userId,
+                                                @AuthenticationPrincipal CustomUserDetails userDetails,
                                                 @PathVariable Integer footprintId,
                                                 @PageableDefault(size = 9) Pageable pageable) {
-        HikingHistoryResponseDto response = hikingHistoryService.getHikingHistory(userId, footprintId, pageable);
+
+        HikingHistoryResponseDto response = hikingHistoryService.getHikingHistory(userDetails.getUser().getId(), footprintId, pageable);
         return ResponseEntity.ok(Response.success(response));
     }
 }
