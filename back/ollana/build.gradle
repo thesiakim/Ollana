@@ -54,16 +54,19 @@ tasks.named('test') {
     useJUnitPlatform()
 }
 
-def generated = layout.buildDirectory.dir("generated/querydsl").get().asFile;
+def querydslDir = layout.buildDirectory.dir("generated/querydsl")
 
 sourceSets {
     main {
         java {
-            srcDirs += [generated]
+            srcDir querydslDir
         }
     }
 }
 
-tasks.withType(JavaCompile) {
-    options.getGeneratedSourceOutputDirectory().set(generated)
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs += [
+            "-Aquerydsl.generatedSourcesDir=${querydslDir.get().asFile}"
+    ]
 }
+

@@ -1,11 +1,12 @@
 package com.ssafy.ollana.footprint.web.controller;
 
 
+import com.ssafy.ollana.common.util.PageResponse;
 import com.ssafy.ollana.common.util.Response;
+import com.ssafy.ollana.footprint.persistent.entity.enums.BattleType;
+import com.ssafy.ollana.footprint.service.BattleHistoryService;
 import com.ssafy.ollana.footprint.service.HikingHistoryService;
-import com.ssafy.ollana.footprint.web.dto.response.HikingHistoryResponseDto;
-import com.ssafy.ollana.footprint.web.dto.response.HikingRecordsByPeriodResponseDto;
-import com.ssafy.ollana.footprint.web.dto.response.HikingRecordsForGraphResponseDto;
+import com.ssafy.ollana.footprint.web.dto.response.*;
 import com.ssafy.ollana.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +26,7 @@ import java.util.List;
 public class HikingHistoryController {
 
     private final HikingHistoryService hikingHistoryService;
+    private final BattleHistoryService battleHistoryService;
 
     /*
      * 나 vs 나 전체 기록 조회
@@ -63,6 +65,19 @@ public class HikingHistoryController {
                                                 @RequestParam List<Integer> recordIds) {
 
         HikingRecordsByPeriodResponseDto response = hikingHistoryService.compareByRecordIds(userDetails.getUser().getId(), recordIds);
+        return ResponseEntity.ok(Response.success(response));
+    }
+
+    /*
+     * 나 vs 친구, 나 vs AI 기록 조회
+     */
+    @GetMapping
+    public ResponseEntity<Response<PageResponse<UserVersusOtherResponseDto>>> getHikingBattleRecords(
+                                                @AuthenticationPrincipal CustomUserDetails userDetails,
+                                                @RequestParam BattleType type,
+                                                @PageableDefault(size = 9) Pageable pageable) {
+
+        PageResponse<UserVersusOtherResponseDto> response = battleHistoryService.getHikingBattleRecords(userDetails.getUser().getId(), type, pageable);
         return ResponseEntity.ok(Response.success(response));
     }
 
