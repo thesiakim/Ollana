@@ -3,6 +3,7 @@ package com.ssafy.ollana.security.jwt;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.security.SignatureException;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.web.embedded.JettyVirtualThreadsWebServerFactoryCustomizer;
@@ -14,6 +15,7 @@ import java.util.Date;
 
 @Slf4j
 @Component
+@Getter
 public class JwtUtil {
 
     private final Key key;
@@ -70,6 +72,15 @@ public class JwtUtil {
             log.error("JWT claims is empty, 잘못된 JWT 토큰 입니다.");
         }
         return false;
+    }
+
+    // 토큰 만료 여부 확인
+    public boolean isTokenExpired(String token) {
+        try {
+            return getClaims(token).getExpiration().before(new Date());
+        } catch (ExpiredJwtException e) {
+            return true;
+        }
     }
 
     // 클레임 추출

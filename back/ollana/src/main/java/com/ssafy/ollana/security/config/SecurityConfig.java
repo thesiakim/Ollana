@@ -62,7 +62,8 @@ public class SecurityConfig {
                                 "/auth/signup/kakao",
                                 "/auth/email/send",
                                 "/auth/email/verify",
-                                "/auth/password/find")
+                                "/auth/password/find",
+                                "/auth/refresh")
                         .permitAll()
                         .anyRequest().authenticated() // 나머지는 인증 필요
                 );
