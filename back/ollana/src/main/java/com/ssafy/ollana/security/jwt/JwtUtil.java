@@ -1,0 +1,88 @@
+package com.ssafy.ollana.security.jwt;
+
+import io.jsonwebtoken.*;
+import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.SignatureException;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.web.embedded.JettyVirtualThreadsWebServerFactoryCustomizer;
+import org.springframework.stereotype.Component;
+
+import java.nio.charset.StandardCharsets;
+import java.security.Key;
+import java.util.Date;
+
+@Slf4j
+@Component
+public class JwtUtil {
+
+    private final Key key;
+    private final long accessTokenExpiration;
+    private final long refreshTokenExpiration;
+
+    public JwtUtil(@Value("${spring.jwt.secret}") String secretKey,
+                   @Value("${spring.jwt.access.expiration}") long accessTokenExpiration,
+                   @Value("${spring.jwt.refresh.expiration}") long refreshTokenExpiration) {
+
+        this.key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8)); // 시크릿 키를 Key 객체로 변환
+        this.accessTokenExpiration = accessTokenExpiration;
+        this.refreshTokenExpiration = refreshTokenExpiration;
+    }
+
+    // accessToken 생성
+    public String createAccessToken(String userEmail) {
+        return createAccessToken(userEmail, accessTokenExpiration);
+    }
+
+    // refreshToken 생성
+    public String createRefreshToken(String userEmail) {
+        return createAccessToken(userEmail, refreshTokenExpiration);
+    }
+
+    // token 생성
+    private String createAccessToken(String userEmail, long tokenExpiration) {
+        Date now = new Date();
+        Date expiration = new Date(now.getTime() + tokenExpiration);
+
+        return Jwts.builder()
+                .setSubject(userEmail)                         // 사용자 식별자값
+                .setIssuedAt(now)                              // 발급일
+                .setExpiration(expiration)                     // 만료 시간
+                .signWith(key, SignatureAlgorithm.HS256)       // 암호화 알고리즘
+                .compact();
+    }
+
+    // 토큰 유효성 검사
+    public boolean validateToken(String token) {
+        try {
+            Jwts.parserBuilder()
+                    .setSigningKey(key)
+                    .build()
+                    .parseClaimsJws(token);
+            return true;
+        } catch (SecurityException | MalformedJwtException | SignatureException e) {
+            log.error("Invalid JWT signature, 유효하지 않는 JWT 서명 입니다.");
+        } catch (ExpiredJwtException e) {
+            log.error("Expired JWT token, 만료된 JWT 토큰 입니다.");
+        } catch (UnsupportedJwtException e) {
+            log.error("Unsupported JWT token, 지원되지 않는 JWT 토큰 입니다.");
+        } catch (IllegalArgumentException e) {
+            log.error("JWT claims is empty, 잘못된 JWT 토큰 입니다.");
+        }
+        return false;
+    }
+
+    // 클레임 추출
+    public Claims getClaims(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+    }
+
+    // 사용자 이메일 가져오기
+    public String getUserEmailFromToken(String token) {
+        return getClaims(token).getSubject();
+    }
+}
