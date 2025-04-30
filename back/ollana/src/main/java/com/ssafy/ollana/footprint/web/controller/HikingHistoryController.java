@@ -23,8 +23,8 @@ public class HikingHistoryController {
      */
     @GetMapping("/{footprintId}")
     public ResponseEntity<Response<HikingHistoryResponseDto>> getClimbHistory(
-                                                //@AuthenticationPrincipal Integer userId,
-                                                @RequestParam Integer userId,
+                                                @AuthenticationPrincipal Integer userId,
+                                                //@RequestParam Integer userId,
                                                 @PathVariable Integer footprintId,
                                                 @PageableDefault(size = 9) Pageable pageable) {
         HikingHistoryResponseDto response = hikingHistoryService.getHikingHistory(userId, footprintId, pageable);

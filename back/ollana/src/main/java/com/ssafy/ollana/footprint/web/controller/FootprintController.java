@@ -26,8 +26,8 @@ public class FootprintController {
      */
     @GetMapping
     public ResponseEntity<Response<PageResponse<FootprintResponseDto>>> getFootprintList(
-            @AuthenticationPrincipal Integer userId,
-            @PageableDefault(size = 9) Pageable pageable) {
+                                                    @AuthenticationPrincipal Integer userId,
+                                                    @PageableDefault(size = 9) Pageable pageable) {
 
         PageResponse<FootprintResponseDto> response = footprintService.getFootprintList(userId, pageable);
         return ResponseEntity.ok(Response.success(response));

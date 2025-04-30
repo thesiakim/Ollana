@@ -41,11 +41,15 @@ public class HikingHistoryService {
             throw new AccessDeniedException();
         }
         Mountain mountain = footprint.getMountain();
+
+        // 조회한 산의 등산기록 조회
         List<HikingHistory> histories = hikingHistoryRepository.findAllByFootprintIdOrderByCreatedAtAsc(footprintId);
 
+        // 각 등산로 데이터 그룹화
         Map<Path, List<HikingHistory>> pathGroupMap = histories.stream()
                 .collect(Collectors.groupingBy(HikingHistory::getPath, LinkedHashMap::new, Collectors.toList()));
 
+        // 가장 최근 두 개의 데이터 비교 (한 번만 등산한 경우 null)
         List<HikingHistoryWithPathResponseDto> allPathDtos = pathGroupMap.entrySet().stream()
                 .map(entry -> {
                     Path path = entry.getKey();
@@ -59,12 +63,13 @@ public class HikingHistoryService {
                         int hrDiff = latest.getMaxHeartRate() - secondLatest.getMaxHeartRate();
 
                         result = DiffResponseDto.builder()
-                                .growthStatus(HikingHistoryUtils.determineStatus(timeDiff, hrDiff))
-                                .heartRateDiff(HikingHistoryUtils.formatSigned(hrDiff))
-                                .timeDiff(HikingHistoryUtils.formatSigned(timeDiff))
+                                .growthStatus(HikingHistoryUtils.determineStatus(timeDiff))
+                                .heartRateDiff(hrDiff)
+                                .timeDiff(timeDiff)
                                 .build();
                     }
 
+                    // 그래프화를 위해 가장 최근 5개의 데이터 조회
                     List<TodayHikingResultResponseDto> recordDtos = records.stream()
                             .sorted(Comparator.comparing(HikingHistory::getCreatedAt).reversed()) // 최신순 정렬
                             .limit(5)       // 그래프 가독성을 위해 최근 5개의 데이터만 반환

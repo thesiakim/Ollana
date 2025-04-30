@@ -8,6 +8,6 @@ import lombok.Getter;
 @Builder
 public class DiffResponseDto {
     private GrowthStatus growthStatus;
-    private String heartRateDiff;
-    private String timeDiff;
+    private int heartRateDiff;
+    private int timeDiff;
 }
