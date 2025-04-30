@@ -10,6 +10,7 @@ import com.ssafy.ollana.user.entity.User;
 import com.ssafy.ollana.user.enums.Gender;
 import com.ssafy.ollana.user.exception.DuplicateEmailException;
 import com.ssafy.ollana.user.repository.UserRepository;
+import com.ssafy.ollana.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final UserService userService;
 
     @Override
     public void signup(SignupRequestDto request) {
@@ -62,22 +64,22 @@ public class AuthServiceImpl implements AuthService {
         String refreshToken = jwtUtil.createRefreshToken(user.getEmail());
 
         // 사용자 정보
-        UserInfoDto userInfo = UserInfoDto.builder()
-                .email(user.getEmail())
-                .nickname(user.getNickname())
-                .exp(user.getExp())
-                .grade(String.valueOf(user.getGrade()))
-                .totalDistance(user.getTotalDistance())
-                .build();
-
-        // 최근 등산 기록
-        LatestRecordDto latestRecord = LatestRecordDto.builder().build();
+//        UserInfoDto userInfo = UserInfoDto.builder()
+//                .email(user.getEmail())
+//                .nickname(user.getNickname())
+//                .exp(user.getExp())
+//                .grade(String.valueOf(user.getGrade()))
+//                .totalDistance(user.getTotalDistance())
+//                .build();
+//
+//        // 최근 등산 기록
+//        LatestRecordDto latestRecord = LatestRecordDto.builder().build();
 
         LoginResponseDto response = LoginResponseDto.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
-                .user(userInfo)
-                .latestRecord(latestRecord)
+                .user(userService.getUserInfo(user))
+                .latestRecord(userService.getLatestRecord(user))
                 .build();
 
         return response;
