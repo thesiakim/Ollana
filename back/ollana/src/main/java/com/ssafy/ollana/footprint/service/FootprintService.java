@@ -6,8 +6,9 @@ import com.ssafy.ollana.footprint.persistent.entity.Footprint;
 import com.ssafy.ollana.footprint.persistent.repository.FootprintRepository;
 import com.ssafy.ollana.footprint.web.dto.response.FootprintListResponseDto;
 import com.ssafy.ollana.footprint.web.dto.response.FootprintResponseDto;
-import com.ssafy.ollana.user.UserRepository;
+
 import com.ssafy.ollana.user.entity.User;
+import com.ssafy.ollana.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
