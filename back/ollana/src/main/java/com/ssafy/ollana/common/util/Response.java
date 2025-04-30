@@ -1,4 +1,4 @@
-package com.ssafy.ollana.util;
+package com.ssafy.ollana.common.util;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Getter;
@@ -13,7 +13,7 @@ public class Response<T> {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private String message;  // 에러 메시지
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    private int code;        // 에러 코드
+    private String code;        // 에러 코드
 
 
     // 성공 응답
@@ -31,11 +31,12 @@ public class Response<T> {
     }
 
     // 실패 응답
-    public static <T> Response<T> fail(String message, int code) {
+    public static <T> Response<T> fail(String message, String code) {
         Response<T> response = new Response<T>();
         response.status = false;
         response.message = message;
         response.code = code;
         return response;
     }
+
 }
