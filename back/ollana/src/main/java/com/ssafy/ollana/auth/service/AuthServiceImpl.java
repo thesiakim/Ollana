@@ -18,6 +18,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +31,7 @@ public class AuthServiceImpl implements AuthService {
     private final TokenService tokenService;
 
     @Override
+    @Transactional
     public void signup(SignupRequestDto request) {
 
         // 이메일 중복 검사
