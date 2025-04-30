@@ -91,7 +91,6 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void logout(HttpServletRequest request, HttpServletResponse response) {
         String refreshToken = extractRefreshTokenFromCookie(request);
-        String accessToken = extractAccessTokenFromHeader(request);
 
         if (refreshToken != null) {
             String userEmail = jwtUtil.getUserEmailFromToken(refreshToken);
