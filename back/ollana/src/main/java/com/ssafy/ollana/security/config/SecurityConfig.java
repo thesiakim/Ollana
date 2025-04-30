@@ -58,7 +58,6 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(
                                 "/auth/login",
-                                "/auth/logout",
                                 "/auth/signup",
                                 "/auth/signup/kakao",
                                 "/auth/email/send",
