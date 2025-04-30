@@ -6,10 +6,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.util.List;
-
 public interface BattleHistoryRepository extends JpaRepository<BattleHistory, Integer> {
     Page<BattleHistory> findByUserId(Integer userId, Pageable pageable);
-    Page<BattleHistory> findByUserIdAndType(Integer userId, BattleType type, Pageable pageable);
+    Page<BattleHistory> findByUserIdAndType(Integer userId, BattleType battleType, Pageable pageable);
 
 }

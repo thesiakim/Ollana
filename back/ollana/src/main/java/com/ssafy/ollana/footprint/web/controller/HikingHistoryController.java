@@ -71,7 +71,7 @@ public class HikingHistoryController {
     /*
      * 나 vs 친구, 나 vs AI 기록 조회
      */
-    @GetMapping
+    @GetMapping("/battle")
     public ResponseEntity<Response<PageResponse<UserVersusOtherResponseDto>>> getHikingBattleRecords(
                                                 @AuthenticationPrincipal CustomUserDetails userDetails,
                                                 @RequestParam BattleType type,
