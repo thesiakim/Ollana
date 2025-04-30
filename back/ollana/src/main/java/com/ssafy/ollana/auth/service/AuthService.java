@@ -2,9 +2,14 @@ package com.ssafy.ollana.auth.service;
 
 import com.ssafy.ollana.auth.dto.request.LoginRequestDto;
 import com.ssafy.ollana.auth.dto.request.SignupRequestDto;
+import com.ssafy.ollana.auth.dto.response.AccessTokenResponseDto;
 import com.ssafy.ollana.auth.dto.response.LoginResponseDto;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 public interface AuthService {
     void signup(SignupRequestDto request);
-    LoginResponseDto login(LoginRequestDto request);
+    LoginResponseDto login(LoginRequestDto request, HttpServletResponse response);
+    void logout(HttpServletRequest request, HttpServletResponse response);
+    AccessTokenResponseDto refreshToken(HttpServletRequest request);
 }
