@@ -8,7 +8,7 @@ import com.ssafy.ollana.auth.exception.AuthenticationException;
 import com.ssafy.ollana.auth.exception.RefreshTokenException;
 import com.ssafy.ollana.security.jwt.JwtUtil;
 import com.ssafy.ollana.user.entity.User;
-import com.ssafy.ollana.user.enums.Gender;
+import com.ssafy.ollana.user.entity.Gender;
 import com.ssafy.ollana.user.exception.DuplicateEmailException;
 import com.ssafy.ollana.user.repository.UserRepository;
 import com.ssafy.ollana.user.service.UserService;
