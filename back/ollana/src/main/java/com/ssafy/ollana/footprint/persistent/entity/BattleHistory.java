@@ -50,7 +50,7 @@ public class BattleHistory extends BaseEntity {
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false)
-	private BattleType type;
+	private BattleType battleType;
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false)

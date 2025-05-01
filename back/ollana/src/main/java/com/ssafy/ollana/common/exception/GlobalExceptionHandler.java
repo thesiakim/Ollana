@@ -36,6 +36,15 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 잘못된 요청 처리
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Response<Void>> handleIllegalArgumentException(IllegalArgumentException e) {
+        log.error("IllegalArgumentException 발생 : ", e);
+        return ResponseEntity.badRequest().body(Response.fail("잘못된 요청입니다.", "E-002"));
+    }
+
+    /**
      * 예기치 못한 모든 예외 처리
      */
     @ExceptionHandler(Exception.class)
