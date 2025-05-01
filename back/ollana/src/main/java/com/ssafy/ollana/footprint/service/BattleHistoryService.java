@@ -30,28 +30,16 @@ public class BattleHistoryService {
     public PageResponse<UserVersusOtherResponseDto> getHikingBattleRecords(Integer userId, BattleType type, Pageable pageable) {
         Page<BattleHistory> page;
 
+        // type에 따라 다르게 조회
         switch (type) {
-            case FRIEND -> page = battleHistoryRepository.findByUserIdAndType(userId, BattleType.FRIEND, pageable);
-            case AI -> page = battleHistoryRepository.findByUserIdAndType(userId, BattleType.AI, pageable);
+            case FRIEND -> page = battleHistoryRepository.findByUserIdAndBattleType(userId, BattleType.FRIEND, pageable);
+            case AI -> page = battleHistoryRepository.findByUserIdAndBattleType(userId, BattleType.AI, pageable);
             default -> page = battleHistoryRepository.findByUserId(userId, pageable);
         }
 
         List<UserVersusOtherResponseDto> list = page.getContent().stream()
-                .map(battle -> UserVersusOtherResponseDto.builder()
-                        .mountain(MountainResponseDto.from(battle.getMountain()))
-                        .result(battle.getResult().name())
-                        .date(battle.getCreatedAt().toLocalDate())
-                        .opponent(UserBattleInfoDto.builder()
-                                .opponentId(battle.getOpponent().getId())
-                                .nickname(battle.getOpponent().getNickname())
-                                .profile(battle.getOpponent().getProfileImage())
-                                .build())
-                        .build())
-                .toList();
-
-        /*UserVersusOtherListResponseDto listDtos = UserVersusOtherListResponseDto.builder()
-                .list(list)
-                .build();*/
+                                                                 .map(UserVersusOtherResponseDto::from)
+                                                                 .toList();
 
         Page<UserVersusOtherResponseDto> paginateResult = PaginateUtil.paginate(
                 list, pageable.getPageNumber(), pageable.getPageSize());
