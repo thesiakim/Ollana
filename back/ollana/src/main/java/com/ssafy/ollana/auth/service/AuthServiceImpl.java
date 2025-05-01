@@ -8,7 +8,7 @@ import com.ssafy.ollana.auth.exception.AuthenticationException;
 import com.ssafy.ollana.auth.exception.RefreshTokenException;
 import com.ssafy.ollana.security.jwt.JwtUtil;
 import com.ssafy.ollana.user.entity.User;
-import com.ssafy.ollana.user.enums.Gender;
+import com.ssafy.ollana.user.entity.Gender;
 import com.ssafy.ollana.user.exception.DuplicateEmailException;
 import com.ssafy.ollana.user.repository.UserRepository;
 import com.ssafy.ollana.user.service.UserService;
@@ -18,6 +18,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +31,7 @@ public class AuthServiceImpl implements AuthService {
     private final TokenService tokenService;
 
     @Override
+    @Transactional
     public void signup(SignupRequestDto request) {
 
         // 이메일 중복 검사
@@ -91,7 +93,6 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void logout(HttpServletRequest request, HttpServletResponse response) {
         String refreshToken = extractRefreshTokenFromCookie(request);
-        String accessToken = extractAccessTokenFromHeader(request);
 
         if (refreshToken != null) {
             String userEmail = jwtUtil.getUserEmailFromToken(refreshToken);

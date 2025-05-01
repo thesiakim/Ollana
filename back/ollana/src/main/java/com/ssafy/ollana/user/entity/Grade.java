@@ -1,4 +1,4 @@
-package com.ssafy.ollana.user.enums;
+package com.ssafy.ollana.user.entity;
 
 public enum Grade {
     SEED(0),

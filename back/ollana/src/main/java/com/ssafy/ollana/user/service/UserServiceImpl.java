@@ -1,14 +1,36 @@
 package com.ssafy.ollana.user.service;
 
+import com.ssafy.ollana.footprint.persistent.entity.Footprint;
+import com.ssafy.ollana.footprint.persistent.entity.HikingHistory;
+import com.ssafy.ollana.footprint.persistent.repository.FootprintRepository;
+import com.ssafy.ollana.footprint.persistent.repository.HikingHistoryRepository;
+import com.ssafy.ollana.footprint.service.exception.NotFoundException;
 import com.ssafy.ollana.user.dto.LatestRecordDto;
 import com.ssafy.ollana.user.dto.UserInfoDto;
 import com.ssafy.ollana.user.entity.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 @Service
 public class UserServiceImpl implements UserService {
 
+    private final FootprintRepository footprintRepository;
+    private final HikingHistoryRepository hikingHistoryRepository;
+
+    public UserServiceImpl(FootprintRepository footprintRepository, HikingHistoryRepository hikingHistoryRepository) {
+        this.footprintRepository = footprintRepository;
+        this.hikingHistoryRepository = hikingHistoryRepository;
+    }
+
     @Override
+    @Transactional(readOnly = true)
     public UserInfoDto getUserInfo(User user) {
         return UserInfoDto.builder()
                 .email(user.getEmail())
@@ -20,7 +42,35 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public LatestRecordDto getLatestRecord(User user) {
-        return LatestRecordDto.builder().build();
+        // 첫 페이지에 가장 최근 데이터 1개만 가져오기 위한 Pageable 설정
+        Pageable pageable = PageRequest.of(0, 1, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        // user의 가장 최근 Footprint 가져오기
+        Page<Footprint> footprintPage = footprintRepository.findByUserId(user.getId(), pageable);
+
+        if (footprintPage.isEmpty()) {
+            throw new NotFoundException();
+        }
+
+        Footprint footprint = footprintPage.getContent().get(0);
+
+        // hikingHistory 가져오기
+        List<HikingHistory> hikingHistoryList = hikingHistoryRepository.findAllByFootprintIdOrderByCreatedAtAsc(footprint.getId());
+
+        if (hikingHistoryList.isEmpty()) {
+            throw new NotFoundException();
+        }
+
+        // 오름차순으로 가져왔기 때문에 가장 마지막 항목이 가장 최근 기록
+        HikingHistory latestHistory = hikingHistoryList.get(hikingHistoryList.size() - 1);
+
+        return LatestRecordDto.builder()
+                .mountainName(footprint.getMountain().getMountainName())
+                .climbDate(latestHistory.getCreatedAt().format(DateTimeFormatter.ISO_LOCAL_DATE))
+                .climbTime(latestHistory.getHikingTime())
+                .climbDistance(latestHistory.getPath().getPathLength())
+                .build();
     }
 }

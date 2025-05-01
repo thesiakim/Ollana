@@ -1,15 +1,9 @@
 package com.ssafy.ollana.user.entity;
 
 import com.ssafy.ollana.common.BaseEntity;
-import com.ssafy.ollana.user.enums.Gender;
-import com.ssafy.ollana.user.enums.Grade;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.ColumnDefault;
-import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.time.LocalDateTime;
 
 @Entity
 @EntityListeners(AuditingEntityListener.class)
@@ -23,6 +17,7 @@ public class User extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "user_id")
     private Integer id;
 
     @Column(unique = true, nullable = false, length = 50)
@@ -41,30 +36,30 @@ public class User extends BaseEntity {
     @Column(nullable = false)
     private Gender gender;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "double precision default 0.0")
     @Builder.Default
     private double totalDistance = 0.0;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "varchar(8) default 'SEED'")
     @Builder.Default
     private Grade grade = Grade.SEED;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "integer default 0")
     @Builder.Default
     private int exp = 0;
 
-    @Column
+    @Column(nullable = false)
     private String profileImage;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "boolean default false")
     private boolean isSurvey = false;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "boolean default false")
     @Builder.Default
     private boolean isSocial = false;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "boolean default true")
     @Builder.Default
     private boolean isAgree = true;
 
