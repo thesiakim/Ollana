@@ -4,6 +4,9 @@ import com.ssafy.ollana.mountain.persistent.entity.Mountain;
 import com.ssafy.ollana.mountain.persistent.entity.Path;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
+
 public interface PathRepository extends JpaRepository<Path, Integer> {
-    boolean existsByMountainAndPathName(Mountain mountain, String pathName);
+
+    List<Path> findByMountainId(Integer mountainId);
 }

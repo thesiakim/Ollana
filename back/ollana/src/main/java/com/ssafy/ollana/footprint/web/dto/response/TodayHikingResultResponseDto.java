@@ -1,4 +1,4 @@
-package com.ssafy.ollana.mountain.web.dto.response;
+package com.ssafy.ollana.footprint.web.dto.response;
 
 import com.ssafy.ollana.footprint.persistent.entity.HikingHistory;
 import lombok.Builder;

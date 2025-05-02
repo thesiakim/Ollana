@@ -1,12 +1,7 @@
-// custom_app_bar.dart: 앱 상단의 커스텀 앱바 위젯 구현
-// - PreferredSizeWidget을 구현하여 AppBar 위치에 사용 가능
-// - 로고 버튼과 로그인/로그아웃 버튼 배치
-// - 앱의 브랜딩과 사용자 인증 상태를 표시하는 UI 컴포넌트
-// - 스타일 속성으로 디자인 커스터마이징
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/app_state.dart';
+import '../screens/user/login_screen.dart';
 
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   const CustomAppBar({super.key});
@@ -53,10 +48,10 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
           context.read<AppState>().changePage(0);
         },
         style: ButtonStyle(
-          foregroundColor: WidgetStateProperty.all(Colors.black),
-          padding: WidgetStateProperty.all(EdgeInsets.zero),
+          foregroundColor: MaterialStateProperty.all(Colors.black),
+          padding: MaterialStateProperty.all(EdgeInsets.zero),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          overlayColor: WidgetStateProperty.all(Colors.transparent),
+          overlayColor: MaterialStateProperty.all(Colors.transparent),
         ),
         child: const Text(
           "Ollana",
@@ -75,14 +70,29 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     return Padding(
       padding: const EdgeInsets.only(right: 10),
       child: TextButton(
-        onPressed: appState.toggleLogin,
+        onPressed: () {
+          if (appState.isLoggedIn) {
+            // 로그아웃 처리
+            appState.toggleLogin();
+          } else {
+            // 로그인 페이지로 이동
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const LoginScreen(),
+              ),
+            );
+          }
+        },
         style: ButtonStyle(
-          foregroundColor: WidgetStateProperty.all(Colors.black),
-          padding: WidgetStateProperty.all(EdgeInsets.zero),
+          foregroundColor: MaterialStateProperty.all(Colors.black),
+          padding: MaterialStateProperty.all(EdgeInsets.zero),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          overlayColor: WidgetStateProperty.all(Colors.transparent),
+          overlayColor: MaterialStateProperty.all(Colors.transparent),
         ),
-        child: Text(appState.isLoggedIn ? "logout" : "login"),
+        child: Text(
+          appState.isLoggedIn ? "Logout" : "Login",
+          style: const TextStyle(fontSize: 16),
+        ),
       ),
     );
   }
