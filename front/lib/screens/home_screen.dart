@@ -45,8 +45,8 @@ class HomeScreen extends StatelessWidget {
                   appState.trackingStage == TrackingStage.tracking &&
                   appState.currentPageIndex != 1)
                 Positioned(
-                  bottom: 80,
-                  right: 16,
+                  bottom: 10,
+                  right: 10,
                   child: _buildTrackingStatusButton(context, appState),
                 ),
             ],
