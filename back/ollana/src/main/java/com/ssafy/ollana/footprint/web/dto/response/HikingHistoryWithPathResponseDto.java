@@ -1,7 +1,6 @@
 package com.ssafy.ollana.footprint.web.dto.response;
 
 import com.ssafy.ollana.mountain.web.dto.response.PathResponseDto;
-import com.ssafy.ollana.mountain.web.dto.response.TodayHikingResultResponseDto;
 import lombok.Builder;
 import lombok.Getter;
 

@@ -1,6 +1,5 @@
 package com.ssafy.ollana.footprint.service;
 
-import com.ssafy.ollana.common.util.PageResponse;
 import com.ssafy.ollana.common.util.PaginateUtil;
 import com.ssafy.ollana.footprint.persistent.entity.HikingHistory;
 import com.ssafy.ollana.footprint.persistent.entity.Footprint;
@@ -12,7 +11,7 @@ import com.ssafy.ollana.mountain.persistent.entity.Mountain;
 import com.ssafy.ollana.mountain.persistent.entity.Path;
 import com.ssafy.ollana.mountain.web.dto.response.MountainResponseDto;
 import com.ssafy.ollana.mountain.web.dto.response.PathResponseDto;
-import com.ssafy.ollana.mountain.web.dto.response.TodayHikingResultResponseDto;
+import com.ssafy.ollana.footprint.web.dto.response.TodayHikingResultResponseDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
