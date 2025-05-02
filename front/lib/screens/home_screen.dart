@@ -19,7 +19,7 @@ class HomeScreen extends StatelessWidget {
     return Consumer<AppState>(
       builder: (context, appState, child) {
         return Scaffold(
-          appBar: const CustomAppBar(),
+          appBar: const CustomAppBar(), 
           body: Stack(
             children: [
               // 현재 선택된 탭에 따라 화면 표시
