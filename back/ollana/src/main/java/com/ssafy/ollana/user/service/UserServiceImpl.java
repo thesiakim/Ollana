@@ -4,7 +4,6 @@ import com.ssafy.ollana.footprint.persistent.entity.Footprint;
 import com.ssafy.ollana.footprint.persistent.entity.HikingHistory;
 import com.ssafy.ollana.footprint.persistent.repository.FootprintRepository;
 import com.ssafy.ollana.footprint.persistent.repository.HikingHistoryRepository;
-import com.ssafy.ollana.footprint.service.exception.NotFoundException;
 import com.ssafy.ollana.user.dto.LatestRecordDto;
 import com.ssafy.ollana.user.dto.UserInfoDto;
 import com.ssafy.ollana.user.entity.User;
@@ -38,6 +37,7 @@ public class UserServiceImpl implements UserService {
                 .exp(user.getExp())
                 .grade(String.valueOf(user.getGrade()))
                 .totalDistance(user.getTotalDistance())
+                .profileImageUrl(user.getProfileImage())
                 .build();
     }
 
@@ -51,7 +51,12 @@ public class UserServiceImpl implements UserService {
         Page<Footprint> footprintPage = footprintRepository.findByUserId(user.getId(), pageable);
 
         if (footprintPage.isEmpty()) {
-            throw new NotFoundException();
+            return LatestRecordDto.builder()
+                    .mountainName("")
+                    .climbDate("")
+                    .climbTime(0)
+                    .climbDistance(0.0)
+                    .build();
         }
 
         Footprint footprint = footprintPage.getContent().get(0);
@@ -60,7 +65,12 @@ public class UserServiceImpl implements UserService {
         List<HikingHistory> hikingHistoryList = hikingHistoryRepository.findAllByFootprintIdOrderByCreatedAtAsc(footprint.getId());
 
         if (hikingHistoryList.isEmpty()) {
-            throw new NotFoundException();
+            return LatestRecordDto.builder()
+                    .mountainName("")
+                    .climbDate("")
+                    .climbTime(0)
+                    .climbDistance(0.0)
+                    .build();
         }
 
         // 오름차순으로 가져왔기 때문에 가장 마지막 항목이 가장 최근 기록
