@@ -21,7 +21,7 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/footprint")
+@RequestMapping("/api/footprint")
 @Slf4j
 public class HikingHistoryController {
 
