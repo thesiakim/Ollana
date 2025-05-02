@@ -11,4 +11,5 @@ public class UserInfoDto {
     private int exp;
     private String grade;
     private double totalDistance;
+    private String profileImageUrl;
 }

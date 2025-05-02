@@ -63,7 +63,9 @@ public class SecurityConfig {
                                 "/auth/email/send",
                                 "/auth/email/verify",
                                 "/auth/password/find",
-                                "/auth/refresh")
+                                "/auth/refresh",
+                                "/tracking/import/mtn",
+                                "/tracking/import/path")
                         .permitAll()
                         .anyRequest().authenticated() // 나머지는 인증 필요
                 );

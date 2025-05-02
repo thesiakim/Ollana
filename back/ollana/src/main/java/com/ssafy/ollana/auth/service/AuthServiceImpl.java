@@ -6,6 +6,7 @@ import com.ssafy.ollana.auth.dto.response.AccessTokenResponseDto;
 import com.ssafy.ollana.auth.dto.response.LoginResponseDto;
 import com.ssafy.ollana.auth.exception.AuthenticationException;
 import com.ssafy.ollana.auth.exception.RefreshTokenException;
+import com.ssafy.ollana.common.s3.service.S3Service;
 import com.ssafy.ollana.security.jwt.JwtUtil;
 import com.ssafy.ollana.user.entity.User;
 import com.ssafy.ollana.user.entity.Gender;
@@ -19,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
@@ -29,10 +31,11 @@ public class AuthServiceImpl implements AuthService {
     private final JwtUtil jwtUtil;
     private final UserService userService;
     private final TokenService tokenService;
+    private final S3Service s3Service;
 
     @Override
     @Transactional
-    public void signup(SignupRequestDto request) {
+    public void signup(SignupRequestDto request, MultipartFile profileImage) {
 
         // 이메일 중복 검사
         if (userRepository.existsByEmail(request.getEmail())) {
@@ -42,6 +45,15 @@ public class AuthServiceImpl implements AuthService {
         // 비밀번호 암호화
         String encodedPassword = passwordEncoder.encode(request.getPassword());
 
+        // 프로필 이미지
+        String profileImageUrl = null;
+        if (profileImage != null && !profileImage.isEmpty()) {
+            // S3 이미지 업로드
+            profileImageUrl = s3Service.uploadFile(profileImage, "profile");
+        } else {
+            profileImageUrl = s3Service.getDefaultProfileImageUrl();
+        }
+
         // User 객체 생성
         User user = User.builder()
                 .email(request.getEmail())
@@ -49,7 +61,7 @@ public class AuthServiceImpl implements AuthService {
                 .nickname(request.getNickname())
                 .birth(request.getBirth())
                 .gender(Gender.valueOf(request.getGender()))
-                .profileImage(request.getProfileImageUrl() != null ? request.getProfileImageUrl() : null)
+                .profileImage(profileImageUrl)
                 .build();
 
         userRepository.save(user);
