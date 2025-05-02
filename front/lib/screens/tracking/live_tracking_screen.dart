@@ -6,12 +6,88 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../models/app_state.dart';
 import '../../utils/app_colors.dart';
 
 // 네이버 지도 라이브러리 임포트
 import 'package:flutter_naver_map/flutter_naver_map.dart';
+
+// 백그라운드 작업을 위한 헬퍼 함수
+class _BackgroundTask {
+  // 경로 최적화 계산 (백그라운드)
+  static List<NLatLng> optimizeRoute(List<NLatLng> originalRoute) {
+    if (originalRoute.length <= 100) return originalRoute;
+
+    // 단순화 비율 계산 (최대 100개의 포인트로 제한)
+    final int step = (originalRoute.length / 100).ceil();
+
+    final List<NLatLng> optimized = [];
+    // 시작점과 끝점은 항상 포함
+    optimized.add(originalRoute.first);
+
+    // 중간 포인트는 간격을 두고 추가
+    for (int i = step; i < originalRoute.length - 1; i += step) {
+      optimized.add(originalRoute[i]);
+    }
+
+    // 마지막 포인트 추가
+    optimized.add(originalRoute.last);
+
+    return optimized;
+  }
+
+  // 거리 계산 (백그라운드)
+  static double calculateDistance(Map<String, double> params) {
+    final double lat1 = params['lat1']!;
+    final double lng1 = params['lng1']!;
+    final double lat2 = params['lat2']!;
+    final double lng2 = params['lng2']!;
+
+    const double earthRadius = 6371000; // 지구 반경 (미터)
+    final double dLat = _degreesToRadians(lat2 - lat1);
+    final double dLng = _degreesToRadians(lng2 - lng1);
+
+    final double a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(_degreesToRadians(lat1)) *
+            math.cos(_degreesToRadians(lat2)) *
+            math.sin(dLng / 2) *
+            math.sin(dLng / 2);
+
+    final double c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+    return earthRadius * c;
+  }
+
+  // 각도를 라디안으로 변환
+  static double _degreesToRadians(double degrees) {
+    return degrees * math.pi / 180;
+  }
+
+  // 경로 바운드 계산 (백그라운드)
+  static Map<String, double> calculateRouteBounds(List<NLatLng> routeToUse) {
+    double minLat = double.infinity;
+    double maxLat = -double.infinity;
+    double minLng = double.infinity;
+    double maxLng = -double.infinity;
+
+    for (var point in routeToUse) {
+      minLat = point.latitude < minLat ? point.latitude : minLat;
+      maxLat = point.latitude > maxLat ? point.latitude : maxLat;
+      minLng = point.longitude < minLng ? point.longitude : minLng;
+      maxLng = point.longitude > maxLng ? point.longitude : maxLng;
+    }
+
+    return {
+      'minLat': minLat,
+      'maxLat': maxLat,
+      'minLng': minLng,
+      'maxLng': maxLng,
+    };
+  }
+}
 
 class LiveTrackingScreen extends StatefulWidget {
   const LiveTrackingScreen({super.key});
@@ -22,7 +98,6 @@ class LiveTrackingScreen extends StatefulWidget {
 
 class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   NaverMapController? _mapController;
-  NLocationOverlay? _locationOverlay;
   double _locationBearing = 0; // 직접 방향 값을 관리
   Timer? _timer;
   int _elapsedSeconds = 0;
@@ -30,9 +105,12 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   double _currentAltitude = 120;
   double _distance = 3.7;
 
-  // 현재 위치 (테스트용 임시 데이터)
+  // 현재 위치 (처음 지도 로드 위치)
   double _currentLat = 37.5665;
   double _currentLng = 126.9780;
+
+  // 위치 트래킹 구독
+  StreamSubscription<Position>? _positionStream;
 
   // 최고/평균 심박수
   int _maxHeartRate = 120;
@@ -48,13 +126,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
     'isAhead': true, // 경쟁자가 앞서는지 여부
   };
 
-  // 등산로 경로 데이터 (실제로는 선택된 경로 데이터 사용)
-  final List<NLatLng> _routeCoordinates = [
-    NLatLng(37.5665, 126.9780),
-    NLatLng(37.5690, 126.9800),
-    NLatLng(37.5720, 126.9830),
-    NLatLng(37.5760, 126.9876),
-  ];
+  // 등산로 경로 데이터
+  List<NLatLng> _routeCoordinates = [];
 
   // 사용자 이동 경로 기록
   final List<NLatLng> _userPath = [];
@@ -67,6 +140,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   final String _routeOverlayId = 'hiking-route';
   final String _startPointMarkerId = 'start-point';
   final String _endPointMarkerId = 'end-point';
+  final String _userPathOverlayId = 'user-path';
 
   // 네비게이션 모드 여부 (기본값을 true로 변경)
   bool _isNavigationMode = true;
@@ -78,6 +152,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   @override
   void initState() {
     super.initState();
+    _loadSelectedRouteData();
+    _checkLocationPermission();
     _startTracking();
 
     // 초기 경로 데이터 설정
@@ -104,10 +180,10 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    _positionStream?.cancel();
     _sheetController.removeListener(_onSheetChanged);
     _sheetController.dispose();
     _mapController = null;
-    _locationOverlay = null;
     super.dispose();
   }
 
@@ -120,15 +196,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
           if (_elapsedSeconds % 60 == 0) {
             _elapsedMinutes++;
           }
-
-          // 고도 변경 (테스트용)
-          _currentAltitude += (math.Random().nextDouble() * 2 - 1);
         });
-
-        // 테스트용 데이터 업데이트 - 실제로는 GPS 데이터 사용
-        if (_elapsedSeconds % 10 == 0) {
-          await _updatePosition();
-        }
 
         // 심박수 업데이트 (테스트용)
         if (_elapsedSeconds % 5 == 0) {
@@ -138,74 +206,28 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
     });
   }
 
-  // 위치 업데이트 (테스트용)
-  Future<void> _updatePosition() async {
-    final nextIdx = (_userPath.length % _routeCoordinates.length);
-    final nextPoint = _routeCoordinates[nextIdx];
+  // 베어링(방향) 업데이트
+  void _updateBearing() {
+    if (_userPath.length >= 2) {
+      final lastIdx = _userPath.length - 1;
+      final prevPoint = _userPath[lastIdx - 1];
+      final currPoint = _userPath[lastIdx];
 
-    _currentLat = nextPoint.latitude;
-    _currentLng = nextPoint.longitude;
+      // 두 지점 간의 방향 계산
+      final deltaLat = currPoint.latitude - prevPoint.latitude;
+      final deltaLng = currPoint.longitude - prevPoint.longitude;
+      _locationBearing = math.atan2(deltaLng, deltaLat) * 180 / math.pi;
 
-    // 경로에 현재 위치 추가
-    _userPath.add(NLatLng(_currentLat, _currentLng));
-
-    // 현재 위치 오버레이 업데이트
-    await _updateLocationOverlay();
-
-    // 거리 업데이트 (테스트용)
-    setState(() {
-      _distance -= 0.1;
-      if (_distance < 0) _distance = 0;
-    });
-  }
-
-  // 위치 오버레이 업데이트
-  Future<void> _updateLocationOverlay() async {
-    if (_mapController != null) {
-      try {
-        // 위치 오버레이가 아직 초기화되지 않았으면 초기화
-        if (_locationOverlay == null) {
-          _locationOverlay = _mapController!.getLocationOverlay();
-          // 위치 오버레이 기본 스타일 설정
-          // 기본 아이콘 사용
-          _locationOverlay!.setCircleRadius(30);
-          _locationOverlay!.setCircleColor(AppColors.primary.withAlpha(10));
-          _locationOverlay!.setCircleOutlineWidth(2);
-          _locationOverlay!.setCircleOutlineColor(AppColors.primary);
-        }
-
-        // 위치 오버레이 위치 및 방향 업데이트
-        _locationOverlay!.setPosition(NLatLng(_currentLat, _currentLng));
-
-        // 다음 위치 방향으로 베어링 설정 (실제로는 GPS 방향 사용)
-        if (_userPath.length >= 2) {
-          final lastIdx = _userPath.length - 1;
-          final prevPoint = _userPath[lastIdx - 1];
-          final currPoint = _userPath[lastIdx];
-
-          // 두 지점 간의 방향 계산 (간단한 계산)
-          final deltaLat = currPoint.latitude - prevPoint.latitude;
-          final deltaLng = currPoint.longitude - prevPoint.longitude;
-          _locationBearing = math.atan2(deltaLng, deltaLat) * 180 / math.pi;
-          _locationOverlay!.setBearing(_locationBearing);
-        }
-
-        // 위치 오버레이 표시
-        _locationOverlay!.setIsVisible(true);
-
-        // 네비게이션 모드일 경우 카메라를 현재 위치로 이동
-        if (_isNavigationMode) {
-          _mapController!.updateCamera(
-            NCameraUpdate.withParams(
-              target: NLatLng(_currentLat, _currentLng),
-              zoom: 17,
-              bearing: _locationBearing,
-              tilt: 50,
-            ),
-          );
-        }
-      } catch (e) {
-        debugPrint('위치 오버레이 업데이트 중 오류 발생: $e');
+      // 네비게이션 모드일 경우 카메라 회전
+      if (_isNavigationMode && _mapController != null) {
+        _mapController!.updateCamera(
+          NCameraUpdate.withParams(
+            target: NLatLng(_currentLat, _currentLng),
+            zoom: 17,
+            bearing: _locationBearing,
+            tilt: 50,
+          ),
+        );
       }
     }
   }
@@ -232,9 +254,23 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
 
   // 지도에 등산로 경로 표시
   Future<void> _showRouteOnMap() async {
-    if (_mapController == null || _routeCoordinates.isEmpty) return;
+    if (_mapController == null) {
+      debugPrint('지도 컨트롤러가 초기화되지 않았습니다.');
+      return;
+    }
+
+    if (_routeCoordinates.isEmpty) {
+      debugPrint('등산로 경로 데이터가 없습니다.');
+      return;
+    }
 
     try {
+      debugPrint('지도에 경로 표시 시작: ${_routeCoordinates.length} 포인트');
+
+      // 기존 오버레이 삭제
+      _mapController!.clearOverlays();
+      debugPrint('기존 오버레이 삭제됨');
+
       // 경로 오버레이 추가
       _mapController!.addOverlay(
         NPathOverlay(
@@ -244,102 +280,302 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
           width: 5,
           outlineWidth: 2,
           outlineColor: Colors.white,
-          // 패턴 이미지 임시 제거
           patternInterval: 30,
         ),
       );
+      debugPrint('경로 오버레이 추가됨');
 
       // 출발점 마커 추가
       _mapController!.addOverlay(
         NMarker(
           id: _startPointMarkerId,
           position: _routeCoordinates.first,
-          // 기본 마커 사용
           caption: const NOverlayCaption(
             text: '출발점',
             textSize: 12,
           ),
         ),
       );
+      debugPrint('출발점 마커 추가됨');
 
       // 도착점 마커 추가
       _mapController!.addOverlay(
         NMarker(
           id: _endPointMarkerId,
           position: _routeCoordinates.last,
-          // 기본 마커 사용
           caption: const NOverlayCaption(
             text: '도착점',
             textSize: 12,
           ),
         ),
       );
+      debugPrint('도착점 마커 추가됨');
 
       // 현재 위치 오버레이 초기화 및 업데이트
       await _updateLocationOverlay();
+      debugPrint('현재 위치 오버레이 업데이트됨');
 
-      // 등산로 경로가 전부 보이도록 카메라 이동 (바운드 처리 수정)
-      final bounds = _calculateRouteBounds();
+      // 바운드 계산을 백그라운드에서 수행
+      final bounds = await compute(
+          _BackgroundTask.calculateRouteBounds, _routeCoordinates);
+
+      // 계산된 바운드로 카메라 이동
       _mapController!.updateCamera(
         NCameraUpdate.fitBounds(
-          bounds,
+          NLatLngBounds(
+            southWest: NLatLng(bounds['minLat']!, bounds['minLng']!),
+            northEast: NLatLng(bounds['maxLat']!, bounds['maxLng']!),
+          ),
           padding: const EdgeInsets.all(50),
         ),
       );
+      debugPrint('카메라 위치 업데이트됨');
+
+      // 위치 추적 모드 활성화
+      _enableLocationTracking();
     } catch (e) {
       debugPrint('등산로 경로 표시 중 오류 발생: $e');
     }
   }
 
-  // 경로의 경계 계산 (바운딩 박스)
-  NLatLngBounds _calculateRouteBounds() {
-    double minLat = double.infinity;
-    double maxLat = -double.infinity;
-    double minLng = double.infinity;
-    double maxLng = -double.infinity;
+  // 선택된 등산로 데이터 로딩
+  void _loadSelectedRouteData() {
+    final appState = Provider.of<AppState>(context, listen: false);
+    final selectedRoute = appState.selectedRoute;
 
-    for (var point in _routeCoordinates) {
-      minLat = point.latitude < minLat ? point.latitude : minLat;
-      maxLat = point.latitude > maxLat ? point.latitude : maxLat;
-      minLng = point.longitude < minLng ? point.longitude : minLng;
-      maxLng = point.longitude > maxLng ? point.longitude : maxLng;
+    debugPrint('선택된 등산로: ${selectedRoute?.name}');
+
+    if (selectedRoute != null && selectedRoute.path.isNotEmpty) {
+      debugPrint('경로 데이터 있음: ${selectedRoute.path.length} 포인트');
+      try {
+        // 경로 데이터 변환
+        final pathPoints = selectedRoute.path
+            .map((coord) {
+              final lat = coord['latitude'];
+              final lng = coord['longitude'];
+
+              if (lat == null || lng == null) {
+                debugPrint('좌표 데이터 오류: $coord');
+                return null;
+              }
+
+              return NLatLng(lat, lng);
+            })
+            .where((point) => point != null)
+            .cast<NLatLng>()
+            .toList();
+
+        if (pathPoints.isEmpty) {
+          debugPrint('변환된 경로 데이터가 없습니다.');
+          _setDefaultRoute();
+          return;
+        }
+
+        // 백그라운드에서 경로 최적화 수행
+        compute(_BackgroundTask.optimizeRoute, pathPoints)
+            .then((optimizedPath) {
+          if (!mounted) return;
+
+          setState(() {
+            _routeCoordinates = optimizedPath;
+
+            // 거리와 시간 정보 설정
+            _distance = selectedRoute.distance;
+            _elapsedMinutes = selectedRoute.estimatedTime;
+
+            // 시작 위치 설정 (경로의 첫 번째 포인트)
+            if (_routeCoordinates.isNotEmpty) {
+              _currentLat = _routeCoordinates.first.latitude;
+              _currentLng = _routeCoordinates.first.longitude;
+            }
+
+            debugPrint('경로 데이터 로드 완료: $_distance km, $_elapsedMinutes 분');
+          });
+        });
+      } catch (e) {
+        debugPrint('경로 데이터 처리 중 오류 발생: $e');
+        _setDefaultRoute();
+      }
+    } else {
+      debugPrint('선택된 경로가 없거나 경로 데이터가 비어있습니다.');
+      _setDefaultRoute();
     }
-
-    return NLatLngBounds(
-      southWest: NLatLng(minLat, minLng),
-      northEast: NLatLng(maxLat, maxLng),
-    );
   }
 
-  // 네비게이션 모드 전환
-  void _toggleNavigationMode() {
+  // 기본 경로 설정 (데이터가 없을 경우)
+  void _setDefaultRoute() {
+    debugPrint('기본 경로 데이터를 사용합니다.');
     setState(() {
-      _isNavigationMode = !_isNavigationMode;
+      _routeCoordinates = [
+        NLatLng(37.5665, 126.9780),
+        NLatLng(37.5690, 126.9800),
+        NLatLng(37.5720, 126.9830),
+        NLatLng(37.5760, 126.9876),
+      ];
+    });
+  }
+
+  // 위치 권한 확인 및 요청
+  Future<void> _checkLocationPermission() async {
+    // 위치 서비스 활성화 확인
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!mounted) return; // 비동기 작업 후 mounted 체크
+
+    if (!serviceEnabled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('위치 서비스가 비활성화되어 있습니다. 설정에서 활성화해주세요.')),
+      );
+      return;
+    }
+
+    // 위치 권한 확인
+    PermissionStatus status = await Permission.locationWhenInUse.status;
+    if (!mounted) return; // 비동기 작업 후 mounted 체크
+
+    if (status.isDenied) {
+      // 권한 요청
+      status = await Permission.locationWhenInUse.request();
+      if (!mounted) return; // 비동기 작업 후 mounted 체크
+    }
+
+    if (status.isPermanentlyDenied) {
+      // 사용자가 영구적으로 거부한 경우 앱 설정으로 이동 안내
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('위치 권한이 영구적으로 거부되었습니다. 설정에서 권한을 허용해주세요.'),
+          action: SnackBarAction(
+            label: '설정',
+            onPressed: () => openAppSettings(),
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (status.isGranted) {
+      _startLocationTracking();
+    }
+  }
+
+  // 실시간 위치 추적 시작
+  void _startLocationTracking() {
+    const LocationSettings locationSettings = LocationSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 10, // 10미터마다 업데이트
+    );
+
+    _positionStream =
+        Geolocator.getPositionStream(locationSettings: locationSettings)
+            .listen((Position position) {
+      // 백그라운드에서 거리 계산
+      compute(_BackgroundTask.calculateDistance, {
+        'lat1': _currentLat,
+        'lng1': _currentLng,
+        'lat2': position.latitude,
+        'lng2': position.longitude,
+      }).then((distance) {
+        if (!mounted) return;
+
+        // 현재 위치와 충분히 차이가 있을 때만 업데이트 (5미터 이상)
+        if (distance > 5.0) {
+          setState(() {
+            _currentLat = position.latitude;
+            _currentLng = position.longitude;
+            _currentAltitude = position.altitude;
+
+            // 사용자 이동 경로에 현재 위치 추가
+            final newPoint = NLatLng(_currentLat, _currentLng);
+            _userPath.add(newPoint);
+
+            // 이동 거리 누적 (테스트용 코드 대체)
+            // _distance += distance / 1000; // 미터 -> 킬로미터
+          });
+
+          // 경로 업데이트와 베어링은 UI 상태 변경 후에 수행
+          _updateUserPathOverlay();
+          _updateBearing();
+
+          // 네비게이션 모드일 경우 카메라 위치 업데이트
+          if (_isNavigationMode && _mapController != null) {
+            _mapController!.updateCamera(
+              NCameraUpdate.withParams(
+                target: NLatLng(_currentLat, _currentLng),
+                zoom: 17,
+                bearing: _locationBearing,
+                tilt: 50,
+              ),
+            );
+          }
+        }
+      });
     });
 
+    // 위치 추적 모드 활성화 (지도 컨트롤러가 있는 경우)
     if (_mapController != null) {
-      if (_isNavigationMode) {
-        // 네비게이션 모드 활성화: 현재 위치 중심, 3D 기울기 적용
-        _mapController!.updateCamera(
-          NCameraUpdate.withParams(
-            target: NLatLng(_currentLat, _currentLng),
-            zoom: 17,
-            bearing: _locationBearing,
-            tilt: 50,
+      _enableLocationTracking();
+    }
+  }
+
+  // 위치 추적 모드 활성화
+  void _enableLocationTracking() {
+    if (_mapController == null) return;
+
+    try {
+      // 위치 추적 모드 설정
+      _mapController!.setLocationTrackingMode(NLocationTrackingMode.follow);
+      debugPrint('위치 추적 모드가 활성화되었습니다.');
+    } catch (e) {
+      debugPrint('위치 추적 모드 설정 중 오류 발생: $e');
+    }
+  }
+
+  // 사용자 이동 경로 오버레이 업데이트
+  void _updateUserPathOverlay() {
+    if (_mapController == null || _userPath.length < 2) return;
+
+    try {
+      // 백그라운드에서 사용자 경로 최적화
+      compute<List<NLatLng>, List<NLatLng>>((userPath) {
+        // 너무 많은 포인트가 있는 경우 마지막 N개만 반환
+        return userPath.length > 200
+            ? userPath.sublist(userPath.length - 200)
+            : userPath;
+      }, _userPath)
+          .then((userPathToShow) {
+        if (!mounted || _mapController == null) return;
+
+        // 새 사용자 경로 오버레이 추가 (기존 ID가 있으면 자동으로 교체됨)
+        _mapController!.addOverlay(
+          NPathOverlay(
+            id: _userPathOverlayId,
+            coords: userPathToShow,
+            color: Colors.blue.withAlpha(150), // 반투명 파란색으로 변경
+            width: 4, // 너비 감소
+            outlineWidth: 1, // 테두리 너비 감소
+            outlineColor: Colors.white,
+            patternInterval: 0, // 패턴 제거
           ),
         );
-      } else {
-        // 네비게이션 모드 비활성화: 전체 경로 조망
-        _mapController!.updateCamera(
-          NCameraUpdate.fitBounds(
-            _calculateRouteBounds(),
-            padding: const EdgeInsets.all(50),
-          ),
-        );
-        _mapController!.updateCamera(
-          NCameraUpdate.withParams(tilt: 0),
-        );
-      }
+        debugPrint('사용자 경로 오버레이 업데이트됨: ${userPathToShow.length} 포인트');
+      });
+    } catch (e) {
+      debugPrint('사용자 경로 오버레이 업데이트 중 오류: $e');
+    }
+  }
+
+  // 위치 오버레이 업데이트
+  Future<void> _updateLocationOverlay() async {
+    if (_mapController == null) {
+      debugPrint('지도 컨트롤러가 초기화되지 않았습니다.');
+      return;
+    }
+
+    try {
+      // 위치 추적 모드를 사용하여 자동으로 위치 표시
+      _mapController!.setLocationTrackingMode(NLocationTrackingMode.follow);
+      debugPrint('위치 오버레이가 업데이트되었습니다: $_currentLat, $_currentLng');
+    } catch (e) {
+      debugPrint('위치 오버레이 업데이트 중 오류 발생: $e');
     }
   }
 
@@ -358,7 +594,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                   zoom: 17,
                   tilt: 50,
                 ),
-                mapType: NMapType.navi,
+                mapType: NMapType.terrain,
                 nightModeEnable: false,
                 scrollGesturesEnable: true,
                 zoomGesturesEnable: true,
@@ -370,26 +606,38 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                   NLayerGroup.mountain,
                   NLayerGroup.building,
                   NLayerGroup.transit,
+                  NLayerGroup.traffic,
+                  NLayerGroup.cadastral,
                 ],
               ),
               onMapReady: (controller) {
+                debugPrint('네이버 지도가 준비되었습니다.');
                 _mapController = controller;
-                // 지도가 준비되면 경로 표시
-                Future.delayed(const Duration(milliseconds: 300), () async {
-                  await _showRouteOnMap();
 
-                  // 네비게이션 모드 기본 설정 - 현재 위치 중심, 3D 기울기 적용
-                  if (_isNavigationMode) {
-                    _mapController!.updateCamera(
-                      NCameraUpdate.withParams(
-                        target: NLatLng(_currentLat, _currentLng),
-                        zoom: 17,
-                        bearing: 0,
-                        tilt: 50,
-                      ),
-                    );
+                // 지도가 준비되면 경로 표시 (지연 시간 증가)
+                Future.delayed(const Duration(milliseconds: 500), () async {
+                  if (mounted) {
+                    debugPrint('지도에 경로 표시 시도...');
+                    await _showRouteOnMap();
+
+                    // 네비게이션 모드 기본 설정 - 현재 위치 중심, 3D 기울기 적용
+                    if (_isNavigationMode && mounted) {
+                      debugPrint('네비게이션 모드 카메라 설정...');
+                      _mapController!.updateCamera(
+                        NCameraUpdate.withParams(
+                          target: NLatLng(_currentLat, _currentLng),
+                          zoom: 17,
+                          bearing: 0,
+                          tilt: 50,
+                        ),
+                      );
+                    }
                   }
                 });
+              },
+              onMapTapped: (point, latLng) {
+                debugPrint(
+                    '지도가 탭되었습니다: ${latLng.latitude}, ${latLng.longitude}');
               },
             ),
           ),
@@ -762,5 +1010,53 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
         ),
       ),
     );
+  }
+
+  // 네비게이션 모드 전환
+  void _toggleNavigationMode() {
+    setState(() {
+      _isNavigationMode = !_isNavigationMode;
+    });
+
+    if (_mapController != null) {
+      if (_isNavigationMode) {
+        // 네비게이션 모드 활성화: 현재 위치 중심, 3D 기울기 적용
+        _mapController!.updateCamera(
+          NCameraUpdate.withParams(
+            target: NLatLng(_currentLat, _currentLng),
+            zoom: 17,
+            bearing: _locationBearing,
+            tilt: 50,
+          ),
+        );
+
+        // 위치 추적 모드 설정
+        _mapController!.setLocationTrackingMode(NLocationTrackingMode.follow);
+      } else {
+        // 네비게이션 모드 비활성화: 전체 경로 조망
+        // 백그라운드에서 바운드 계산 후 카메라 이동
+        compute(_BackgroundTask.calculateRouteBounds, _routeCoordinates)
+            .then((bounds) {
+          if (!mounted) return;
+
+          _mapController!.updateCamera(
+            NCameraUpdate.fitBounds(
+              NLatLngBounds(
+                southWest: NLatLng(bounds['minLat']!, bounds['minLng']!),
+                northEast: NLatLng(bounds['maxLat']!, bounds['maxLng']!),
+              ),
+              padding: const EdgeInsets.all(50),
+            ),
+          );
+          _mapController!.updateCamera(
+            NCameraUpdate.withParams(tilt: 0),
+          );
+
+          // 위치 추적 모드 해제
+          _mapController!
+              .setLocationTrackingMode(NLocationTrackingMode.noFollow);
+        });
+      }
+    }
   }
 }
