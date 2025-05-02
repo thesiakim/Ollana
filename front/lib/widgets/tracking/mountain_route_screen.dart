@@ -43,8 +43,6 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
   bool _isLoading = true;
   bool _isLoadingRoutes = false;
 
-  // NaverMap 관련 변수 제거
-
   // NaverMap 위젯이 다시 생성되도록 지도 상태를 관리하는 키
   // 타입 오류 해결: 정확한 타입 지정 대신 일반 GlobalKey 사용
   final GlobalKey _mapKey = GlobalKey();
