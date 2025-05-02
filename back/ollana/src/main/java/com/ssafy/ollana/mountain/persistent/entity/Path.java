@@ -10,15 +10,15 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import org.locationtech.jts.geom.LineString;
+import org.locationtech.jts.geom.Point;
 
 @Getter
 @Entity
 @AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Builder
 public class Path {
 
 	@Id
@@ -34,8 +34,11 @@ public class Path {
 
 	private Double pathLength;
 
-	private Double xCoordinate;
-	private Double yCoordinate;
+	@Column(columnDefinition = "geometry(Point, 4326)")
+	private Point centerPoint;
+
+	@Column(columnDefinition = "geometry(LineString, 4326)")
+	private LineString route;
 
 	@Enumerated(EnumType.STRING)
 	private Level level;
