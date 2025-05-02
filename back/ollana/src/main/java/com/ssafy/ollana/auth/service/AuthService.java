@@ -6,9 +6,10 @@ import com.ssafy.ollana.auth.dto.response.AccessTokenResponseDto;
 import com.ssafy.ollana.auth.dto.response.LoginResponseDto;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface AuthService {
-    void signup(SignupRequestDto request);
+    void signup(SignupRequestDto request, MultipartFile profileImage);
     LoginResponseDto login(LoginRequestDto request, HttpServletResponse response);
     void logout(HttpServletRequest request, HttpServletResponse response);
     AccessTokenResponseDto refreshToken(HttpServletRequest request);
