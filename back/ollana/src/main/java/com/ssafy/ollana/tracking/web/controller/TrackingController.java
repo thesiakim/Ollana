@@ -1,30 +1,28 @@
 package com.ssafy.ollana.tracking.web.controller;
 
+import com.ssafy.ollana.common.util.Response;
 import com.ssafy.ollana.tracking.service.TrackingService;
+import com.ssafy.ollana.tracking.web.dto.response.NearestMountainResponseDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/tracking")
+@RequestMapping("/api/tracking")
 public class TrackingController {
 
     private final TrackingService trackingService;
 
-    @PostMapping("/import/mtn")
-    public ResponseEntity<String> importMountainData() throws Exception {
-        trackingService.saveAllMountainsFromApi();
-        return ResponseEntity.ok("전체 Mountain 데이터 저장 완료");
-    }
-
-    @PostMapping("/import/path")
-    public ResponseEntity<String> importPaths() {
-        trackingService.savePathsFromSqlTable();
-        return ResponseEntity.ok("Path 데이터 저장 완료");
+    /*
+     * 사용자 위치 인식 후 가장 가까운 산 반환
+     */
+    @GetMapping("/mountains/nearby")
+    public ResponseEntity<Response<NearestMountainResponseDto>> getNearestMountain(
+                                                        @RequestParam double lat,
+                                                        @RequestParam double lng) {
+        NearestMountainResponseDto response = trackingService.findNearestMountain(lat, lng);
+        return ResponseEntity.ok(Response.success(response));
     }
 
 
