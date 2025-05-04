@@ -8,6 +8,7 @@ import com.ssafy.ollana.auth.dto.response.LoginResponseDto;
 import com.ssafy.ollana.auth.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,7 +23,7 @@ public class AuthController {
 
     @PostMapping("/signup")
     public ResponseEntity<Response<Void>> signup(
-            @RequestPart("userData") SignupRequestDto request,
+            @Valid @RequestPart("userData") SignupRequestDto request,
             @RequestPart(value = "profileImage", required = false) MultipartFile profileImage) {
         authService.signup(request, profileImage);
         return ResponseEntity.ok(Response.success());
