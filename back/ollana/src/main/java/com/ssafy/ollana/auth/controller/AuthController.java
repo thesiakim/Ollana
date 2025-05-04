@@ -1,6 +1,9 @@
 package com.ssafy.ollana.auth.controller;
 
+import com.ssafy.ollana.auth.dto.request.EmailSendRequestDto;
+import com.ssafy.ollana.auth.dto.request.EmailVerifyRequestDto;
 import com.ssafy.ollana.auth.dto.response.AccessTokenResponseDto;
+import com.ssafy.ollana.auth.service.MailService;
 import com.ssafy.ollana.common.util.Response;
 import com.ssafy.ollana.auth.dto.request.LoginRequestDto;
 import com.ssafy.ollana.auth.dto.request.SignupRequestDto;
@@ -20,12 +23,25 @@ import org.springframework.web.multipart.MultipartFile;
 public class AuthController {
 
     private final AuthService authService;
+    private final MailService mailService;
 
     @PostMapping("/signup")
     public ResponseEntity<Response<Void>> signup(
             @Valid @RequestPart("userData") SignupRequestDto request,
             @RequestPart(value = "profileImage", required = false) MultipartFile profileImage) {
         authService.signup(request, profileImage);
+        return ResponseEntity.ok(Response.success());
+    }
+
+    @PostMapping("/email/send")
+    public ResponseEntity<Response<Void>> sendEmail(@RequestBody EmailSendRequestDto request) {
+        mailService.sendMail(request);
+        return ResponseEntity.ok(Response.success());
+    }
+
+    @PostMapping("/email/verify")
+    public ResponseEntity<Response<Void>> verifyEmail(@RequestBody EmailVerifyRequestDto request) {
+        mailService.verifyCode(request);
         return ResponseEntity.ok(Response.success());
     }
 
