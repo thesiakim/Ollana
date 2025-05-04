@@ -5,6 +5,7 @@ import com.ssafy.ollana.auth.dto.request.SignupRequestDto;
 import com.ssafy.ollana.auth.dto.response.AccessTokenResponseDto;
 import com.ssafy.ollana.auth.dto.response.LoginResponseDto;
 import com.ssafy.ollana.auth.exception.AuthenticationException;
+import com.ssafy.ollana.user.exception.NicknameAlreadyExistsException;
 import com.ssafy.ollana.auth.exception.RefreshTokenException;
 import com.ssafy.ollana.common.s3.service.S3Service;
 import com.ssafy.ollana.security.jwt.JwtUtil;
@@ -40,6 +41,11 @@ public class AuthServiceImpl implements AuthService {
         // 이메일 중복 검사
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new DuplicateEmailException();
+        }
+
+        // 닉네임 중복 검사
+        if (userRepository.existsByNickname(request.getNickname())) {
+            throw new NicknameAlreadyExistsException();
         }
 
         // 비밀번호 암호화
