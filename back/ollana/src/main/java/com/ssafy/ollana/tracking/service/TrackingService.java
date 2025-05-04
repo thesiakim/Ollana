@@ -9,8 +9,12 @@ import com.ssafy.ollana.mountain.persistent.entity.Path;
 import com.ssafy.ollana.mountain.persistent.repository.MountainRepository;
 import com.ssafy.ollana.mountain.persistent.repository.PathRepository;
 import com.ssafy.ollana.mountain.web.dto.response.MountainResponseDto;
+import com.ssafy.ollana.tracking.persistent.HikingLiveRecordsRepository;
+import com.ssafy.ollana.tracking.persistent.entity.HikingLiveRecords;
 import com.ssafy.ollana.tracking.service.exception.NoNearbyMountainException;
+import com.ssafy.ollana.tracking.web.dto.request.TrackingStartRequestDto;
 import com.ssafy.ollana.tracking.web.dto.response.*;
+import com.ssafy.ollana.user.entity.User;
 import com.ssafy.ollana.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +30,7 @@ public class TrackingService {
     private final PathRepository pathRepository;
     private final UserRepository userRepository;
     private final HikingHistoryRepository hikingHistoryRepository;
+    private final HikingLiveRecordsRepository hikingLiveRecordsRepository;
 
     /*
      * 사용자 위치 인식 후 가장 가까운 산 반환
@@ -97,6 +102,40 @@ public class TrackingService {
 
         return FriendListResponseDto.builder()
                 .users(friends)
+                .build();
+    }
+
+    /*
+     * 트래킹 시작 요청
+     */
+    @Transactional(readOnly = true)
+    public TrackingStartResponseDto getTrackingStartInfo(Integer userId, TrackingStartRequestDto request) {
+        Mountain mountain = mountainRepository.findById(request.getMountainId())
+                                              .orElseThrow(NotFoundException::new);
+
+        Path path = pathRepository.findById(request.getPathId())
+                                  .orElseThrow(NotFoundException::new);
+
+        OpponentResponseDto opponentDto = null;
+
+        // 일반 모드일 때는 대결 상대 데이터를 조회하지 않음
+        if (!request.getMode().equals("GENERAL")) {
+            User opponent = userRepository.findById(request.getOpponentId())
+                                          .orElseThrow(NotFoundException::new);
+
+        List<HikingLiveRecords> records = hikingLiveRecordsRepository
+                .findByUserIdAndMountainIdAndPathIdOrderByTotalTimeAsc(
+                        request.getOpponentId(),
+                        request.getMountainId(),
+                        request.getPathId()
+                );
+            opponentDto = OpponentResponseDto.from(opponent, records);
+        }
+
+        return TrackingStartResponseDto.builder()
+                .mountain(MountainLocationResponseDto.from(mountain))
+                .path(PathForTrackingResponseDto.from(path))
+                .opponent(opponentDto)
                 .build();
     }
 }

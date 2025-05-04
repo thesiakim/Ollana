@@ -4,10 +4,8 @@ import com.ssafy.ollana.common.util.Response;
 import com.ssafy.ollana.footprint.web.dto.response.TodayHikingResultResponseDto;
 import com.ssafy.ollana.security.CustomUserDetails;
 import com.ssafy.ollana.tracking.service.TrackingService;
-import com.ssafy.ollana.tracking.web.dto.response.FriendListResponseDto;
-import com.ssafy.ollana.tracking.web.dto.response.MountainSearchResponseDto;
-import com.ssafy.ollana.tracking.web.dto.response.MountainSuggestionsResponseDto;
-import com.ssafy.ollana.tracking.web.dto.response.NearestMountainResponseDto;
+import com.ssafy.ollana.tracking.web.dto.request.TrackingStartRequestDto;
+import com.ssafy.ollana.tracking.web.dto.response.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -73,6 +71,18 @@ public class TrackingController {
         FriendListResponseDto response = trackingService.getFriendsInfo(mountainId, pathId, nickname);
         return ResponseEntity.ok(Response.success(response));
     }
+
+    /*
+     * 트래킹 시작 요청
+     */
+    @GetMapping("/start")
+    public ResponseEntity<Response<TrackingStartResponseDto>> getTrackingStartInfo(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                                                                   @RequestBody TrackingStartRequestDto request) {
+        TrackingStartResponseDto response = trackingService.getTrackingStartInfo(userDetails.getUser().getId(), request);
+        return ResponseEntity.ok(Response.success(response));
+    }
+
+
 
 
 
