@@ -6,6 +6,8 @@ import com.ssafy.ollana.mountain.persistent.repository.MountainRepository;
 import com.ssafy.ollana.mountain.persistent.repository.PathRepository;
 import com.ssafy.ollana.mountain.web.dto.response.MountainResponseDto;
 import com.ssafy.ollana.tracking.service.exception.NoNearbyMountainException;
+import com.ssafy.ollana.tracking.web.dto.response.MountainSearchResponseDto;
+import com.ssafy.ollana.tracking.web.dto.response.MountainSuggestionsResponseDto;
 import com.ssafy.ollana.tracking.web.dto.response.NearestMountainResponseDto;
 import com.ssafy.ollana.tracking.web.dto.response.PathForTrackingResponseDto;
 import lombok.RequiredArgsConstructor;
@@ -39,4 +41,35 @@ public class TrackingService {
                                          .build();
     }
 
+    /*
+     * 산 검색 시 자동완성
+     */
+    @Transactional(readOnly = true)
+    public MountainSuggestionsResponseDto getMountainSuggestions(String mountainName) {
+        List<Mountain> mountains = mountainRepository.findTop10ByMountainNameContaining(mountainName);
+        return MountainSuggestionsResponseDto.from(mountains);
+    }
+
+    /*
+     * 산 검색 결과 반환
+     */
+    @Transactional(readOnly = true)
+    public MountainSearchResponseDto getMountainSearchResults(String mountainName) {
+        List<Mountain> mountains = mountainRepository.findByMountainNameContaining(mountainName);
+
+        List<NearestMountainResponseDto> results = mountains.stream()
+                .map(mountain -> {
+                    List<Path> paths = pathRepository.findByMountainId(mountain.getId());
+
+                    return NearestMountainResponseDto.builder()
+                                                     .mountain(MountainResponseDto.from(mountain))
+                                                     .paths(paths.stream()
+                                                            .map(PathForTrackingResponseDto::from)
+                                                            .toList())
+                                                     .build();
+                })
+                            .toList();
+
+        return MountainSearchResponseDto.from(results);
+    }
 }
