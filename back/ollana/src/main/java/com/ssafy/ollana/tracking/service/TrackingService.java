@@ -10,10 +10,8 @@ import com.ssafy.ollana.mountain.persistent.repository.MountainRepository;
 import com.ssafy.ollana.mountain.persistent.repository.PathRepository;
 import com.ssafy.ollana.mountain.web.dto.response.MountainResponseDto;
 import com.ssafy.ollana.tracking.service.exception.NoNearbyMountainException;
-import com.ssafy.ollana.tracking.web.dto.response.MountainSearchResponseDto;
-import com.ssafy.ollana.tracking.web.dto.response.MountainSuggestionsResponseDto;
-import com.ssafy.ollana.tracking.web.dto.response.NearestMountainResponseDto;
-import com.ssafy.ollana.tracking.web.dto.response.PathForTrackingResponseDto;
+import com.ssafy.ollana.tracking.web.dto.response.*;
+import com.ssafy.ollana.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,6 +24,7 @@ import java.util.List;
 public class TrackingService {
     private final MountainRepository mountainRepository;
     private final PathRepository pathRepository;
+    private final UserRepository userRepository;
     private final HikingHistoryRepository hikingHistoryRepository;
 
     /*
@@ -89,4 +88,15 @@ public class TrackingService {
         return TodayHikingResultResponseDto.from(history);
     }
 
+    /*
+     * [나 VS 친구] 모드 선택 시 친구 정보 조회
+     */
+    @Transactional(readOnly = true)
+    public FriendListResponseDto getFriendsInfo(Integer mountainId, Integer pathId, String nickname) {
+        List<FriendInfoResponseDto> friends = userRepository.searchFriends(nickname, mountainId, pathId);
+
+        return FriendListResponseDto.builder()
+                .users(friends)
+                .build();
+    }
 }

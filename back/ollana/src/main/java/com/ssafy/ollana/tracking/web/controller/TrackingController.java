@@ -4,6 +4,7 @@ import com.ssafy.ollana.common.util.Response;
 import com.ssafy.ollana.footprint.web.dto.response.TodayHikingResultResponseDto;
 import com.ssafy.ollana.security.CustomUserDetails;
 import com.ssafy.ollana.tracking.service.TrackingService;
+import com.ssafy.ollana.tracking.web.dto.response.FriendListResponseDto;
 import com.ssafy.ollana.tracking.web.dto.response.MountainSearchResponseDto;
 import com.ssafy.ollana.tracking.web.dto.response.MountainSuggestionsResponseDto;
 import com.ssafy.ollana.tracking.web.dto.response.NearestMountainResponseDto;
@@ -59,6 +60,17 @@ public class TrackingController {
                                                                                   @PathVariable Integer mountainId,
                                                                                   @PathVariable Integer pathId) {
         TodayHikingResultResponseDto response = trackingService.getHikingRecord(userDetails.getUser().getId(), mountainId, pathId);
+        return ResponseEntity.ok(Response.success(response));
+    }
+
+    /*
+     * [나 VS 친구] 모드 선택 시 친구 정보 조회
+     */
+    @GetMapping("/friends")
+    public ResponseEntity<Response<FriendListResponseDto>> getFriendsInfo(@RequestParam Integer mountainId,
+                                                                          @RequestParam Integer pathId,
+                                                                          @RequestParam String nickname) {
+        FriendListResponseDto response = trackingService.getFriendsInfo(mountainId, pathId, nickname);
         return ResponseEntity.ok(Response.success(response));
     }
 
