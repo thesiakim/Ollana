@@ -140,7 +140,6 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   final String _routeOverlayId = 'hiking-route';
   final String _startPointMarkerId = 'start-point';
   final String _endPointMarkerId = 'end-point';
-  final String _userPathOverlayId = 'user-path';
 
   // 네비게이션 모드 여부 (기본값을 true로 변경)
   bool _isNavigationMode = true;
@@ -148,6 +147,9 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   // 바텀 시트 컨트롤러
   final DraggableScrollableController _sheetController =
       DraggableScrollableController();
+
+  // 위치 마커 유지를 위한 타이머
+  Timer? _locationOverlayTimer;
 
   @override
   void initState() {
@@ -181,6 +183,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   void dispose() {
     _timer?.cancel();
     _positionStream?.cancel();
+    _locationOverlayTimer?.cancel();
     _sheetController.removeListener(_onSheetChanged);
     _sheetController.dispose();
     _mapController = null;
@@ -267,11 +270,15 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
     try {
       debugPrint('지도에 경로 표시 시작: ${_routeCoordinates.length} 포인트');
 
-      // 기존 오버레이 삭제
-      _mapController!.clearOverlays();
-      debugPrint('기존 오버레이 삭제됨');
+      // (1) 경로(Path) 오버레이만 삭제
+      _mapController!.clearOverlays(type: NOverlayType.pathOverlay);
 
-      // 경로 오버레이 추가
+      // ↓ 이렇게 marker 타입 전체를 삭제하면 위치 오버레이도 같이 사라집니다!
+      // _mapController!.clearOverlays(type: NOverlayType.marker);
+
+      debugPrint('기존 경로 오버레이 삭제됨');
+
+      // (2) 경로 오버레이·마커 그리기
       _mapController!.addOverlay(
         NPathOverlay(
           id: _routeOverlayId,
@@ -311,10 +318,6 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
       );
       debugPrint('도착점 마커 추가됨');
 
-      // 현재 위치 오버레이 초기화 및 업데이트
-      await _updateLocationOverlay();
-      debugPrint('현재 위치 오버레이 업데이트됨');
-
       // 바운드 계산을 백그라운드에서 수행
       final bounds = await compute(
           _BackgroundTask.calculateRouteBounds, _routeCoordinates);
@@ -330,9 +333,6 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
         ),
       );
       debugPrint('카메라 위치 업데이트됨');
-
-      // 위치 추적 모드 활성화
-      _enableLocationTracking();
     } catch (e) {
       debugPrint('등산로 경로 표시 중 오류 발생: $e');
     }
@@ -492,7 +492,6 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
           });
 
           // 경로 업데이트와 베어링은 UI 상태 변경 후에 수행
-          _updateUserPathOverlay();
           _updateBearing();
 
           // 네비게이션 모드일 경우 카메라 위치 업데이트
@@ -518,64 +517,14 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
 
   // 위치 추적 모드 활성화
   void _enableLocationTracking() {
+    // 이 메서드는 초기 설정 시에만 사용하고, 이후에는 재호출하지 않습니다.
+    // _startLocationTracking() 메서드에서만 호출
     if (_mapController == null) return;
 
     try {
-      // 위치 추적 모드 설정
-      _mapController!.setLocationTrackingMode(NLocationTrackingMode.follow);
       debugPrint('위치 추적 모드가 활성화되었습니다.');
     } catch (e) {
       debugPrint('위치 추적 모드 설정 중 오류 발생: $e');
-    }
-  }
-
-  // 사용자 이동 경로 오버레이 업데이트
-  void _updateUserPathOverlay() {
-    if (_mapController == null || _userPath.length < 2) return;
-
-    try {
-      // 백그라운드에서 사용자 경로 최적화
-      compute<List<NLatLng>, List<NLatLng>>((userPath) {
-        // 너무 많은 포인트가 있는 경우 마지막 N개만 반환
-        return userPath.length > 200
-            ? userPath.sublist(userPath.length - 200)
-            : userPath;
-      }, _userPath)
-          .then((userPathToShow) {
-        if (!mounted || _mapController == null) return;
-
-        // 새 사용자 경로 오버레이 추가 (기존 ID가 있으면 자동으로 교체됨)
-        _mapController!.addOverlay(
-          NPathOverlay(
-            id: _userPathOverlayId,
-            coords: userPathToShow,
-            color: Colors.blue.withAlpha(150), // 반투명 파란색으로 변경
-            width: 4, // 너비 감소
-            outlineWidth: 1, // 테두리 너비 감소
-            outlineColor: Colors.white,
-            patternInterval: 0, // 패턴 제거
-          ),
-        );
-        debugPrint('사용자 경로 오버레이 업데이트됨: ${userPathToShow.length} 포인트');
-      });
-    } catch (e) {
-      debugPrint('사용자 경로 오버레이 업데이트 중 오류: $e');
-    }
-  }
-
-  // 위치 오버레이 업데이트
-  Future<void> _updateLocationOverlay() async {
-    if (_mapController == null) {
-      debugPrint('지도 컨트롤러가 초기화되지 않았습니다.');
-      return;
-    }
-
-    try {
-      // 위치 추적 모드를 사용하여 자동으로 위치 표시
-      _mapController!.setLocationTrackingMode(NLocationTrackingMode.follow);
-      debugPrint('위치 오버레이가 업데이트되었습니다: $_currentLat, $_currentLng');
-    } catch (e) {
-      debugPrint('위치 오버레이 업데이트 중 오류 발생: $e');
     }
   }
 
@@ -600,7 +549,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                 zoomGesturesEnable: true,
                 rotationGesturesEnable: true,
                 tiltGesturesEnable: true,
-                locationButtonEnable: true,
+                locationButtonEnable: false, // 기본 위치 버튼 비활성화
                 contentPadding: const EdgeInsets.all(0),
                 activeLayerGroups: [
                   NLayerGroup.mountain,
@@ -610,9 +559,19 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                   NLayerGroup.cadastral,
                 ],
               ),
-              onMapReady: (controller) {
+              onMapReady: (controller) async {
                 debugPrint('네이버 지도가 준비되었습니다.');
                 _mapController = controller;
+
+                // 1) 위치 추적 모드 활성화
+                await controller
+                    .setLocationTrackingMode(NLocationTrackingMode.follow);
+
+                // 2) 내 위치 오버레이 보이게 설정
+                final locOverlay = controller.getLocationOverlay();
+                locOverlay.setIconSize(const Size.square(24));
+                locOverlay.setCircleRadius(0); // 파란 점만
+                locOverlay.setIsVisible(true);
 
                 // 지도가 준비되면 경로 표시 (지연 시간 증가)
                 Future.delayed(const Duration(milliseconds: 500), () async {
@@ -644,6 +603,9 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
 
           // 네비게이션 모드 토글 버튼
           _buildNavigationToggleButton(),
+
+          // 커스텀 위치 버튼 (좌측 하단)
+          _buildLocationButton(),
 
           // 드래그 가능한 바텀 시트
           _buildDraggableBottomSheet(),
@@ -1020,7 +982,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
 
     if (_mapController != null) {
       if (_isNavigationMode) {
-        // 네비게이션 모드 활성화: 현재 위치 중심, 3D 기울기 적용
+        // 네비게이션 모드 활성화: 현재 위치 중심, 3D 기울기 적용 (카메라만 이동)
         _mapController!.updateCamera(
           NCameraUpdate.withParams(
             target: NLatLng(_currentLat, _currentLng),
@@ -1029,9 +991,6 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
             tilt: 50,
           ),
         );
-
-        // 위치 추적 모드 설정
-        _mapController!.setLocationTrackingMode(NLocationTrackingMode.follow);
       } else {
         // 네비게이션 모드 비활성화: 전체 경로 조망
         // 백그라운드에서 바운드 계산 후 카메라 이동
@@ -1039,7 +998,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
             .then((bounds) {
           if (!mounted) return;
 
-          _mapController!.updateCamera(
+          _mapController!
+              .updateCamera(
             NCameraUpdate.fitBounds(
               NLatLngBounds(
                 southWest: NLatLng(bounds['minLat']!, bounds['minLng']!),
@@ -1047,16 +1007,47 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
               ),
               padding: const EdgeInsets.all(50),
             ),
-          );
-          _mapController!.updateCamera(
-            NCameraUpdate.withParams(tilt: 0),
-          );
-
-          // 위치 추적 모드 해제
-          _mapController!
-              .setLocationTrackingMode(NLocationTrackingMode.noFollow);
+          )
+              .then((_) {
+            _mapController!.updateCamera(
+              NCameraUpdate.withParams(tilt: 0),
+            );
+          });
         });
       }
     }
+  }
+
+  // 커스텀 위치 버튼 위젯
+  Widget _buildLocationButton() {
+    return Positioned(
+      left: 20,
+      bottom: 150, // 바텀 시트 위에 위치하도록 조정
+      child: FloatingActionButton(
+        heroTag: 'locationBtn',
+        onPressed: _onLocationButtonPressed,
+        mini: true,
+        backgroundColor: Colors.white,
+        child: const Icon(
+          Icons.my_location,
+          color: Colors.black54,
+        ),
+      ),
+    );
+  }
+
+  // 위치 버튼 클릭 시 처리
+  void _onLocationButtonPressed() {
+    if (_mapController == null) return;
+
+    // 카메라를 현재 위치로 이동만 수행
+    _mapController!.updateCamera(
+      NCameraUpdate.withParams(
+        target: NLatLng(_currentLat, _currentLng),
+        zoom: 17,
+        bearing: _locationBearing,
+        tilt: 50,
+      ),
+    );
   }
 }
