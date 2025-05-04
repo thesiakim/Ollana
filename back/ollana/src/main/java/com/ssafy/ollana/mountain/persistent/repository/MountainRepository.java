@@ -13,4 +13,8 @@ public interface MountainRepository extends JpaRepository<Mountain, Integer>, Mo
     // 산 코드만 리스트로 추출
     @Query("SELECT m.mntnCode FROM Mountain m")
     List<String> findAllMntnCode();
+
+    // 산 이름 검색
+    List<Mountain> findTop10ByMountainNameContaining(String mountainName);
+    List<Mountain> findByMountainNameContaining(String mountainName);
 }
