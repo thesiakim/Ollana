@@ -42,6 +42,15 @@ class MountainService {
           description: '한반도 남부의 최고봉으로 다양한 생태계를 보유하고 있습니다.',
           imageUrl: 'https://example.com/jirisan.jpg',
         ),
+        Mountain(
+          id: 'm4',
+          name: '무등산국립공원',
+          location: '광주광역시',
+          height: 1915.0,
+          difficulty: '하',
+          description: '그냥 산',
+          imageUrl: 'https://example.com/solsi.jpg',
+        ),
       ];
     } catch (e) {
       throw Exception('산 데이터를 불러오는데 실패했습니다: $e');
@@ -132,7 +141,7 @@ class MountainService {
             ],
           ),
         ];
-      } else {
+      } else if (mountainId == 'm3') {
         return [
           HikingRoute(
             id: 'r4',
@@ -165,6 +174,52 @@ class MountainService {
               {'latitude': 37.5030, 'longitude': 127.0070}, // 쉼터
               {'latitude': 37.5060, 'longitude': 127.0040}, // 전망대
               {'latitude': 37.5000, 'longitude': 127.0000}, // 입구 (원점 회귀)
+            ],
+          ),
+        ];
+      } else {
+        return [
+          HikingRoute(
+            id: 'r7',
+            mountainId: mountainId,
+            name: '기본 코스',
+            distance: 8.0,
+            estimatedTime: 240,
+            difficulty: '하',
+            description: '산 주변을 둘러보는 편안한 코스입니다.',
+            waypoints: ['입구', '쉼터', '전망대', '입구'],
+            mapImageUrl: 'https://example.com/default_route2.jpg',
+            path: [
+              {'latitude': 35.076914, 'longitude': 126.980007},
+              {'latitude': 35.076796, 'longitude': 126.980028},
+              {'latitude': 35.076559, 'longitude': 126.980028},
+              {'latitude': 35.076241, 'longitude': 126.979984},
+              {'latitude': 35.076097, 'longitude': 126.979980},
+              {'latitude': 35.075884, 'longitude': 126.979968},
+              {'latitude': 35.075638, 'longitude': 126.979923},
+              {'latitude': 35.075331, 'longitude': 126.979881},
+              {'latitude': 35.075164, 'longitude': 126.979883},
+              {'latitude': 35.074817, 'longitude': 126.979822},
+              {'latitude': 35.074684, 'longitude': 126.979796},
+              {'latitude': 35.074574, 'longitude': 126.979771},
+              {'latitude': 35.074466, 'longitude': 126.979790},
+              {'latitude': 35.074364, 'longitude': 126.979844},
+              {'latitude': 35.074232, 'longitude': 126.979942},
+              {'latitude': 35.074102, 'longitude': 126.980021},
+              {'latitude': 35.073906, 'longitude': 126.980117},
+              {'latitude': 35.073757, 'longitude': 126.980166},
+              {'latitude': 35.073630, 'longitude': 126.980213},
+              {'latitude': 35.073509, 'longitude': 126.980277},
+              {'latitude': 35.073395, 'longitude': 126.980391},
+              {'latitude': 35.073286, 'longitude': 126.980523},
+              {'latitude': 35.073160, 'longitude': 126.980627},
+              {'latitude': 35.073075, 'longitude': 126.980677},
+              {'latitude': 35.072967, 'longitude': 126.980706},
+              {'latitude': 35.072823, 'longitude': 126.980708},
+              {'latitude': 35.072730, 'longitude': 126.980721},
+              {'latitude': 35.072500, 'longitude': 126.980755},
+              {'latitude': 35.072418, 'longitude': 126.980785},
+              {'latitude': 35.072322, 'longitude': 126.980834},
             ],
           ),
         ];

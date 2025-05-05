@@ -37,4 +37,26 @@ public class MountainCustomRepositoryImpl implements MountainCustomRepository {
 
         return result.stream().findFirst();
     }
+
+    @Override
+    public boolean isMountainWithin10km(Integer mountainId, double lat, double lng) {
+        String sql = """
+        SELECT COUNT(*) FROM mountain
+        WHERE mountain_id = :mountainId
+          AND ST_DWithin(
+              ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography,
+              geom::geography,
+              10000
+          )
+    """;
+
+        Object result = em.createNativeQuery(sql)
+                .setParameter("lat", lat)
+                .setParameter("lng", lng)
+                .setParameter("mountainId", mountainId)
+                .getSingleResult();
+
+        return ((Number) result).intValue() > 0;
+    }
+
 }

@@ -632,6 +632,11 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
         _selectedRouteIndex >= 0 &&
         _selectedRouteIndex < _routes.length) {
       try {
+        // AppState에 선택된 산과 등산로 정보 저장
+        final appState = Provider.of<AppState>(context, listen: false);
+        appState.selectMountain(_selectedMountain!.name);
+        appState.selectRoute(_routes[_selectedRouteIndex]);
+
         widget.onRouteSelected(
             _selectedMountain!, _routes[_selectedRouteIndex]);
       } catch (e) {

@@ -5,6 +5,8 @@
 // - Provider 패턴을 사용하여 상태 관리 및 위젯 트리 전체에서 접근 가능
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import '../models/hiking_route.dart';
 
 // 트래킹 단계를 나타내는 열거형
 enum TrackingStage {
@@ -22,7 +24,7 @@ class AppState extends ChangeNotifier {
   TrackingStage _trackingStage = TrackingStage.search;
   bool _isTracking = false;
   String? _selectedMountain;
-  String? _selectedRoute;
+  HikingRoute? _selectedRoute;
   String? _selectedMode;
 
   bool get isLoggedIn => _isLoggedIn;
@@ -32,7 +34,7 @@ class AppState extends ChangeNotifier {
   TrackingStage get trackingStage => _trackingStage;
   bool get isTracking => _isTracking;
   String? get selectedMountain => _selectedMountain;
-  String? get selectedRoute => _selectedRoute;
+  HikingRoute? get selectedRoute => _selectedRoute;
   String? get selectedMode => _selectedMode;
 
   void toggleLogin() {
@@ -52,14 +54,14 @@ class AppState extends ChangeNotifier {
   }
 
   // 산 선택 시 호출
-  void selectMountain(String mountain) {
-    _selectedMountain = mountain;
+  void selectMountain(String name) {
+    _selectedMountain = name;
     _trackingStage = TrackingStage.routeSelect;
     notifyListeners();
   }
 
   // 등산로 선택 시 호출
-  void selectRoute(String route) {
+  void selectRoute(HikingRoute route) {
     _selectedRoute = route;
     _trackingStage = TrackingStage.modeSelect;
     notifyListeners();
