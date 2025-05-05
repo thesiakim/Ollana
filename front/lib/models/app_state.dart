@@ -7,6 +7,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import '../models/hiking_route.dart';
+import 'package:flutter_naver_map/flutter_naver_map.dart';
 
 // 트래킹 단계를 나타내는 열거형
 enum TrackingStage {
@@ -26,6 +27,39 @@ class AppState extends ChangeNotifier {
   String? _selectedMountain;
   HikingRoute? _selectedRoute;
   String? _selectedMode;
+
+  // LiveTrackingScreen 데이터 유지를 위한 필드
+  // 트래킹 경로 및 위치 데이터
+  List<NLatLng> _routeCoordinates = [];
+  final List<NLatLng> _userPath = [];
+  double _currentLat = 37.5665;
+  double _currentLng = 126.9780;
+  double _currentAltitude = 120;
+
+  // 트래킹 정보
+  int _elapsedSeconds = 0;
+  int _elapsedMinutes = 0;
+  double _distance = 0.0;
+  int _maxHeartRate = 0;
+  int _avgHeartRate = 0;
+
+  // 네비게이션 모드 설정
+  bool _isNavigationMode = true;
+  double _locationBearing = 0;
+
+  // LiveTrackingScreen 데이터 getter
+  List<NLatLng> get routeCoordinates => _routeCoordinates;
+  List<NLatLng> get userPath => _userPath;
+  double get currentLat => _currentLat;
+  double get currentLng => _currentLng;
+  double get currentAltitude => _currentAltitude;
+  int get elapsedSeconds => _elapsedSeconds;
+  int get elapsedMinutes => _elapsedMinutes;
+  double get distance => _distance;
+  int get maxHeartRate => _maxHeartRate;
+  int get avgHeartRate => _avgHeartRate;
+  bool get isNavigationMode => _isNavigationMode;
+  double get locationBearing => _locationBearing;
 
   bool get isLoggedIn => _isLoggedIn;
   int get currentPageIndex => _currentPageIndex;
@@ -67,12 +101,143 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  // 등산로 미리 선택 (단계 전환 없이)
+  void preSelectRoute(HikingRoute route) {
+    _selectedRoute = route;
+    // trackingStage는 변경하지 않음 (routeSelect 단계 유지)
+    notifyListeners();
+  }
+
   // 모드 선택 및 트래킹 시작 시 호출
   void startTracking(String mode) {
     _selectedMode = mode;
     _isTracking = true;
     _trackingStage = TrackingStage.tracking;
+
+    // 초기화 (처음 시작할 때만)
+    if (_elapsedSeconds == 0 && _elapsedMinutes == 0) {
+      _resetTrackingData();
+
+      // 선택된 경로 데이터가 있으면 좌표 변환 후 설정
+      if (_selectedRoute != null && _selectedRoute!.path.isNotEmpty) {
+        // 경로 데이터 NLatLng으로 변환
+        final pathPoints = _selectedRoute!.path
+            .map((coord) {
+              final lat = coord['latitude'];
+              final lng = coord['longitude'];
+              if (lat != null && lng != null) {
+                return NLatLng(lat, lng);
+              }
+              return null;
+            })
+            .where((point) => point != null)
+            .cast<NLatLng>()
+            .toList();
+
+        if (pathPoints.isNotEmpty) {
+          _routeCoordinates = pathPoints;
+          debugPrint('AppState: 경로 좌표 데이터 설정 완료 (${pathPoints.length} 포인트)');
+        }
+      }
+    }
+
     notifyListeners();
+  }
+
+  // 트래킹 데이터 업데이트
+  void updateTrackingData({
+    List<NLatLng>? routeCoordinates,
+    NLatLng? newUserPathPoint,
+    double? currentLat,
+    double? currentLng,
+    double? currentAltitude,
+    int? elapsedSeconds,
+    double? distance,
+    int? maxHeartRate,
+    int? avgHeartRate,
+    bool? isNavigationMode,
+    double? locationBearing,
+  }) {
+    bool changed = false;
+
+    if (routeCoordinates != null) {
+      _routeCoordinates = routeCoordinates;
+      changed = true;
+    }
+
+    if (newUserPathPoint != null) {
+      _userPath.add(newUserPathPoint);
+      changed = true;
+    }
+
+    if (currentLat != null) {
+      _currentLat = currentLat;
+      changed = true;
+    }
+
+    if (currentLng != null) {
+      _currentLng = currentLng;
+      changed = true;
+    }
+
+    if (currentAltitude != null) {
+      _currentAltitude = currentAltitude;
+      changed = true;
+    }
+
+    if (elapsedSeconds != null) {
+      _elapsedSeconds = elapsedSeconds;
+      _elapsedMinutes = elapsedSeconds ~/ 60;
+      changed = true;
+    }
+
+    if (distance != null) {
+      _distance = distance;
+      changed = true;
+    }
+
+    if (maxHeartRate != null) {
+      _maxHeartRate = maxHeartRate;
+      changed = true;
+    }
+
+    if (avgHeartRate != null) {
+      _avgHeartRate = avgHeartRate;
+      changed = true;
+    }
+
+    if (isNavigationMode != null) {
+      _isNavigationMode = isNavigationMode;
+      changed = true;
+    }
+
+    if (locationBearing != null) {
+      _locationBearing = locationBearing;
+      changed = true;
+    }
+
+    if (changed) {
+      notifyListeners();
+    }
+  }
+
+  // 트래킹 데이터 초기화
+  void _resetTrackingData() {
+    // _routeCoordinates = []; // 경로 좌표는 초기화하지 않음
+    _userPath.clear();
+    _elapsedSeconds = 0;
+    _elapsedMinutes = 0;
+    _distance = _selectedRoute?.distance ?? 0.0;
+    _maxHeartRate = 0;
+    _avgHeartRate = 0;
+
+    // 시작 위치가 있으면 설정
+    if (_selectedRoute != null && _selectedRoute!.path.isNotEmpty) {
+      final firstPoint = _selectedRoute!.path.first;
+      _currentLat = firstPoint['latitude'] ?? 37.5665;
+      _currentLng = firstPoint['longitude'] ?? 126.9780;
+      _userPath.add(NLatLng(_currentLat, _currentLng));
+    }
   }
 
   // 트래킹 종료 시 호출
@@ -82,6 +247,10 @@ class AppState extends ChangeNotifier {
     _selectedMountain = null;
     _selectedRoute = null;
     _selectedMode = null;
+
+    // 트래킹 데이터 초기화
+    _resetTrackingData();
+
     notifyListeners();
   }
 

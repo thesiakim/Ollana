@@ -22,8 +22,8 @@ class Mountain {
 
   factory Mountain.fromJson(Map<String, dynamic> json) {
     return Mountain(
-      id: json['id'] ?? '',
-      name: json['name'] ?? '',
+      id: json['mountainId']?.toString() ?? '',
+      name: json['mountainName'] ?? '',
       location: json['location'] ?? '',
       height: (json['height'] is num) ? json['height'].toDouble() : 0.0,
       difficulty: json['difficulty'] ?? '',
