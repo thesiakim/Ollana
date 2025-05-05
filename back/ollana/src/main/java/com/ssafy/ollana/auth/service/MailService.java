@@ -14,6 +14,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
+import java.security.SecureRandom;
 import java.time.Duration;
 
 @Slf4j
@@ -67,7 +68,8 @@ public class MailService {
 
 
     private int createCode() {
-        return (int) (Math.random() * 900000) + 100000;
+        SecureRandom secureRandom = new SecureRandom();
+        return secureRandom.nextInt(900000) + 100000;
     }
 
     private MimeMessage createMail(String recipientEmail, int number) {
