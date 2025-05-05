@@ -12,6 +12,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../models/app_state.dart';
 import '../../utils/app_colors.dart';
+import 'package:flutter_compass/flutter_compass.dart';
 
 // 네이버 지도 라이브러리 임포트
 import 'package:flutter_naver_map/flutter_naver_map.dart';
@@ -112,6 +113,12 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   // 위치 트래킹 구독
   StreamSubscription<Position>? _positionStream;
 
+  // 나침반 센서 구독
+  StreamSubscription<CompassEvent>? _compassStream;
+
+  // 디바이스 방향 (나침반 방향)
+  double _deviceHeading = 0.0;
+
   // 최고/평균 심박수
   int _maxHeartRate = 120;
   int _avgHeartRate = 86;
@@ -143,6 +150,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
 
   // 네비게이션 모드 여부 (기본값을 true로 변경)
   bool _isNavigationMode = true;
+  bool _isToggling = false; // 네비게이션 모드 토글 중인지 여부
 
   // 바텀 시트 컨트롤러
   final DraggableScrollableController _sheetController =
@@ -151,15 +159,52 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   // 위치 마커 유지를 위한 타이머
   Timer? _locationOverlayTimer;
 
+  // 위치 버튼 클릭 처리를 위한 변수
+  DateTime? _lastLocationButtonPress;
+  bool _isLocationButtonProcessing = false;
+  int _pendingLocationClicks = 0; // 대기 중인 위치 버튼 클릭 수
+
   @override
   void initState() {
     super.initState();
-    _loadSelectedRouteData();
+
+    // AppState에서 데이터 가져오기
+    final appState = Provider.of<AppState>(context, listen: false);
+
+    // 이미 저장된 데이터가 있으면 가져오기
+    if (appState.isTracking) {
+      _userPath.addAll(appState.userPath);
+
+      if (appState.routeCoordinates.isNotEmpty) {
+        _routeCoordinates = appState.routeCoordinates;
+      }
+
+      _currentLat = appState.currentLat;
+      _currentLng = appState.currentLng;
+      _currentAltitude = appState.currentAltitude;
+      _elapsedSeconds = appState.elapsedSeconds;
+      _elapsedMinutes = appState.elapsedMinutes;
+      _distance = appState.distance;
+      _maxHeartRate = appState.maxHeartRate;
+      _avgHeartRate = appState.avgHeartRate;
+      _isNavigationMode = appState.isNavigationMode;
+      _locationBearing = appState.locationBearing;
+
+      debugPrint('기존 트래킹 데이터 불러옴: $_elapsedMinutes분 $_elapsedSeconds초');
+    } else {
+      _loadSelectedRouteData();
+      debugPrint('새로운 트래킹 데이터 로드');
+    }
+
+    // 공통 초기화
     _checkLocationPermission();
     _startTracking();
+    _startCompassTracking(); // 나침반 센서 구독 시작
 
-    // 초기 경로 데이터 설정
-    _userPath.add(NLatLng(_currentLat, _currentLng));
+    // 초기 경로 데이터 설정 (아직 없는 경우)
+    if (_userPath.isEmpty) {
+      _userPath.add(NLatLng(_currentLat, _currentLng));
+    }
 
     // 시트 컨트롤러 리스너 설정
     _sheetController.addListener(_onSheetChanged);
@@ -183,6 +228,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   void dispose() {
     _timer?.cancel();
     _positionStream?.cancel();
+    _compassStream?.cancel(); // 나침반 센서 구독 해제
     _locationOverlayTimer?.cancel();
     _sheetController.removeListener(_onSheetChanged);
     _sheetController.dispose();
@@ -205,6 +251,12 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
         if (_elapsedSeconds % 5 == 0) {
           _updateHeartRate();
         }
+
+        // AppState 업데이트
+        if (mounted) {
+          final appState = Provider.of<AppState>(context, listen: false);
+          appState.updateTrackingData(elapsedSeconds: _elapsedSeconds);
+        }
       }
     });
   }
@@ -221,8 +273,12 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
       final deltaLng = currPoint.longitude - prevPoint.longitude;
       _locationBearing = math.atan2(deltaLng, deltaLat) * 180 / math.pi;
 
-      // 네비게이션 모드일 경우 카메라 회전
-      if (_isNavigationMode && _mapController != null) {
+      debugPrint('이동 방향 업데이트: $_locationBearing°');
+
+      // 네비게이션 모드일 경우 카메라 회전 (디바이스 방향이 없는 경우에만)
+      if (_isNavigationMode &&
+          _mapController != null &&
+          !_isCompassAvailable()) {
         _mapController!.updateCamera(
           NCameraUpdate.withParams(
             target: NLatLng(_currentLat, _currentLng),
@@ -233,6 +289,21 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
         );
       }
     }
+  }
+
+  // 나침반 센서 사용 가능 여부 확인
+  bool _isCompassAvailable() {
+    return FlutterCompass.events != null;
+  }
+
+  // 현재 보고 있는 방향 가져오기 (디바이스 방향 우선, 없으면 이동 방향)
+  double getCurrentHeading() {
+    // 나침반 센서가 사용 가능하고 유효한 값이 있으면 디바이스 방향 반환
+    if (_isCompassAvailable() && _deviceHeading != 0.0) {
+      return _deviceHeading;
+    }
+    // 아니면 이동 기반 방향 반환
+    return _locationBearing;
   }
 
   // 심박수 업데이트 (테스트용)
@@ -247,6 +318,13 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
 
     // 평균 심박수 업데이트 (간단한 시뮬레이션)
     _avgHeartRate = ((_avgHeartRate * 9) + currentHeartRate) ~/ 10; // 가중 평균
+
+    // AppState 업데이트
+    if (mounted) {
+      final appState = Provider.of<AppState>(context, listen: false);
+      appState.updateTrackingData(
+          maxHeartRate: _maxHeartRate, avgHeartRate: _avgHeartRate);
+    }
   }
 
   // 포맷팅된 시간 문자열
@@ -263,18 +341,45 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
     }
 
     if (_routeCoordinates.isEmpty) {
-      debugPrint('등산로 경로 데이터가 없습니다.');
-      return;
+      debugPrint('등산로 경로 데이터가 없습니다. AppState에서 데이터 확인 시도');
+
+      // AppState에서 경로 데이터 직접 가져오기
+      final appState = Provider.of<AppState>(context, listen: false);
+      if (appState.routeCoordinates.isNotEmpty) {
+        debugPrint(
+            'AppState에서 경로 데이터 찾음: ${appState.routeCoordinates.length} 포인트');
+        setState(() {
+          _routeCoordinates = appState.routeCoordinates;
+        });
+      } else {
+        debugPrint('AppState에도 경로 데이터가 없습니다. 기본 경로를 설정합니다.');
+        _setDefaultRoute();
+        // 경로 데이터가 설정된 후 다시 호출
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted) _showRouteOnMap();
+        });
+        return;
+      }
     }
 
     try {
       debugPrint('지도에 경로 표시 시작: ${_routeCoordinates.length} 포인트');
 
-      // (1) 경로(Path) 오버레이만 삭제
-      _mapController!.clearOverlays(type: NOverlayType.pathOverlay);
+      // 경로 좌표 유효성 검사
+      debugPrint(
+          '첫 번째 좌표: ${_routeCoordinates.first.latitude}, ${_routeCoordinates.first.longitude}');
+      debugPrint(
+          '마지막 좌표: ${_routeCoordinates.last.latitude}, ${_routeCoordinates.last.longitude}');
 
-      // ↓ 이렇게 marker 타입 전체를 삭제하면 위치 오버레이도 같이 사라집니다!
-      // _mapController!.clearOverlays(type: NOverlayType.marker);
+      // (1) 기존 오버레이 모두 삭제 (위치 오버레이 제외)
+      _mapController!.clearOverlays(type: NOverlayType.pathOverlay);
+      _mapController!.clearOverlays(type: NOverlayType.marker);
+
+      // 내 위치 오버레이는 별도로 유지
+      final locOverlay = _mapController!.getLocationOverlay();
+      locOverlay.setIconSize(const Size.square(24));
+      locOverlay.setCircleRadius(0);
+      locOverlay.setIsVisible(true);
 
       debugPrint('기존 경로 오버레이 삭제됨');
 
@@ -318,21 +423,46 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
       );
       debugPrint('도착점 마커 추가됨');
 
-      // 바운드 계산을 백그라운드에서 수행
-      final bounds = await compute(
-          _BackgroundTask.calculateRouteBounds, _routeCoordinates);
-
-      // 계산된 바운드로 카메라 이동
-      _mapController!.updateCamera(
-        NCameraUpdate.fitBounds(
-          NLatLngBounds(
-            southWest: NLatLng(bounds['minLat']!, bounds['minLng']!),
-            northEast: NLatLng(bounds['maxLat']!, bounds['maxLng']!),
+      // 네비게이션 모드에 따라 카메라 설정 분기
+      if (_isNavigationMode) {
+        // 네비게이션 모드: 현재 위치 중심으로 카메라 설정
+        _mapController!.updateCamera(
+          NCameraUpdate.withParams(
+            target: NLatLng(_currentLat, _currentLng),
+            zoom: 17,
+            bearing: _locationBearing,
+            tilt: 50,
           ),
-          padding: const EdgeInsets.all(50),
-        ),
-      );
-      debugPrint('카메라 위치 업데이트됨');
+        );
+        debugPrint('네비게이션 모드로 카메라 설정됨');
+      } else {
+        // 전체 지도 모드: 경로 전체가 보이도록 카메라 설정
+        try {
+          final bounds = await compute(
+              _BackgroundTask.calculateRouteBounds, _routeCoordinates);
+
+          // 계산된 바운드로 카메라 이동
+          _mapController!.updateCamera(
+            NCameraUpdate.fitBounds(
+              NLatLngBounds(
+                southWest: NLatLng(bounds['minLat']!, bounds['minLng']!),
+                northEast: NLatLng(bounds['maxLat']!, bounds['maxLng']!),
+              ),
+              padding: const EdgeInsets.all(50),
+            ),
+          );
+          debugPrint('전체 경로가 보이도록 카메라 설정됨');
+        } catch (e) {
+          debugPrint('바운드 계산 오류: $e');
+          // 오류 발생 시 현재 위치로 카메라 이동
+          _mapController!.updateCamera(
+            NCameraUpdate.withParams(
+              target: NLatLng(_currentLat, _currentLng),
+              zoom: 15,
+            ),
+          );
+        }
+      }
     } catch (e) {
       debugPrint('등산로 경로 표시 중 오류 발생: $e');
     }
@@ -391,6 +521,10 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
 
             debugPrint('경로 데이터 로드 완료: $_distance km, $_elapsedMinutes 분');
           });
+
+          // AppState에도 경로 데이터 업데이트
+          final appState = Provider.of<AppState>(context, listen: false);
+          appState.updateTrackingData(routeCoordinates: optimizedPath);
         });
       } catch (e) {
         debugPrint('경로 데이터 처리 중 오류 발생: $e');
@@ -412,6 +546,12 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
         NLatLng(37.5720, 126.9830),
         NLatLng(37.5760, 126.9876),
       ];
+
+      // 시작 위치 업데이트
+      if (_routeCoordinates.isNotEmpty) {
+        _currentLat = _routeCoordinates.first.latitude;
+        _currentLng = _routeCoordinates.first.longitude;
+      }
     });
   }
 
@@ -495,15 +635,37 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
           _updateBearing();
 
           // 네비게이션 모드일 경우 카메라 위치 업데이트
-          if (_isNavigationMode && _mapController != null) {
-            _mapController!.updateCamera(
-              NCameraUpdate.withParams(
-                target: NLatLng(_currentLat, _currentLng),
-                zoom: 17,
-                bearing: _locationBearing,
-                tilt: 50,
-              ),
-            );
+          if (_mapController != null) {
+            // 네비게이션 모드에서만 방향과 틸트를 적용
+            if (_isNavigationMode) {
+              _mapController!.updateCamera(
+                NCameraUpdate.withParams(
+                  target: NLatLng(_currentLat, _currentLng),
+                  zoom: 17,
+                  bearing: getCurrentHeading(), // 디바이스 방향 또는 이동 방향 사용
+                  tilt: 50,
+                ),
+              );
+            } else {
+              // 일반 모드에서는 위치만 업데이트 (방향과 틸트 없음)
+              _mapController!.updateCamera(
+                NCameraUpdate.withParams(
+                  target: NLatLng(_currentLat, _currentLng),
+                  zoom: 15,
+                ),
+              );
+            }
+          }
+
+          // AppState 업데이트
+          if (mounted) {
+            final appState = Provider.of<AppState>(context, listen: false);
+            appState.updateTrackingData(
+                currentLat: _currentLat,
+                currentLng: _currentLng,
+                currentAltitude: _currentAltitude,
+                newUserPathPoint: NLatLng(_currentLat, _currentLng),
+                locationBearing: _locationBearing);
           }
         }
       });
@@ -553,9 +715,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                 contentPadding: const EdgeInsets.all(0),
                 activeLayerGroups: [
                   NLayerGroup.mountain,
-                  NLayerGroup.building,
                   NLayerGroup.transit,
-                  NLayerGroup.traffic,
                   NLayerGroup.cadastral,
                 ],
               ),
@@ -574,22 +734,23 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                 locOverlay.setIsVisible(true);
 
                 // 지도가 준비되면 경로 표시 (지연 시간 증가)
-                Future.delayed(const Duration(milliseconds: 500), () async {
+                Future.delayed(const Duration(milliseconds: 1000), () async {
                   if (mounted) {
-                    debugPrint('지도에 경로 표시 시도...');
-                    await _showRouteOnMap();
+                    debugPrint('지도에 경로 표시 시도... (1초 지연 후)');
 
-                    // 네비게이션 모드 기본 설정 - 현재 위치 중심, 3D 기울기 적용
-                    if (_isNavigationMode && mounted) {
-                      debugPrint('네비게이션 모드 카메라 설정...');
-                      _mapController!.updateCamera(
-                        NCameraUpdate.withParams(
-                          target: NLatLng(_currentLat, _currentLng),
-                          zoom: 17,
-                          bearing: 0,
-                          tilt: 50,
-                        ),
-                      );
+                    // 경로 데이터가 비어있으면 데이터 로드 재시도
+                    if (_routeCoordinates.isEmpty) {
+                      debugPrint('경로 데이터가 비어있어 다시 로드합니다.');
+                      _loadSelectedRouteData();
+                      // 경로 데이터 로드 후 잠시 대기
+                      Future.delayed(const Duration(milliseconds: 500), () {
+                        if (mounted) {
+                          debugPrint('경로 데이터 로드 후 지도에 표시 시도...');
+                          _showRouteOnMap();
+                        }
+                      });
+                    } else {
+                      await _showRouteOnMap();
                     }
                   }
                 });
@@ -621,9 +782,11 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
       right: 10,
       child: FloatingActionButton(
         heroTag: 'navToggle',
-        onPressed: _toggleNavigationMode,
+        onPressed: _isToggling ? null : _toggleNavigationMode, // 토글 중엔 비활성화
         mini: true,
-        backgroundColor: _isNavigationMode ? AppColors.primary : Colors.white,
+        backgroundColor: _isNavigationMode
+            ? AppColors.primary.withAlpha(_isToggling ? 125 : 255) // 토글 중엔 반투명
+            : Colors.white.withAlpha(_isToggling ? 125 : 255),
         child: Icon(
           _isNavigationMode ? Icons.navigation : Icons.map,
           color: _isNavigationMode ? Colors.white : AppColors.primary,
@@ -975,31 +1138,48 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   }
 
   // 네비게이션 모드 전환
-  void _toggleNavigationMode() {
+  Future<void> _toggleNavigationMode() async {
+    // 이미 토글 중이면 중복 실행 방지
+    if (_isToggling) return;
+
+    // 토글 시작
     setState(() {
-      _isNavigationMode = !_isNavigationMode;
+      _isToggling = true;
     });
 
-    if (_mapController != null) {
-      if (_isNavigationMode) {
-        // 네비게이션 모드 활성화: 현재 위치 중심, 3D 기울기 적용 (카메라만 이동)
-        _mapController!.updateCamera(
-          NCameraUpdate.withParams(
-            target: NLatLng(_currentLat, _currentLng),
-            zoom: 17,
-            bearing: _locationBearing,
-            tilt: 50,
-          ),
-        );
-      } else {
-        // 네비게이션 모드 비활성화: 전체 경로 조망
-        // 백그라운드에서 바운드 계산 후 카메라 이동
-        compute(_BackgroundTask.calculateRouteBounds, _routeCoordinates)
-            .then((bounds) {
+    try {
+      // 모드 변경
+      setState(() {
+        _isNavigationMode = !_isNavigationMode;
+      });
+
+      // AppState 업데이트
+      if (mounted) {
+        final appState = Provider.of<AppState>(context, listen: false);
+        appState.updateTrackingData(isNavigationMode: _isNavigationMode);
+      }
+
+      if (_mapController != null) {
+        if (_isNavigationMode) {
+          // 네비게이션 모드 활성화: 현재 위치 중심, 3D 기울기 적용
+          // 현재 보고 있는 방향(디바이스 방향 또는 이동 방향) 적용
+          await _mapController!.updateCamera(
+            NCameraUpdate.withParams(
+              target: NLatLng(_currentLat, _currentLng),
+              zoom: 17,
+              bearing: getCurrentHeading(), // 디바이스 방향 또는 이동 방향 사용
+              tilt: 50,
+            ),
+          );
+          debugPrint('네비게이션 모드 카메라 설정 완료: 방향 ${getCurrentHeading()}°');
+        } else {
+          // 네비게이션 모드 비활성화: 전체 경로 조망
+          final bounds = await compute(
+              _BackgroundTask.calculateRouteBounds, _routeCoordinates);
+
           if (!mounted) return;
 
-          _mapController!
-              .updateCamera(
+          await _mapController!.updateCamera(
             NCameraUpdate.fitBounds(
               NLatLngBounds(
                 southWest: NLatLng(bounds['minLat']!, bounds['minLng']!),
@@ -1007,12 +1187,21 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
               ),
               padding: const EdgeInsets.all(50),
             ),
-          )
-              .then((_) {
-            _mapController!.updateCamera(
-              NCameraUpdate.withParams(tilt: 0),
-            );
-          });
+          );
+
+          await _mapController!.updateCamera(
+            NCameraUpdate.withParams(tilt: 0, bearing: 0),
+          );
+          debugPrint('전체 지도 모드 카메라 설정 완료');
+        }
+      }
+    } catch (e) {
+      debugPrint('네비게이션 모드 전환 오류: $e');
+    } finally {
+      // 토글 완료
+      if (mounted) {
+        setState(() {
+          _isToggling = false;
         });
       }
     }
@@ -1040,14 +1229,87 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   void _onLocationButtonPressed() {
     if (_mapController == null) return;
 
-    // 카메라를 현재 위치로 이동만 수행
-    _mapController!.updateCamera(
-      NCameraUpdate.withParams(
-        target: NLatLng(_currentLat, _currentLng),
-        zoom: 17,
-        bearing: _locationBearing,
-        tilt: 50,
-      ),
-    );
+    // 이전 대기 중인 클릭 취소하고 새로운 클릭만 처리
+    _pendingLocationClicks = 1;
+
+    // 이미 처리 중이면 함수 종료 (대기 큐에 추가된 상태)
+    if (_isLocationButtonProcessing) {
+      debugPrint('위치 버튼: 이미 처리 중, 마지막 클릭만 처리됩니다');
+      return;
+    }
+
+    // 처리 시작
+    _isLocationButtonProcessing = true;
+    _moveToCurrentLocation();
+  }
+
+  // 현재 위치로 카메라 이동
+  void _moveToCurrentLocation() {
+    if (_pendingLocationClicks <= 0) {
+      _isLocationButtonProcessing = false;
+      return;
+    }
+
+    try {
+      debugPrint('카메라를 현재 위치로 이동합니다: $_currentLat, $_currentLng');
+
+      // 카메라를 현재 위치로 이동
+      _mapController!
+          .updateCamera(
+        NCameraUpdate.withParams(
+          target: NLatLng(_currentLat, _currentLng),
+          zoom: 17,
+          bearing: _locationBearing,
+          tilt: 50,
+        ),
+      )
+          .then((_) {
+        // 이동이 완료되면 카운터 감소
+        _pendingLocationClicks--;
+
+        // 모든 클릭 처리 완료
+        _isLocationButtonProcessing = false;
+      }).catchError((error) {
+        debugPrint('카메라 업데이트 오류: $error');
+        // 오류 발생 시 처리 완료
+        _pendingLocationClicks = 0;
+        _isLocationButtonProcessing = false;
+      });
+    } catch (e) {
+      debugPrint('위치 버튼 처리 중 오류: $e');
+      // 오류 발생 시 처리 완료
+      _pendingLocationClicks = 0;
+      _isLocationButtonProcessing = false;
+    }
+  }
+
+  // 나침반 센서 구독 시작
+  void _startCompassTracking() {
+    // 나침반 센서가 사용 가능한지 확인
+    if (FlutterCompass.events != null) {
+      _compassStream = FlutterCompass.events!.listen((CompassEvent event) {
+        if (!mounted) return;
+
+        // 유효한 방향 데이터가 있을 때만 업데이트
+        if (event.heading != null) {
+          setState(() {
+            _deviceHeading = event.heading!;
+            debugPrint('디바이스 방향: $_deviceHeading°');
+          });
+
+          // 네비게이션 모드이고 디바이스 방향을 따라가는 설정인 경우 카메라 회전
+          if (_isNavigationMode && _mapController != null) {
+            _mapController!.updateCamera(
+              NCameraUpdate.withParams(
+                bearing: _deviceHeading,
+              ),
+            );
+          }
+        }
+      });
+      debugPrint('나침반 센서 구독 시작');
+    } else {
+      debugPrint('이 기기에서는 나침반 센서를 사용할 수 없습니다.');
+    }
   }
 }

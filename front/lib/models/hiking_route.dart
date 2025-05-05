@@ -27,17 +27,38 @@ class HikingRoute {
   });
 
   factory HikingRoute.fromJson(Map<String, dynamic> json) {
+    // 경로 좌표 처리
+    List<Map<String, double>> parsedPath = [];
+
+    // 'route' 또는 'path' 필드에서 경로 좌표 가져오기
+    var routeData = json['route'];
+    routeData ??= json['path'];
+
+    if (routeData != null && routeData is List) {
+      for (var point in routeData) {
+        if (point is Map) {
+          parsedPath.add({
+            'latitude':
+                (point['latitude'] is num) ? point['latitude'].toDouble() : 0.0,
+            'longitude': (point['longitude'] is num)
+                ? point['longitude'].toDouble()
+                : 0.0,
+          });
+        }
+      }
+    }
+
     return HikingRoute(
-      id: json['id'] ?? '',
-      mountainId: json['mountainId'] ?? '',
-      name: json['name'] ?? '',
+      id: json['pathId']?.toString() ?? '',
+      mountainId: json['mountainId']?.toString() ?? '',
+      name: json['pathName'] ?? '',
       distance: (json['distance'] is num) ? json['distance'].toDouble() : 0.0,
       estimatedTime: json['estimatedTime'] ?? 0,
       difficulty: json['difficulty'] ?? '보통',
       description: json['description'] ?? '',
       waypoints: List<String>.from(json['waypoints'] ?? []),
       mapImageUrl: json['mapImageUrl'] ?? '',
-      path: List<Map<String, double>>.from(json['path'] ?? []),
+      path: parsedPath,
     );
   }
 

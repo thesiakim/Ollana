@@ -11,6 +11,7 @@ import '../../models/hiking_route.dart';
 import '../../models/app_state.dart';
 import '../../services/mountain_service.dart';
 import '../../utils/app_colors.dart';
+import 'package:geolocator/geolocator.dart';
 // import 'route_painter.dart';
 
 class MountainRouteScreen extends StatefulWidget {
@@ -42,6 +43,7 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
   bool _isSearching = false;
   bool _isLoading = true;
   bool _isLoadingRoutes = false;
+  bool _isDataFromApi = false;
 
   // NaverMap 위젯이 다시 생성되도록 지도 상태를 관리하는 키
   // 타입 오류 해결: 정확한 타입 지정 대신 일반 GlobalKey 사용
@@ -62,7 +64,42 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
     if (_selectedMountain != null && _searchController.text.isEmpty) {
       _searchController.text = _selectedMountain!.name;
     }
+
+    // AppState에서 산과 등산로 정보 확인
+    final appState = Provider.of<AppState>(context, listen: false);
+    if (appState.selectedMountain != null &&
+        appState.selectedRoute != null &&
+        !_isDataFromApi) {
+      setState(() {
+        _isDataFromApi = true;
+      });
+
+      // 이미 AppState에 데이터가 있으면 그것을 사용
+      // _setMountainAndRouteFromAppState(appState);
+    }
   }
+
+  // AppState에서 선택된 산과 등산로 정보 가져오기
+  // void _setMountainAndRouteFromAppState(AppState appState) {
+  //   if (appState.selectedMountain != null && appState.selectedRoute != null) {
+  //     // 산 정보 설정
+  //     final mountain = Mountain(
+  //       id: appState.selectedRoute!.mountainId,
+  //       name: appState.selectedMountain!,
+  //       location: '',
+  //       height: 0.0,
+  //     );
+
+  //     setState(() {
+  //       _selectedMountain = mountain;
+  //       _routes = [appState.selectedRoute!];
+  //       _selectedRouteIndex = 0; // 첫 번째 등산로 선택
+  //       _isLoading = false;
+  //       _isLoadingRoutes = false;
+  //       _searchController.text = mountain.name;
+  //     });
+  //   }
+  // }
 
   @override
   void dispose() {
@@ -73,50 +110,108 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
     super.dispose();
   }
 
+  // 위치 권한 확인 및 요청
+  Future<bool> _handleLocationPermission() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    // 위치 서비스가 활성화되어 있는지 확인
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      if (!mounted) return false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('위치 서비스가 비활성화되어 있습니다. 설정에서 활성화해주세요.'),
+        ),
+      );
+      return false;
+    }
+
+    // 위치 권한 확인
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        if (!mounted) return false;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('위치 권한이 거부되었습니다.')),
+        );
+        return false;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      if (!mounted) return false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('위치 권한이 영구적으로 거부되었습니다. 설정에서 변경해주세요.'),
+        ),
+      );
+      return false;
+    }
+
+    return true;
+  }
+
+  // 현재 위치 가져오기
+  Future<Position?> _getCurrentPosition() async {
+    final hasPermission = await _handleLocationPermission();
+    if (!hasPermission) return null;
+
+    try {
+      return await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 15),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return null;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('현재 위치를 가져오는데 실패했습니다: $e')),
+      );
+      return null;
+    }
+  }
+
   // 초기 데이터 로드
   Future<void> _loadInitialData() async {
     setState(() => _isLoading = true);
 
     try {
-      final mountains = await _mountainService.getMountains();
+      // 현재 위치 가져오기
+      Position? position = await _getCurrentPosition();
+
+      // 위치를 가져오지 못한 경우 서울 중심부 좌표 사용
+      double latitude = position?.latitude ?? 37.5665;
+      double longitude = position?.longitude ?? 126.9780;
+
+      // 현재 위치 기반으로 주변 산 정보 가져오기
+      final data =
+          await _mountainService.getNearbyMountains(latitude, longitude);
       if (!mounted) return;
 
-      // AppState를 통해 이전에 선택된 산이 있는지 확인
-      final appState = Provider.of<AppState>(context, listen: false);
-      final previouslySelectedMountainName = appState.selectedMountain;
+      // 하나의 산과 해당 산의 등산로만 표시
+      final mountain = data.mountain;
+      final routes = data.routes;
 
+      if (!mounted) return;
+
+      // 데이터가 로드되면 로딩 상태 종료
       setState(() {
-        _allMountains = mountains;
-        _filteredMountains = mountains;
+        // 단일 산만 처리하도록 변경
+        _allMountains = [mountain];
+        _filteredMountains = [mountain];
         _isLoading = false;
+        _selectedMountain = mountain;
+        _routes = routes;
 
-        // 이전에 선택된 산이 있으면 그 산을 찾아서 선택
-        if (previouslySelectedMountainName != null) {
-          try {
-            final selectedMountain = mountains.firstWhere(
-              (m) => m.name == previouslySelectedMountainName,
-              orElse: () => mountains.first,
-            );
-            _selectedMountain = selectedMountain;
-            _fetchRoutesForMountain(selectedMountain);
-            return; // 이미 산을 선택했으므로 기본 산 선택 로직은 실행하지 않음
-          } catch (e) {
-            debugPrint('이전 선택 산 검색 오류: $e');
-          }
-        }
+        // 선택된 산 이름을 검색창에 표시
+        _searchController.text = mountain.name;
 
-        // 기본으로 북한산 선택 (ID가 m1인 산을 찾음)
-        if (mountains.isNotEmpty) {
-          try {
-            final defaultMountain = mountains.firstWhere(
-              (m) => m.id == 'm1',
-              orElse: () => mountains.first,
-            );
-            _selectedMountain = defaultMountain;
-            _fetchRoutesForMountain(defaultMountain);
-          } catch (e) {
-            debugPrint('기본 산 선택 오류: $e');
-          }
+        // 기본적으로 첫 번째 등산로 선택
+        if (_routes.isNotEmpty) {
+          _selectedRouteIndex = 0;
         }
       });
     } catch (e) {
@@ -148,17 +243,26 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
     });
 
     _searchController.addListener(() {
+      _searchMountains(_searchController.text);
+    });
+  }
+
+  // 서버에서 산 검색
+  void _searchMountains(String query) async {
+    if (query.isEmpty) {
       setState(() {
-        final query = _searchController.text.trim();
-        if (query.isEmpty) {
-          _filteredMountains = _allMountains;
-        } else {
-          _filteredMountains = _allMountains
-              .where((mountain) =>
-                  mountain.name.toLowerCase().contains(query.toLowerCase()) ||
-                  mountain.location.toLowerCase().contains(query.toLowerCase()))
-              .toList();
-        }
+        _filteredMountains = _allMountains;
+      });
+      return;
+    }
+
+    try {
+      final mountains = await _mountainService.searchMountains(query);
+
+      if (!mounted) return;
+
+      setState(() {
+        _filteredMountains = mountains;
 
         if (_searchFocusNode.hasFocus) {
           // 이미 오버레이가 있으면 업데이트, 없으면 생성
@@ -169,7 +273,24 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
           }
         }
       });
-    });
+    } catch (e) {
+      debugPrint("산 검색 오류: $e");
+
+      // 오류가 발생해도 UI가 업데이트되도록 처리
+      if (mounted) {
+        setState(() {
+          _filteredMountains = [];
+
+          if (_searchFocusNode.hasFocus) {
+            if (_overlayEntry != null) {
+              _updateOverlay();
+            } else {
+              _showSearchResults();
+            }
+          }
+        });
+      }
+    }
   }
 
   // 검색 결과 오버레이 표시
@@ -226,10 +347,10 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
                               fontSize: 14,
                             ),
                           ),
-                          subtitle: Text(
-                            mountain.location,
-                            style: const TextStyle(fontSize: 12),
-                          ),
+                          // subtitle: Text(
+                          //   mountain.location,
+                          //   style: const TextStyle(fontSize: 12),
+                          // ),
                           trailing: Text(
                             '${mountain.height}m',
                             style: TextStyle(
@@ -271,7 +392,77 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
     _searchController.text = mountain.name;
     _searchFocusNode.unfocus();
     _removeOverlay();
-    _loadRouteData(mountain);
+
+    // 검색 결과에서 선택한 산의 상세 정보 가져오기
+    _loadSelectedMountainData(mountain.name);
+  }
+
+  // 검색 결과에서 선택한 산의 상세 정보 가져오기
+  Future<void> _loadSelectedMountainData(String mountainName) async {
+    // 지도를 다시 생성하기 위한 설정
+    _shouldRebuildMap = true;
+
+    // 로딩 상태 설정
+    setState(() {
+      _isLoadingRoutes = true;
+      _isSearching = false;
+      _routes = []; // 기존 경로 초기화
+    });
+
+    try {
+      // 선택한 산의 상세 정보를 새 API로 가져오기
+      final data = await _mountainService.getMountainByName(mountainName);
+      debugPrint(
+          '산 데이터 수신 성공: ${data.mountain.name}, 등산로 수: ${data.routes.length}');
+
+      if (!mounted) return;
+
+      // 산과 등산로 정보 유효성 검사 - 산 이름만 있으면 표시
+      // 빈 ID도 허용하도록 수정
+      if (data.mountain.name.isEmpty) {
+        throw Exception('산 이름 정보가 없습니다');
+      }
+
+      debugPrint(
+          '산 데이터 수신 성공: ${data.mountain.name}, 등산로 수: ${data.routes.length}');
+
+      // 산과 등산로 정보 업데이트
+      setState(() {
+        _selectedMountain = data.mountain;
+        _routes = data.routes;
+        _isLoadingRoutes = false;
+
+        // 첫 번째 등산로 선택
+        if (_routes.isNotEmpty) {
+          _selectedRouteIndex = 0;
+          debugPrint('첫번째 등산로 선택: ${_routes[0].name}');
+        } else {
+          _selectedRouteIndex = -1;
+          debugPrint('사용 가능한 등산로가 없습니다');
+        }
+      });
+    } catch (e) {
+      debugPrint('산 상세 정보 로드 오류: $e');
+
+      if (!mounted) return;
+
+      // 오류 발생 시 처리
+      setState(() {
+        _isLoadingRoutes = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('산 상세 정보를 불러오는데 실패했습니다: $e')),
+      );
+
+      // 오류 발생 시 기존 방식으로 데이터 로드 시도
+      _loadRouteData(Mountain(
+        id: '',
+        name: mountainName,
+        location: '',
+        height: 0,
+      ));
+    }
   }
 
   // 산 선택 시 등산로 데이터 로드 (UI 업데이트 부분)
@@ -297,24 +488,51 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
 
   // 산의 등산로 데이터 비동기 로드 (분리된 비동기 함수)
   Future<void> _fetchRoutesForMountain(Mountain mountain) async {
+    setState(() {
+      _isLoadingRoutes = true;
+    });
+
     try {
-      final routes = await _mountainService.getRoutes(mountain.id);
+      // 현재 위치 가져오기
+      Position? position = await _getCurrentPosition();
+
+      // 위치를 가져오지 못한 경우 서울 중심부 좌표 사용
+      double latitude = position?.latitude ?? 37.5665;
+      double longitude = position?.longitude ?? 126.9780;
+
+      debugPrint("위치 좌표: $latitude, $longitude");
+
+      // 현재 위치 기반으로 주변 산 정보 가져오기
+      final result =
+          await _mountainService.getNearbyMountains(latitude, longitude);
       if (!mounted) return;
 
-      // 안전하게 상태 업데이트
+      // 모든 등산로 정보를 미리 처리
+      final List<HikingRoute> processedRoutes = [...result.routes];
+
+      // 안전하게 상태 업데이트 (모든 데이터 처리 후 한 번에 업데이트)
       if (mounted) {
         setState(() {
-          _routes = routes;
+          _routes = processedRoutes;
           _isLoadingRoutes = false;
+
+          // 검색창에 선택된 산 이름 표시 확인
+          if (_searchController.text != mountain.name) {
+            _searchController.text = mountain.name;
+          }
+
           // 기본적으로 첫 번째 등산로 선택 (경로가 있는 경우에만)
-          if (routes.isNotEmpty) {
+          if (_routes.isNotEmpty) {
             _selectedRouteIndex = 0;
+          } else {
+            debugPrint("사용 가능한 등산로가 없습니다");
           }
         });
       }
     } catch (e) {
       if (!mounted) return;
 
+      debugPrint("등산로 데이터 로드 오류: $e");
       setState(() => _isLoadingRoutes = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('등산로 데이터를 불러오는데 실패했습니다: $e')),
@@ -511,92 +729,94 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
 
               // 등산로 목록
               Expanded(
-                child: _routes.isEmpty
-                    ? const Center(child: Text('등산로 정보가 없습니다.'))
-                    : ListView.builder(
-                        itemCount: _routes.length,
-                        itemBuilder: (context, index) {
-                          final route = _routes[index];
-                          final isSelected = index == _selectedRouteIndex;
-
-                          return Card(
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: 16.0,
-                              vertical: 8.0,
-                            ),
-                            elevation: isSelected ? 4 : 1,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              side: BorderSide(
-                                color: isSelected
-                                    ? AppColors.primary
-                                    : Colors.transparent,
-                                width: 2,
-                              ),
-                            ),
-                            child: InkWell(
-                              onTap: () {
-                                setState(() => _selectedRouteIndex = index);
-                                // 경로 선택 시 지도 업데이트
-                                _updateMapWithSelectedRoute(index);
-                              },
-                              borderRadius: BorderRadius.circular(12),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16.0, vertical: 6.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
+                child: _isLoadingRoutes
+                    ? const Center(child: CircularProgressIndicator())
+                    : _routes.isEmpty
+                        ? const Center(child: Text('등산로 정보가 없습니다.'))
+                        : ListView(
+                            children: _routes.map((route) {
+                              final index = _routes.indexOf(route);
+                              final isSelected = index == _selectedRouteIndex;
+                              return Card(
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 16.0,
+                                  vertical: 8.0,
+                                ),
+                                elevation: isSelected ? 4 : 1,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  side: BorderSide(
+                                    color: isSelected
+                                        ? AppColors.primary
+                                        : Colors.transparent,
+                                    width: 2,
+                                  ),
+                                ),
+                                child: InkWell(
+                                  onTap: () {
+                                    setState(() => _selectedRouteIndex = index);
+                                    // 경로 선택 시 지도 업데이트
+                                    _updateMapWithSelectedRoute(index);
+                                  },
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16.0, vertical: 6.0),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        Expanded(
-                                          child: Text(
-                                            route.name,
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold,
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                route.name,
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
                                             ),
-                                          ),
-                                        ),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 6,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color:
-                                                _getRouteColor(route.difficulty)
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                horizontal: 12,
+                                                vertical: 6,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: _getRouteColor(
+                                                        route.difficulty)
                                                     .withAlpha(20),
-                                            borderRadius:
-                                                BorderRadius.circular(20),
-                                          ),
-                                          child: Text(
-                                            '난이도: ${route.difficulty}',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                              color: _getRouteColor(
-                                                  route.difficulty),
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
+                                              ),
+                                              child: Text(
+                                                '난이도: ${route.difficulty}',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: _getRouteColor(
+                                                      route.difficulty),
+                                                ),
+                                              ),
                                             ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          '거리: ${route.distance}km • 예상 소요시간: ${route.estimatedTime}분',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey,
                                           ),
                                         ),
                                       ],
                                     ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      '거리: ${route.distance}km • 예상 소요시간: ${route.estimatedTime}분',
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                                  ],
+                                  ),
                                 ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
+                              );
+                            }).toList(),
+                          ),
               ),
 
               // 선택 버튼
@@ -604,7 +824,7 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: ElevatedButton(
-                    onPressed: _completeRouteSelection,
+                    onPressed: _proceedToModeSelect,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       minimumSize: const Size.fromHeight(50),
@@ -626,25 +846,12 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
           );
   }
 
-  // 등산로 선택 완료
-  void _completeRouteSelection() {
-    if (_selectedMountain != null &&
-        _selectedRouteIndex >= 0 &&
-        _selectedRouteIndex < _routes.length) {
-      try {
-        // AppState에 선택된 산과 등산로 정보 저장
-        final appState = Provider.of<AppState>(context, listen: false);
-        appState.selectMountain(_selectedMountain!.name);
-        appState.selectRoute(_routes[_selectedRouteIndex]);
-
-        widget.onRouteSelected(
-            _selectedMountain!, _routes[_selectedRouteIndex]);
-      } catch (e) {
-        debugPrint('등산로 선택 오류: $e');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('등산로 선택 중 오류가 발생했습니다: $e')),
-        );
-      }
+  // 선택한 산과 등산로 정보를 AppState에 저장하고 다음 단계로 진행
+  void _proceedToModeSelect() {
+    if (_selectedRouteIndex >= 0 && _selectedRouteIndex < _routes.length) {
+      final appState = Provider.of<AppState>(context, listen: false);
+      appState.selectMountain(_selectedMountain!.name);
+      appState.selectRoute(_routes[_selectedRouteIndex]);
     }
   }
 }
