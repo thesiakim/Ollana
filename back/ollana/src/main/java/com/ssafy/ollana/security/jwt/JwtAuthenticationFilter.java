@@ -27,7 +27,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         // JWT 토큰 추출
         String token = getTokenFromRequest(request);
-        System.out.println("JWT Token: " + token);
 
         if (token != null && jwtUtil.validateToken(token)) {
             String email = jwtUtil.getUserEmailFromToken(token);
