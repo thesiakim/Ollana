@@ -109,17 +109,24 @@ public class TrackingService {
      * 트래킹 시작 요청
      */
     @Transactional(readOnly = true)
-    public TrackingStartResponseDto getTrackingStartInfo(Integer userId, TrackingStartRequestDto request) {
+    public TrackingStartResponseDto getTrackingStartInfo(TrackingStartRequestDto request) {
         Mountain mountain = mountainRepository.findById(request.getMountainId())
                                               .orElseThrow(NotFoundException::new);
 
         Path path = pathRepository.findById(request.getPathId())
                                   .orElseThrow(NotFoundException::new);
 
+        // 선택한 산이 사용자 현 위치를 기준으로 반경 10km 이내에 존재하는지 검증
+        boolean isNearby = mountainRepository.isMountainWithin10km(
+                                                    request.getMountainId(),
+                                                    request.getLatitude(),
+                                                    request.getLongtitude()
+                                            );
+
         OpponentResponseDto opponentDto = null;
 
         // 일반 모드일 때는 대결 상대 데이터를 조회하지 않음
-        if (!request.getMode().equals("GENERAL")) {
+        if (!"GENERAL".equals(request.getMode()) && request.getOpponentId() != null) {
             User opponent = userRepository.findById(request.getOpponentId())
                                           .orElseThrow(NotFoundException::new);
 
@@ -133,6 +140,7 @@ public class TrackingService {
         }
 
         return TrackingStartResponseDto.builder()
+                .isNearby(isNearby)
                 .mountain(MountainLocationResponseDto.from(mountain))
                 .path(PathForTrackingResponseDto.from(path))
                 .opponent(opponentDto)
