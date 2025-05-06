@@ -6,7 +6,6 @@ import io.jsonwebtoken.security.SignatureException;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.web.embedded.JettyVirtualThreadsWebServerFactoryCustomizer;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
@@ -21,14 +20,17 @@ public class JwtUtil {
     private final Key key;
     private final long accessTokenExpiration;
     private final long refreshTokenExpiration;
+    private final long passwordResetTokenExpiration;
 
     public JwtUtil(@Value("${spring.jwt.secret}") String secretKey,
                    @Value("${spring.jwt.access.expiration}") long accessTokenExpiration,
-                   @Value("${spring.jwt.refresh.expiration}") long refreshTokenExpiration) {
+                   @Value("${spring.jwt.refresh.expiration}") long refreshTokenExpiration,
+                   @Value("${spring.jwt.password-reset.expiration}") long passwordResetTokenExpiration) {
 
         this.key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8)); // 시크릿 키를 Key 객체로 변환
         this.accessTokenExpiration = accessTokenExpiration;
         this.refreshTokenExpiration = refreshTokenExpiration;
+        this.passwordResetTokenExpiration = passwordResetTokenExpiration;
     }
 
     // accessToken 생성
@@ -95,5 +97,33 @@ public class JwtUtil {
     // 사용자 이메일 가져오기
     public String getUserEmailFromToken(String token) {
         return getClaims(token).getSubject();
+    }
+
+
+    // password reset token 생성
+    public String createPasswordResetToken(String userId) {
+        Date now = new Date();
+        Date expiration = new Date(now.getTime() + passwordResetTokenExpiration);
+
+        return Jwts.builder()
+                .setSubject(userId)
+                .claim("purpose", "password_reset")
+                .setIssuedAt(now)
+                .setExpiration(expiration)
+                .signWith(key, SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    // password reset token 검증
+    public boolean validatePasswordResetToken(String token) {
+        try {
+            Claims claims = getClaims(token);
+
+            // 토큰 용도 검증
+            return "password_reset".equals(claims.get("purpose"));
+        } catch (Exception e) {
+            log.error("비밀번호 재설정 토큰 검증 실패", e);
+            return false;
+        }
     }
 }
