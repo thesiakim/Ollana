@@ -10,12 +10,12 @@ import java.util.List;
 @Getter
 @Builder
 public class MountainSuggestionsResponseDto {
-    private List<MountainResponseDto> mountains;
+    private List<MountainAutoCompleteResponseDto> mountains;
 
     public static MountainSuggestionsResponseDto from(List<Mountain> mountains) {
-        List<MountainResponseDto> dtos = mountains.stream()
-                                                  .map(MountainResponseDto::from)
-                                                  .toList();
+        List<MountainAutoCompleteResponseDto> dtos = mountains.stream()
+                                                              .map(MountainAutoCompleteResponseDto::from)
+                                                              .toList();
         return MountainSuggestionsResponseDto.builder()
                                              .mountains(dtos)
                                              .build();
