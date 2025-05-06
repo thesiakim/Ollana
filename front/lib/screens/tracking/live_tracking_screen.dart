@@ -99,7 +99,6 @@ class LiveTrackingScreen extends StatefulWidget {
 
 class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   NaverMapController? _mapController;
-  double _locationBearing = 0; // 직접 방향 값을 관리
   Timer? _timer;
   int _elapsedSeconds = 0;
   int _elapsedMinutes = 0;
@@ -160,7 +159,6 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   Timer? _locationOverlayTimer;
 
   // 위치 버튼 클릭 처리를 위한 변수
-  DateTime? _lastLocationButtonPress;
   bool _isLocationButtonProcessing = false;
   int _pendingLocationClicks = 0; // 대기 중인 위치 버튼 클릭 수
 
@@ -188,7 +186,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
       _maxHeartRate = appState.maxHeartRate;
       _avgHeartRate = appState.avgHeartRate;
       _isNavigationMode = appState.isNavigationMode;
-      _locationBearing = appState.locationBearing;
+      _deviceHeading = appState.deviceHeading;
 
       debugPrint('기존 트래킹 데이터 불러옴: $_elapsedMinutes분 $_elapsedSeconds초');
     } else {
@@ -271,9 +269,9 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
       // 두 지점 간의 방향 계산
       final deltaLat = currPoint.latitude - prevPoint.latitude;
       final deltaLng = currPoint.longitude - prevPoint.longitude;
-      _locationBearing = math.atan2(deltaLng, deltaLat) * 180 / math.pi;
+      _deviceHeading = math.atan2(deltaLng, deltaLat) * 180 / math.pi;
 
-      debugPrint('이동 방향 업데이트: $_locationBearing°');
+      debugPrint('이동 방향 업데이트: $_deviceHeading°');
 
       // 네비게이션 모드일 경우 카메라 회전 (디바이스 방향이 없는 경우에만)
       if (_isNavigationMode &&
@@ -283,7 +281,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
           NCameraUpdate.withParams(
             target: NLatLng(_currentLat, _currentLng),
             zoom: 17,
-            bearing: _locationBearing,
+            bearing: _deviceHeading,
             tilt: 50,
           ),
         );
@@ -298,12 +296,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
 
   // 현재 보고 있는 방향 가져오기 (디바이스 방향 우선, 없으면 이동 방향)
   double getCurrentHeading() {
-    // 나침반 센서가 사용 가능하고 유효한 값이 있으면 디바이스 방향 반환
-    if (_isCompassAvailable() && _deviceHeading != 0.0) {
-      return _deviceHeading;
-    }
-    // 아니면 이동 기반 방향 반환
-    return _locationBearing;
+    // 디바이스 방향 반환 (나침반 또는 이동 계산값)
+    return _deviceHeading;
   }
 
   // 심박수 업데이트 (테스트용)
@@ -430,7 +424,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
           NCameraUpdate.withParams(
             target: NLatLng(_currentLat, _currentLng),
             zoom: 17,
-            bearing: _locationBearing,
+            bearing: _deviceHeading,
             tilt: 50,
           ),
         );
@@ -665,7 +659,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                 currentLng: _currentLng,
                 currentAltitude: _currentAltitude,
                 newUserPathPoint: NLatLng(_currentLat, _currentLng),
-                locationBearing: _locationBearing);
+                deviceHeading: _deviceHeading);
           }
         }
       });
@@ -1161,14 +1155,15 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
 
       if (_mapController != null) {
         if (_isNavigationMode) {
+          debugPrint('네비게이션 모드 활성화');
           // 네비게이션 모드 활성화: 현재 위치 중심, 3D 기울기 적용
           // 현재 보고 있는 방향(디바이스 방향 또는 이동 방향) 적용
           await _mapController!.updateCamera(
             NCameraUpdate.withParams(
               target: NLatLng(_currentLat, _currentLng),
-              zoom: 17,
+              zoom: 17.0,
               bearing: getCurrentHeading(), // 디바이스 방향 또는 이동 방향 사용
-              tilt: 50,
+              tilt: 50.0,
             ),
           );
           debugPrint('네비게이션 모드 카메라 설정 완료: 방향 ${getCurrentHeading()}°');
@@ -1213,7 +1208,6 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
       left: 20,
       bottom: 150, // 바텀 시트 위에 위치하도록 조정
       child: FloatingActionButton(
-        heroTag: 'locationBtn',
         onPressed: _onLocationButtonPressed,
         mini: true,
         backgroundColor: Colors.white,
@@ -1251,7 +1245,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
     }
 
     try {
-      debugPrint('카메라를 현재 위치로 이동합니다: $_currentLat, $_currentLng');
+      // debugPrint('카메라를 현재 위치로 이동합니다: $_currentLat, $_currentLng');
 
       // 카메라를 현재 위치로 이동
       _mapController!
@@ -1259,7 +1253,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
         NCameraUpdate.withParams(
           target: NLatLng(_currentLat, _currentLng),
           zoom: 17,
-          bearing: _locationBearing,
+          bearing: _deviceHeading,
           tilt: 50,
         ),
       )
@@ -1294,7 +1288,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
         if (event.heading != null) {
           setState(() {
             _deviceHeading = event.heading!;
-            debugPrint('디바이스 방향: $_deviceHeading°');
+            // debugPrint('디바이스 방향: $_deviceHeading°');
           });
 
           // 네비게이션 모드이고 디바이스 방향을 따라가는 설정인 경우 카메라 회전

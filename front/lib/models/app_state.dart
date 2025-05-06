@@ -45,7 +45,7 @@ class AppState extends ChangeNotifier {
 
   // 네비게이션 모드 설정
   bool _isNavigationMode = true;
-  double _locationBearing = 0;
+  double _deviceHeading = 0;
 
   // LiveTrackingScreen 데이터 getter
   List<NLatLng> get routeCoordinates => _routeCoordinates;
@@ -59,7 +59,7 @@ class AppState extends ChangeNotifier {
   int get maxHeartRate => _maxHeartRate;
   int get avgHeartRate => _avgHeartRate;
   bool get isNavigationMode => _isNavigationMode;
-  double get locationBearing => _locationBearing;
+  double get deviceHeading => _deviceHeading;
 
   bool get isLoggedIn => _isLoggedIn;
   int get currentPageIndex => _currentPageIndex;
@@ -156,7 +156,7 @@ class AppState extends ChangeNotifier {
     int? maxHeartRate,
     int? avgHeartRate,
     bool? isNavigationMode,
-    double? locationBearing,
+    double? deviceHeading,
   }) {
     bool changed = false;
 
@@ -211,8 +211,8 @@ class AppState extends ChangeNotifier {
       changed = true;
     }
 
-    if (locationBearing != null) {
-      _locationBearing = locationBearing;
+    if (deviceHeading != null) {
+      _deviceHeading = deviceHeading;
       changed = true;
     }
 
