@@ -229,12 +229,10 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
     _searchFocusNode.addListener(() {
       if (_searchFocusNode.hasFocus) {
         // 포커스 얻으면 빈 검색어로 시작
-        if (_searchController.text.isEmpty) {
-          setState(() {
-            _filteredMountains = _allMountains;
-            _isSearching = true;
-          });
-        }
+        setState(() {
+          _filteredMountains = _allMountains;
+          _isSearching = true;
+        });
         _showSearchResults();
       } else {
         // 포커스 잃으면 오버레이 제거
@@ -244,6 +242,11 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
 
     _searchController.addListener(() {
       _searchMountains(_searchController.text);
+
+      // 검색어 입력 중에 포커스가 있으면 오버레이 표시
+      if (_searchFocusNode.hasFocus) {
+        _showSearchResults();
+      }
     });
   }
 
@@ -297,78 +300,92 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
   void _showSearchResults() {
     _removeOverlay(); // 기존 오버레이 제거
 
-    final renderBox = context.findRenderObject() as RenderBox;
+    // 검색창의 RenderBox를 찾아 크기와 위치 정보 가져오기
+    final RenderBox? renderBox =
+        _searchFocusNode.context?.findRenderObject() as RenderBox?;
+    if (renderBox == null) return;
+
     final size = renderBox.size;
+    final position = renderBox.localToGlobal(Offset.zero);
 
     _overlayEntry = OverlayEntry(
-      builder: (context) => Positioned(
-        width: size.width * 0.8,
-        child: CompositedTransformFollower(
-          link: _layerLink,
-          showWhenUnlinked: false,
-          offset: Offset(0.0, kToolbarHeight * 0.8),
-          child: Material(
-            elevation: 4.0,
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * 0.4,
-              ),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withAlpha(10),
-                    spreadRadius: 1,
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: _filteredMountains.isEmpty
-                  ? Container(
-                      padding: const EdgeInsets.all(16),
-                      child: const Text('검색 결과가 없습니다.'),
-                    )
-                  : ListView.separated(
-                      shrinkWrap: true,
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      itemCount: _filteredMountains.length,
-                      separatorBuilder: (context, index) =>
-                          const Divider(height: 1),
-                      itemBuilder: (context, index) {
-                        final mountain = _filteredMountains[index];
-                        return ListTile(
-                          title: Text(
-                            mountain.name,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                          // subtitle: Text(
-                          //   mountain.location,
-                          //   style: const TextStyle(fontSize: 12),
-                          // ),
-                          trailing: Text(
-                            '${mountain.height}m',
-                            style: TextStyle(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                          dense: true,
-                          onTap: () {
-                            _selectMountain(mountain);
-                          },
-                        );
-                      },
-                    ),
+      builder: (context) => Stack(
+        children: [
+          // 오버레이 외부 영역에 대한 GestureDetector (오버레이 닫기용)
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: () {
+                _searchFocusNode.unfocus();
+                _removeOverlay();
+              },
+              // 완전 투명한 배경
+              child: Container(color: Colors.transparent),
             ),
           ),
-        ),
+          // 실제 검색 결과 오버레이
+          Positioned(
+            top: position.dy + size.height + 10,
+            left: 12.0,
+            right: 12.0,
+            child: Material(
+              elevation: 4.0,
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.4,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withAlpha(10),
+                      spreadRadius: 1,
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: _filteredMountains.isEmpty
+                    ? Container(
+                        padding: const EdgeInsets.all(16),
+                        child: const Text('검색 결과가 없습니다.'),
+                      )
+                    : ListView.separated(
+                        shrinkWrap: true,
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        itemCount: _filteredMountains.length,
+                        separatorBuilder: (context, index) =>
+                            const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final mountain = _filteredMountains[index];
+                          return ListTile(
+                            title: Text(
+                              mountain.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                            trailing: Text(
+                              '${mountain.height}m',
+                              style: TextStyle(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                            dense: true,
+                            onTap: () {
+                              _selectMountain(mountain);
+                            },
+                          );
+                        },
+                      ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
 
