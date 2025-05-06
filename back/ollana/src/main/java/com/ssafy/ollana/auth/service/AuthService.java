@@ -13,4 +13,5 @@ public interface AuthService {
     LoginResponseDto login(LoginRequestDto request, HttpServletResponse response);
     void logout(HttpServletRequest request, HttpServletResponse response);
     AccessTokenResponseDto refreshToken(HttpServletRequest request);
+    void kakaoLogin
 }

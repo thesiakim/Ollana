@@ -1,12 +1,9 @@
 package com.ssafy.ollana.auth.controller;
 
-import com.ssafy.ollana.auth.dto.request.EmailSendRequestDto;
-import com.ssafy.ollana.auth.dto.request.EmailVerifyRequestDto;
+import com.ssafy.ollana.auth.dto.request.*;
 import com.ssafy.ollana.auth.dto.response.AccessTokenResponseDto;
 import com.ssafy.ollana.auth.service.MailService;
 import com.ssafy.ollana.common.util.Response;
-import com.ssafy.ollana.auth.dto.request.LoginRequestDto;
-import com.ssafy.ollana.auth.dto.request.SignupRequestDto;
 import com.ssafy.ollana.auth.dto.response.LoginResponseDto;
 import com.ssafy.ollana.auth.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -55,6 +52,11 @@ public class AuthController {
     public ResponseEntity<Response<Void>> logout(HttpServletRequest request, HttpServletResponse response) {
         authService.logout(request, response);
         return ResponseEntity.ok(Response.success());
+    }
+
+    @GetMapping("/oauth/kakao")
+    public ResponseEntity<Response<Void>> kakaoLogin() {
+
     }
 
     // 리프레시 토큰으로 새로운 액세스 토큰 생성
