@@ -44,9 +44,18 @@ public class TrackingController {
     /*
      * 산 검색 결과 반환
      */
-    @GetMapping("/search/results")
+    @GetMapping("/search/list")
     public ResponseEntity<Response<MountainSearchResponseDto>> getMountainSearchResults(@RequestParam String mtn) {
         MountainSearchResponseDto response = trackingService.getMountainSearchResults(mtn);
+        return ResponseEntity.ok(Response.success(response));
+    }
+
+    /*
+     * 산 리스트 중 특정 산 선택 시 결과 반환
+     */
+    @GetMapping("/search/mountain/{mountainId}")
+    public ResponseEntity<Response<MountainSearchListResponseDto>> getMountainSelectResult(@PathVariable Integer mountainId) {
+        MountainSearchListResponseDto response = trackingService.getMountainSelectResult(mountainId);
         return ResponseEntity.ok(Response.success(response));
     }
 

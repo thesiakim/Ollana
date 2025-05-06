@@ -8,9 +8,9 @@ import java.util.List;
 @Getter
 @Builder
 public class MountainSearchResponseDto {
-    private List<NearestMountainResponseDto> results;
+    private List<MountainSearchListResponseDto> results;
 
-    public static MountainSearchResponseDto from(List<NearestMountainResponseDto> results) {
+    public static MountainSearchResponseDto from(List<MountainSearchListResponseDto> results) {
         return MountainSearchResponseDto.builder()
                                         .results(results)
                                         .build();

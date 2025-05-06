@@ -66,12 +66,12 @@ public class TrackingService {
     public MountainSearchResponseDto getMountainSearchResults(String mountainName) {
         List<Mountain> mountains = mountainRepository.findByMountainNameContaining(mountainName);
 
-        List<NearestMountainResponseDto> results = mountains.stream()
+        List<MountainSearchListResponseDto> results = mountains.stream()
                 .map(mountain -> {
                     List<Path> paths = pathRepository.findByMountainId(mountain.getId());
 
-                    return NearestMountainResponseDto.builder()
-                                                     .mountain(MountainResponseDto.from(mountain))
+                    return MountainSearchListResponseDto.builder()
+                                                     .mountain(MountainAddressResponseDto.from(mountain))
                                                      .paths(paths.stream()
                                                             .map(PathForTrackingResponseDto::from)
                                                             .toList())
@@ -80,6 +80,24 @@ public class TrackingService {
                             .toList();
 
         return MountainSearchResponseDto.from(results);
+    }
+
+    /*
+     * 산 리스트 중 특정 산 선택 시 결과 반환
+     */
+    @Transactional(readOnly = true)
+    public MountainSearchListResponseDto getMountainSelectResult(Integer mountainId) {
+        Mountain mountain = mountainRepository.findById(mountainId)
+                                              .orElseThrow(NotFoundException::new);
+
+        List<Path> paths = pathRepository.findByMountainId(mountainId);
+
+        return MountainSearchListResponseDto.builder()
+                .mountain(MountainAddressResponseDto.from(mountain))
+                .paths(paths.stream()
+                        .map(PathForTrackingResponseDto::from)
+                        .toList())
+                .build();
     }
 
     /*
@@ -146,4 +164,6 @@ public class TrackingService {
                 .opponent(opponentDto)
                 .build();
     }
+
+
 }
