@@ -1,13 +1,18 @@
 package com.ssafy.ollana.common.exception;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ssafy.ollana.auth.exception.AdditionalInfoRequiredException;
 import com.ssafy.ollana.common.util.Response;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @RestControllerAdvice
 @Slf4j
@@ -53,4 +58,20 @@ public class GlobalExceptionHandler {
         return ResponseEntity.internalServerError().body(Response.fail("서버 내부 오류가 발생했습니다.", "E-000"));
     }
 
+    /*
+    * 추가 정보 입력 필요 예외 처리
+    * */
+    @ExceptionHandler(AdditionalInfoRequiredException.class)
+    public ResponseEntity<Response<Map<String, Object>>> handleAdditionalInfoRequiredException(AdditionalInfoRequiredException e) {
+        log.info("AdditionalInfoRequiredException 발생 : 추가 정보 입력 필요");
+
+        Map<String, Object> responseData = new HashMap<>();
+        responseData.put("tempUser", e.getTempUser());
+        responseData.put("message", e.getMessage());
+        responseData.put("code", "ADDITIONAL_INFO_REQUIRED");
+
+        Response<Map<String, Object>> response = Response.success(responseData);
+
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+    }
 }

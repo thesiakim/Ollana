@@ -52,6 +52,9 @@ public class User extends BaseEntity {
     @Column(nullable = false)
     private String profileImage;
 
+    @Column
+    private Long kakaoId;
+
     @Column(nullable = false, columnDefinition = "boolean default false")
     private boolean isSurvey = false;
 
