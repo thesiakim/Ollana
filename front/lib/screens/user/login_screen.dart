@@ -27,9 +27,11 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
+
     // TODO: 실제 로그인 로직(API 요청) 추가
     await Future.delayed(const Duration(seconds: 1));
     context.read<AppState>().toggleLogin();
+
     setState(() => _isLoading = false);
     Navigator.of(context).pop();
   }
@@ -37,6 +39,30 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final primaryColor = Theme.of(context).primaryColor;
+
+    InputDecoration _inputDecoration(String label) {
+      return InputDecoration(
+        labelText: label,
+        enabledBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: primaryColor, width: 1.5),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: primaryColor, width: 1.5),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.red, width: 1.5),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.red, width: 1.5),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('로그인'), centerTitle: true),
       body: Padding(
@@ -45,35 +71,28 @@ class _LoginScreenState extends State<LoginScreen> {
           key: _formKey,
           child: Column(
             children: [
+              // Email Field
               TextFormField(
                 controller: _emailController,
-                decoration: InputDecoration(
-                  labelText: 'Email',
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: primaryColor),
-                  ),
-                  border: OutlineInputBorder(),
-                ),
+                decoration: _inputDecoration('Email'),
                 keyboardType: TextInputType.emailAddress,
                 validator: (v) =>
                     (v?.contains('@') ?? false) ? null : '유효한 이메일을 입력해 주세요.',
               ),
               const SizedBox(height: 16),
+
+              // Password Field
               TextFormField(
                 controller: _passwordController,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: primaryColor),
-                  ),
-                  border: OutlineInputBorder(),
-                ),
+                decoration: _inputDecoration('Password'),
                 obscureText: true,
                 validator: (v) => (v != null && v.length >= 6)
                     ? null
                     : '6자 이상 비밀번호를 입력해 주세요.',
               ),
               const SizedBox(height: 24),
+
+              // Login Button
               SizedBox(
                 width: double.infinity,
                 height: 48,
@@ -86,14 +105,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              // 회원가입 버튼: 배경색을 primaryColor 로 설정
+
+              // Sign Up Button
               SizedBox(
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryColor, // 버튼 배경색
-                    foregroundColor: Colors.white, // 텍스트 색상
+                    backgroundColor: primaryColor,
+                    foregroundColor: Colors.white,
                   ),
                   onPressed: () {
                     Navigator.of(context).push(
