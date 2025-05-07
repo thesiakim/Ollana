@@ -691,7 +691,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
         children: [
           // 네이버 지도 영역
           Container(
-            padding: const EdgeInsets.only(bottom: 127),
+            padding: const EdgeInsets.only(bottom: 150),
             child: NaverMap(
               options: NaverMapViewOptions(
                 initialCameraPosition: NCameraPosition(
@@ -1163,7 +1163,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
               target: NLatLng(_currentLat, _currentLng),
               zoom: 17.0,
               bearing: getCurrentHeading(), // 디바이스 방향 또는 이동 방향 사용
-              tilt: 50.0,
+              // tilt: 50.0,
             ),
           );
           debugPrint('네비게이션 모드 카메라 설정 완료: 방향 ${getCurrentHeading()}°');
@@ -1205,8 +1205,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   // 커스텀 위치 버튼 위젯
   Widget _buildLocationButton() {
     return Positioned(
-      left: 20,
-      bottom: 150, // 바텀 시트 위에 위치하도록 조정
+      left: 11,
+      bottom: 190, // 바텀 시트 위에 위치하도록 조정
       child: FloatingActionButton(
         onPressed: _onLocationButtonPressed,
         mini: true,
@@ -1253,8 +1253,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
         NCameraUpdate.withParams(
           target: NLatLng(_currentLat, _currentLng),
           zoom: 17,
-          bearing: _deviceHeading,
-          tilt: 50,
+          bearing: getCurrentHeading(),
+          // tilt: 50,
         ),
       )
           .then((_) {
