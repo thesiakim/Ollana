@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/back-api/tracking")
+@RequestMapping("/tracking")
 @Slf4j
 public class TrackingController {
 
