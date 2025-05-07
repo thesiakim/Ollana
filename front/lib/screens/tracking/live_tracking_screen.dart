@@ -1118,9 +1118,10 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
             NCameraUpdate.withParams(
               target: NLatLng(_currentLat, _currentLng),
               zoom: 17.0,
+              bearing: _deviceHeading,
+              tilt: 50.0,
             ),
           );
-          debugPrint('네비게이션 모드 카메라 설정 완료: 방향 ${_deviceHeading}°');
         } else {
           // 네비게이션 모드 비활성화: 전체 경로 조망
           final bounds = await compute(
