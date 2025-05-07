@@ -2,6 +2,7 @@ package com.ssafy.ollana.tracking.web.controller;
 
 import com.ssafy.ollana.common.util.Response;
 import com.ssafy.ollana.footprint.web.dto.response.TodayHikingResultResponseDto;
+import com.ssafy.ollana.mountain.web.dto.response.PathResponseDto;
 import com.ssafy.ollana.security.CustomUserDetails;
 import com.ssafy.ollana.tracking.service.TrackingService;
 import com.ssafy.ollana.tracking.web.dto.request.TrackingStartRequestDto;
@@ -88,6 +89,22 @@ public class TrackingController {
     public ResponseEntity<Response<TrackingStartResponseDto>> getTrackingStartInfo(@RequestBody TrackingStartRequestDto request) {
         TrackingStartResponseDto response = trackingService.getTrackingStartInfo(request);
         return ResponseEntity.ok(Response.success(response));
+    }
+
+
+    @GetMapping("/nearest-path")
+    public ResponseEntity<Response<PathForTrackingResponseDto>> getNearestPath(
+            @RequestParam double lat,
+            @RequestParam double lng
+    ) {
+        PathForTrackingResponseDto result = trackingService.findNearestPath(lat, lng);
+        return ResponseEntity.ok(Response.success(result));
+    }
+
+    @PostMapping("/moo")
+    public String moo() {
+        trackingService.moo();
+        return "완료";
     }
 
 
