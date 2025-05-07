@@ -49,16 +49,16 @@ public class TrackingService {
     @Transactional(readOnly = true)
     public NearestMountainResponseDto findNearestMountain(double lat, double lng) {
         Mountain mountain = mountainRepository.findNearestMountain(lat, lng)
-                                              .orElseThrow(NoNearbyMountainException::new);
+                .orElseThrow(NoNearbyMountainException::new);
 
         List<Path> paths = pathRepository.findByMountainId(mountain.getId());
 
         return NearestMountainResponseDto.builder()
-                                         .mountain(MountainResponseDto.from(mountain))
-                                         .paths(paths.stream()
-                                                  .map(PathForTrackingResponseDto::from)
-                                                  .toList())
-                                         .build();
+                .mountain(MountainResponseDto.from(mountain))
+                .paths(paths.stream()
+                        .map(PathForTrackingResponseDto::from)
+                        .toList())
+                .build();
     }
 
     /*
@@ -82,13 +82,13 @@ public class TrackingService {
                     List<Path> paths = pathRepository.findByMountainId(mountain.getId());
 
                     return MountainSearchListResponseDto.builder()
-                                                     .mountain(MountainAddressResponseDto.from(mountain))
-                                                     .paths(paths.stream()
-                                                            .map(PathForTrackingResponseDto::from)
-                                                            .toList())
-                                                     .build();
+                            .mountain(MountainAddressResponseDto.from(mountain))
+                            .paths(paths.stream()
+                                    .map(PathForTrackingResponseDto::from)
+                                    .toList())
+                            .build();
                 })
-                            .toList();
+                .toList();
 
         return MountainSearchResponseDto.from(results);
     }
@@ -99,7 +99,7 @@ public class TrackingService {
     @Transactional(readOnly = true)
     public MountainSearchListResponseDto getMountainSelectResult(Integer mountainId) {
         Mountain mountain = mountainRepository.findById(mountainId)
-                                              .orElseThrow(NotFoundException::new);
+                .orElseThrow(NotFoundException::new);
 
         List<Path> paths = pathRepository.findByMountainId(mountainId);
 
@@ -117,7 +117,7 @@ public class TrackingService {
     @Transactional(readOnly = true)
     public TodayHikingResultResponseDto getHikingRecord(Integer userId, Integer mountainId, Integer pathId) {
         HikingHistory history = hikingHistoryRepository.findLatestRecord(userId, mountainId, pathId)
-                                                       .orElseThrow(NotFoundException::new);
+                .orElseThrow(NotFoundException::new);
 
         return TodayHikingResultResponseDto.from(history);
     }
@@ -140,31 +140,31 @@ public class TrackingService {
     @Transactional(readOnly = true)
     public TrackingStartResponseDto getTrackingStartInfo(TrackingStartRequestDto request) {
         Mountain mountain = mountainRepository.findById(request.getMountainId())
-                                              .orElseThrow(NotFoundException::new);
+                .orElseThrow(NotFoundException::new);
 
         Path path = pathRepository.findById(request.getPathId())
-                                  .orElseThrow(NotFoundException::new);
+                .orElseThrow(NotFoundException::new);
 
         // 선택한 산이 사용자 현 위치를 기준으로 반경 10km 이내에 존재하는지 검증
         boolean isNearby = mountainRepository.isMountainWithin10km(
-                                                    request.getMountainId(),
-                                                    request.getLatitude(),
-                                                    request.getLongtitude()
-                                            );
+                request.getMountainId(),
+                request.getLatitude(),
+                request.getLongtitude()
+        );
 
         OpponentResponseDto opponentDto = null;
 
         // 일반 모드일 때는 대결 상대 데이터를 조회하지 않음
         if (!"GENERAL".equals(request.getMode()) && request.getOpponentId() != null) {
             User opponent = userRepository.findById(request.getOpponentId())
-                                          .orElseThrow(NotFoundException::new);
+                    .orElseThrow(NotFoundException::new);
 
-        List<HikingLiveRecords> records = hikingLiveRecordsRepository
-                .findByUserIdAndMountainIdAndPathIdOrderByTotalTimeAsc(
-                        request.getOpponentId(),
-                        request.getMountainId(),
-                        request.getPathId()
-                );
+            List<HikingLiveRecords> records = hikingLiveRecordsRepository
+                    .findByUserIdAndMountainIdAndPathIdOrderByTotalTimeAsc(
+                            request.getOpponentId(),
+                            request.getMountainId(),
+                            request.getPathId()
+                    );
             opponentDto = OpponentResponseDto.from(opponent, records);
         }
 
@@ -222,9 +222,11 @@ public class TrackingService {
 
     @Transactional
     public void moo() {
+        // 반드시 이어붙일 수 있는 순서로 지정
         List<String> names = List.of(
-                "무등산 등산로 101010",
-                "무등산 등산로 7"
+                "무등산 등산로 64",
+                "무등산 등산로 56",
+                "무등산 등산로 48"
         );
 
         List<Path> paths = pathRepository.findByPathNameIn(names);
@@ -233,14 +235,16 @@ public class TrackingService {
             throw new RuntimeException("지정한 모든 경로를 찾지 못했습니다.");
         }
 
+        // 순서를 보장하기 위해 name 기준 정렬
         Map<String, Path> pathMap = paths.stream()
                 .collect(Collectors.toMap(Path::getPathName, p -> p));
 
-        LineString routeA = pathMap.get("무등산 등산로 101010").getRoute();
-        LineString routeB = pathMap.get("무등산 등산로 7").getRoute();
+        List<LineString> orderedRoutes = names.stream()
+                .map(name -> pathMap.get(name).getRoute())
+                .collect(Collectors.toList());
 
-        // 중간 연결 병합
-        LineString mergedRoute = mergeByClosestCutAndAppend(routeA, routeB);
+        // 순서대로 병합
+        LineString mergedRoute = mergeInOrder(orderedRoutes);
 
         Coordinate[] coords = mergedRoute.getCoordinates();
         Coordinate mid = coords[coords.length / 2];
@@ -249,9 +253,9 @@ public class TrackingService {
         Point centerPoint = factory.createPoint(mid);
 
         Path mergedPath = Path.builder()
-                .pathName("무등산국립공원교리~만연사코스")
-                .pathLength(5984.65) // 실제 값 반영 가능
-                .pathTime("159")
+                .pathName("무등산국립공원당산나무코스")
+                .pathLength(2606.28)
+                .pathTime("106")
                 .level(Level.M)
                 .mountain(paths.get(0).getMountain())
                 .route(mergedRoute)
@@ -259,50 +263,48 @@ public class TrackingService {
                 .build();
 
         pathRepository.save(mergedPath);
+
         System.out.println("✔ 수동 병합 완료. 좌표 수: " + coords.length);
     }
 
 
 
-    private LineString mergeByClosestCutAndAppend(LineString routeA, LineString routeB) {
-        GeometryFactory factory = new GeometryFactory(new PrecisionModel(), 4326);
+    private LineString mergeInOrder(List<LineString> routes) {
+        List<Coordinate> result = new ArrayList<>();
+        Coordinate[] prev = null;
 
-        Coordinate[] coordsA = routeA.getCoordinates();
-        Coordinate[] coordsB = routeB.getCoordinates();
+        for (LineString route : routes) {
+            Coordinate[] coords = route.getCoordinates();
 
-        Coordinate startB = coordsB[0];
+            if (prev != null) {
+                Coordinate last = prev[prev.length - 1];
+                Coordinate start = coords[0];
+                Coordinate end = coords[coords.length - 1];
 
-        // A 중에서 B의 시작점과 가장 가까운 점을 찾음
-        int cutIndex = 0;
-        double minDist = haversineDistanceKm(coordsA[0], startB);
-        for (int i = 1; i < coordsA.length; i++) {
-            double dist = haversineDistanceKm(coordsA[i], startB);
-            if (dist < minDist) {
-                minDist = dist;
-                cutIndex = i;
+                // 방향 판단 로직
+                if (!last.equals2D(start) && !last.equals2D(end)) {
+                    double distStart = haversineDistanceKm(last, start);
+                    double distEnd = haversineDistanceKm(last, end);
+
+                    if (distEnd < distStart) {
+                        coords = reverse(coords);
+                    }
+                } else if (last.equals2D(end)) {
+                    coords = reverse(coords);  // 강제 뒤집기
+                }
             }
+
+            // 중복 좌표 제거 후 추가
+            for (int i = (result.isEmpty() ? 0 : 1); i < coords.length; i++) {
+                result.add(coords[i]);
+            }
+
+            prev = coords;
         }
 
-        // A는 0 ~ cutIndex까지
-        List<Coordinate> merged = new ArrayList<>();
-        for (int i = 0; i <= cutIndex; i++) {
-            merged.add(coordsA[i]);
-        }
-
-        // B의 방향 판단 후 이어 붙임
-        double distToStart = haversineDistanceKm(coordsA[cutIndex], coordsB[0]);
-        double distToEnd = haversineDistanceKm(coordsA[cutIndex], coordsB[coordsB.length - 1]);
-
-        Coordinate[] adjustedB = (distToEnd < distToStart) ? reverse(coordsB) : coordsB;
-
-        // 시작점 중복 제거 후 B 이어붙이기
-        for (int i = 1; i < adjustedB.length; i++) {
-            merged.add(adjustedB[i]);
-        }
-
-        return factory.createLineString(merged.toArray(new Coordinate[0]));
+        GeometryFactory factory = new GeometryFactory(new PrecisionModel(), 4326);
+        return factory.createLineString(result.toArray(new Coordinate[0]));
     }
-
 
     private Coordinate[] reverse(Coordinate[] coords) {
         Coordinate[] reversed = new Coordinate[coords.length];
@@ -319,11 +321,16 @@ public class TrackingService {
         double deltaLat = lat2 - lat1;
         double deltaLon = Math.toRadians(c2.x - c1.x);
 
-        double a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2)
-                + Math.cos(lat1) * Math.cos(lat2)
-                * Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
+        double a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+                Math.cos(lat1) * Math.cos(lat2) *
+                        Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
+
         return 2 * R * Math.asin(Math.sqrt(a));
     }
+
+
+
+
 
 
 }
