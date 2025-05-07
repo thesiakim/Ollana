@@ -2,7 +2,7 @@
 // 산에 대한 기본 정보를 저장하는 데이터 모델
 
 class Mountain {
-  final String id;
+  final num id;
   final String name;
   final String location;
   final double height;
@@ -22,8 +22,8 @@ class Mountain {
 
   factory Mountain.fromJson(Map<String, dynamic> json) {
     return Mountain(
-      id: json['id'] ?? '',
-      name: json['name'] ?? '',
+      id: json['mountainId'] ?? 0,
+      name: json['mountainName'] ?? '',
       location: json['location'] ?? '',
       height: (json['height'] is num) ? json['height'].toDouble() : 0.0,
       difficulty: json['difficulty'] ?? '',

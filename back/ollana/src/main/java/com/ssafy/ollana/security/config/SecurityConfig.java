@@ -62,10 +62,12 @@ public class SecurityConfig {
                                 "/auth/signup/kakao",
                                 "/auth/email/send",
                                 "/auth/email/verify",
-                                "/auth/password/find",
+                                "/auth/password/reset",
+                                "/auth/password/change",
                                 "/auth/refresh",
                                 "/tracking/import/mtn",
-                                "/tracking/import/path")
+                                "/tracking/import/path",
+                                "/mountain/save-image")
                         .permitAll()
                         .anyRequest().authenticated() // 나머지는 인증 필요
                 );

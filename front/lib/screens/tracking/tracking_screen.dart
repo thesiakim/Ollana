@@ -11,6 +11,7 @@ import '../../models/app_state.dart';
 import '../../widgets/tracking/mountain_route_screen.dart';
 import 'mode_select_screen.dart';
 import 'live_tracking_screen.dart';
+import '../../models/hiking_route.dart';
 
 class TrackingScreen extends StatelessWidget {
   const TrackingScreen({super.key});
@@ -29,7 +30,7 @@ class TrackingScreen extends StatelessWidget {
             onRouteSelected: (mountain, route) {
               // 여기서 선택된 산과 등산로를 앱 상태에 저장
               appState.selectMountain(mountain.name);
-              appState.selectRoute(route.name);
+              appState.selectRoute(route);
               // selectRoute 메서드가 이미 TrackingStage를 modeSelect로 설정함
             },
           );
@@ -164,7 +165,28 @@ class _IntegratedMountainRouteScreenState
     if (_selectedRouteIndex >= 0 && _selectedRouteIndex < _routes.length) {
       final appState = Provider.of<AppState>(context, listen: false);
       appState.selectMountain(_selectedMountain!);
-      appState.selectRoute(_routes[_selectedRouteIndex]['name']);
+
+      // HikingRoute 객체 생성
+      final routeData = _routes[_selectedRouteIndex];
+      final route = HikingRoute(
+        id: _selectedRouteIndex + 1,
+        mountainId: 1, // 산 ID 추가 (숫자로 변경)
+        name: routeData['name'],
+        difficulty: routeData['difficulty'],
+        distance:
+            double.tryParse(routeData['distance'].replaceAll('km', '')) ?? 5.0,
+        estimatedTime: int.tryParse(
+                routeData['time'].replaceAll('약 ', '').replaceAll('시간', '')) ??
+            120,
+        path: [
+          {'latitude': 37.5665, 'longitude': 126.9780},
+          {'latitude': 37.5690, 'longitude': 126.9800},
+          {'latitude': 37.5720, 'longitude': 126.9830},
+          {'latitude': 37.5760, 'longitude': 126.9876},
+        ],
+      );
+
+      appState.selectRoute(route);
     }
   }
 

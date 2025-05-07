@@ -2,10 +2,14 @@ package com.ssafy.ollana.footprint.persistent.repository;
 
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.ssafy.ollana.footprint.persistent.entity.HikingHistory;
+import com.ssafy.ollana.footprint.persistent.entity.QFootprint;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
+
+import static com.ssafy.ollana.footprint.persistent.entity.QFootprint.footprint;
 import static com.ssafy.ollana.footprint.persistent.entity.QHikingHistory.hikingHistory;
 
 @Repository
@@ -25,5 +29,21 @@ public class HikingHistoryRepositoryImpl implements HikingHistoryRepositoryCusto
                         .orderBy(hikingHistory.createdAt.asc())
                         .fetch();
 
+    }
+
+    @Override
+    public Optional<HikingHistory> findLatestRecord(Integer userId, Integer mountainId, Integer pathId) {
+        return Optional.ofNullable(
+                queryFactory.selectFrom(hikingHistory)
+                            .join(hikingHistory.footprint, footprint).fetchJoin()
+                            .where(
+                                    footprint.user.id.eq(userId),
+                                    footprint.mountain.id.eq(mountainId),
+                                    hikingHistory.path.id.eq(pathId)
+                            )
+                            .orderBy(hikingHistory.createdAt.desc())
+                            .limit(1)
+                            .fetchOne()
+            );
     }
 }
