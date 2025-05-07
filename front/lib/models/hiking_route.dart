@@ -2,8 +2,8 @@
 // 산의 등산로 정보를 저장하는 데이터 모델
 
 class HikingRoute {
-  final String id;
-  final String mountainId;
+  final num id;
+  final num mountainId;
   final String name;
   final double distance;
   final int estimatedTime; // 분 단위
@@ -49,11 +49,19 @@ class HikingRoute {
     }
 
     return HikingRoute(
-      id: json['pathId']?.toString() ?? '',
-      mountainId: json['mountainId']?.toString() ?? '',
+      id: json['pathId'] ?? 0,
+      mountainId: json['mountainId'] ?? 0,
       name: json['pathName'] ?? '',
-      distance: (json['distance'] is num) ? json['distance'].toDouble() : 0.0,
-      estimatedTime: json['estimatedTime'] ?? 0,
+      distance: (json['distance'] is num)
+          ? json['distance'].toDouble()
+          : (json['pathLength'] is num)
+              ? json['pathLength'].toDouble()
+              : 0.0,
+      estimatedTime: json['estimatedTime'] is int
+          ? json['estimatedTime']
+          : (json['pathTime'] != null)
+              ? int.tryParse(json['pathTime'].toString()) ?? 0
+              : 0,
       difficulty: json['difficulty'] ?? '보통',
       description: json['description'] ?? '',
       waypoints: List<String>.from(json['waypoints'] ?? []),
