@@ -1,13 +1,18 @@
 // lib/models/app_state.dart
 // AppState: 전역 상태 관리 (로그인, 페이지 인덱스, 트래킹 등)
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import '../models/hiking_route.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart'; // 🔥 secure storage
 import 'package:flutter_naver_map/flutter_naver_map.dart';
+import '../models/hiking_route.dart';
 
 enum TrackingStage { search, routeSelect, modeSelect, tracking }
 
 class AppState extends ChangeNotifier {
+  // 🔥 SecureStorage 인스턴스 (앱 전체에서 하나만 사용)
+  static const _storage = FlutterSecureStorage();
+
   // 로그인 상태 및 토큰
   bool _isLoggedIn = false;
   String? _accessToken;
@@ -36,6 +41,11 @@ class AppState extends ChangeNotifier {
   bool _isNavigationMode = true;
   double _deviceHeading = 0;
 
+  // 생성자: 앱 시작 시 저장된 토큰 복원
+  AppState() {
+    _initAuth(); // 🔥 초기 인증 정보 로드
+  }
+
   // Getters
   bool get isLoggedIn => _isLoggedIn;
   String? get accessToken => _accessToken;
@@ -59,29 +69,53 @@ class AppState extends ChangeNotifier {
   bool get isNavigationMode => _isNavigationMode;
   double get deviceHeading => _deviceHeading;
 
-  // 로그인 상태 토글
-  void toggleLogin() {
+  // 🔥 앱 시작 시 SecureStorage에서 토큰을 읽어 로그인 상태 복원
+  Future<void> _initAuth() async {
     try {
-      _isLoggedIn = !_isLoggedIn;
-      debugPrint('로그인 상태 변경: $_isLoggedIn');
-      notifyListeners();
+      final token = await _storage.read(key: 'accessToken');
+      if (token != null && token.isNotEmpty) {
+        _accessToken = token;
+        _isLoggedIn = true;
+        debugPrint('SecureStorage에서 토큰 복원: $_accessToken');
+        notifyListeners();
+      }
     } catch (e) {
-      debugPrint('로그인 상태 변경 중 오류 발생: $e');
+      debugPrint('토큰 복원 오류: $e');
     }
   }
 
-  // 토큰 설정
-  void setToken(String token) {
-    _accessToken = token;
-    debugPrint('토큰 저장: $_accessToken');
+  // 로그인 상태 토글 (UI용)
+  void toggleLogin() {
+    _isLoggedIn = !_isLoggedIn;
+    debugPrint('로그인 상태 변경: $_isLoggedIn');
     notifyListeners();
   }
 
-  // 클라이언트 인증 정보 초기화
-  void clearAuth() {
+  // 🔥 토큰 설정 및 SecureStorage에 저장
+  Future<void> setToken(String token) async {
+    _accessToken = token;
+    _isLoggedIn = true;
+    debugPrint('토큰 저장: $_accessToken');
+    try {
+      await _storage.write(key: 'accessToken', value: token);
+      debugPrint('SecureStorage에 토큰 저장 완료');
+    } catch (e) {
+      debugPrint('SecureStorage 저장 오류: $e');
+    }
+    notifyListeners();
+  }
+
+  // 🔥 로그아웃: 메모리와 SecureStorage에서 토큰 삭제
+  Future<void> clearAuth() async {
     _accessToken = null;
     _isLoggedIn = false;
     debugPrint('클라이언트 인증 정보 초기화');
+    try {
+      await _storage.delete(key: 'accessToken');
+      debugPrint('SecureStorage에서 토큰 삭제 완료');
+    } catch (e) {
+      debugPrint('SecureStorage 삭제 오류: $e');
+    }
     notifyListeners();
   }
 
@@ -223,7 +257,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // 뒤로가기 등 트래킹 단계 초기화
+  // 트래킹 단계 초기화 (뒤로가기 등)
   void resetTrackingStage() {
     if (!_isTracking) {
       _trackingStage = TrackingStage.search;
