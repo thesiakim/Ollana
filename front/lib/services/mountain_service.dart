@@ -12,10 +12,12 @@ import '../models/hiking_route.dart';
 class MountainWithRoutes {
   final Mountain mountain;
   final List<HikingRoute> routes;
+  final String? location;
 
   MountainWithRoutes({
     required this.mountain,
     required this.routes,
+    required this.location,
   });
 }
 
@@ -26,12 +28,27 @@ Future<MountainWithRoutes> _parseNearby(String body) async {
     throw FormatException('Nearby API: 예상치 못한 응답 구조');
   }
   final data = jsonData['data'] as Map<String, dynamic>;
-  final mountain = Mountain.fromJson(data['mountain']);
+
+  // 산 데이터에서 필요한 필드들이 없을 수 있으므로 먼저 기본값으로 채워진 맵 생성
+  final Map<String, dynamic> mountainData = {
+    'mountainId': 0,
+    'mountainName': '',
+    'location': '',
+    'height': 0.0,
+  };
+
+  // 응답에서 받은 실제 데이터로 덮어쓰기
+  if (data['mountain'] != null && data['mountain'] is Map<String, dynamic>) {
+    mountainData.addAll(data['mountain'] as Map<String, dynamic>);
+  }
+
+  final mountain = Mountain.fromJson(mountainData);
+
   final List paths = data['paths'] as List<dynamic>;
   final routes = paths
       .map((e) => HikingRoute.fromJson(e as Map<String, dynamic>))
       .toList();
-  return MountainWithRoutes(mountain: mountain, routes: routes);
+  return MountainWithRoutes(mountain: mountain, routes: routes, location: '');
 }
 
 /// JSON 파싱을 백그라운드로 처리하는 헬퍼 함수 (getAll용)
@@ -41,12 +58,28 @@ Future<MountainWithRoutes> _parseAll(String body) async {
     throw FormatException('All API: 예상치 못한 응답 구조');
   }
   final data = jsonData['data'] as Map<String, dynamic>;
-  final mountain = Mountain.fromJson(data['mountain']);
+
+  // 산 데이터에서 필요한 필드들이 없을 수 있으므로 먼저 기본값으로 채워진 맵 생성
+  final Map<String, dynamic> mountainData = {
+    'mountainId': 0,
+    'mountainName': '',
+    'location': '',
+    'height': 0.0,
+  };
+
+  // 응답에서 받은 실제 데이터로 덮어쓰기
+  if (data['mountain'] != null && data['mountain'] is Map<String, dynamic>) {
+    mountainData.addAll(data['mountain'] as Map<String, dynamic>);
+  }
+
+  final mountain = Mountain.fromJson(mountainData);
+
   final List paths = data['paths'] as List<dynamic>;
   final routes = paths
       .map((e) => HikingRoute.fromJson(e as Map<String, dynamic>))
       .toList();
-  return MountainWithRoutes(mountain: mountain, routes: routes);
+  return MountainWithRoutes(
+      mountain: mountain, routes: routes, location: mountain.location);
 }
 
 class MountainService {
@@ -129,21 +162,60 @@ class MountainService {
       if (response.statusCode == 200) {
         final body = utf8.decode(response.bodyBytes);
         final jsonData = jsonDecode(body);
+        debugPrint('jsonData: $jsonData');
 
         if (jsonData['status'] == true && jsonData['data'] != null) {
-          final data = jsonData['data'];
-          if (data is List) {
-            return data.map((e) => Mountain.fromJson(e)).toList();
-          } else if (data is Map<String, dynamic>) {
-            final mapData = data;
-            if (mapData.containsKey('mountains') &&
-                mapData['mountains'] is List) {
-              return (mapData['mountains'] as List)
-                  .map((item) => Mountain.fromJson(item))
+          // 데이터 형식 체크
+          if (jsonData['data'] is List) {
+            // 리스트 형태일 경우
+            final List<dynamic> data = jsonData['data'] as List<dynamic>;
+            return data.map((item) => Mountain.fromJson(item)).toList();
+          } else if (jsonData['data'] is Map) {
+            // 맵 형태일 경우, 맵의 값들을 리스트로 변환
+            final Map<String, dynamic> data =
+                jsonData['data'] as Map<String, dynamic>;
+
+            // 'mountains' 키가 있는 경우 (응답 구조에 맞춤)
+            if (data.containsKey('mountains') && data['mountains'] is List) {
+              final List<dynamic> mountains =
+                  data['mountains'] as List<dynamic>;
+
+              // mountainId, mountainName, mountainHeight, mountainLoc 필드를 적절히 매핑
+              return mountains
+                  .map((item) => Mountain(
+                        id: item['mountainId'],
+                        name: item['mountainName'] ?? '',
+                        height:
+                            (item['mountainHeight'] as num?)?.toDouble() ?? 0.0,
+                        location: item['mountainLoc'] ?? '',
+                      ))
                   .toList();
-            } else if (mapData.containsKey('mountain')) {
-              final m = mapData['mountain'];
-              if (m != null) return [Mountain.fromJson(m)];
+            }
+            // 결과가 하나만 있거나 배열이 아닌 객체 형태로 온 경우
+            else if (data.containsKey('mountain')) {
+              final mountainData = data['mountain'];
+              if (mountainData != null) {
+                return [Mountain.fromJson(mountainData)];
+              }
+            }
+
+            // 다른 형태의 맵 처리
+            try {
+              // 맵의 각 값을 개별 산으로 처리
+              List<Mountain> mountains = [];
+              data.forEach((key, value) {
+                if (value is Map<String, dynamic>) {
+                  try {
+                    mountains.add(Mountain.fromJson(value));
+                  } catch (e) {
+                    debugPrint('산 객체 변환 오류: $e');
+                  }
+                }
+              });
+              return mountains;
+            } catch (e) {
+              debugPrint('맵 처리 오류: $e');
+              return [];
             }
             // 기타 Map 처리 생략...
           }
@@ -163,11 +235,270 @@ class MountainService {
 
   /// 선택한 산의 상세 정보 및 등산로 조회 (기존 로직 유지)
   Future<MountainWithRoutes> getMountainByName(String mountainName) async {
-    // 기존 로직...
-    return MountainWithRoutes(
-      mountain:
-          Mountain(id: 'tmp', name: mountainName, location: '', height: 0.0),
-      routes: [],
-    );
+    if (mountainName.isEmpty) {
+      throw Exception('산 이름이 비어있습니다');
+    }
+
+    final uri =
+        Uri.parse('$_baseUrl/tracking/search/results?mtn=$mountainName');
+    try {
+      final response = await _client.get(uri, headers: {
+        'Accept': 'application/json',
+      });
+
+      if (response.statusCode == 200) {
+        final body = utf8.decode(response.bodyBytes);
+
+        // API 응답 구조 디버깅 (직접 파싱)
+        final jsonData = jsonDecode(body);
+        debugPrint('API 응답 구조: ${jsonData.runtimeType}');
+        debugPrint('API 응답 내용: $jsonData');
+
+        if (jsonData == null) {
+          throw FormatException('API 응답이 null입니다');
+        }
+
+        if (jsonData['status'] != true) {
+          throw FormatException('API 상태가 true가 아닙니다: ${jsonData['status']}');
+        }
+
+        if (jsonData['data'] == null) {
+          throw FormatException('API 데이터가 null입니다');
+        }
+
+        // 데이터 구조 검사
+        final data = jsonData['data']['results'][0];
+        debugPrint('data 내용: $data');
+
+        // if (data is! Map<String, dynamic>) {
+        //   throw FormatException('data가 Map 형식이 아닙니다: ${data.runtimeType}');
+        // }
+
+        // Mountain 객체 생성
+        Mountain mountain;
+        if (data['mountain'] == null) {
+          debugPrint('mountain 데이터가 null입니다');
+          mountain = Mountain(
+            id: 0, // 임시 ID
+            name: mountainName,
+            location: '',
+            height: 0.0,
+          );
+        } else {
+          try {
+            mountain = Mountain.fromJson(data['mountain']);
+          } catch (e) {
+            debugPrint('Mountain 객체 생성 오류: $e');
+            mountain = Mountain(
+              id: 0, // 임시 ID
+              name: mountainName,
+              location: '',
+              height: 0.0,
+            );
+          }
+        }
+
+        // 등산로 정보 처리
+        List<HikingRoute> routes = [];
+        if (data['paths'] != null && data['paths'] is List) {
+          try {
+            final pathsList = data['paths'] as List;
+            for (var pathData in pathsList) {
+              if (pathData != null && pathData is Map<String, dynamic>) {
+                try {
+                  final route = HikingRoute.fromJson(pathData);
+                  routes.add(route);
+                } catch (routeError) {
+                  debugPrint('등산로 변환 오류: $routeError');
+                }
+              } else {
+                debugPrint('등산로 데이터가 null이거나 Map이 아닙니다: $pathData');
+              }
+            }
+          } catch (pathError) {
+            debugPrint('등산로 목록 처리 오류: $pathError');
+          }
+        } else {
+          debugPrint('paths 데이터가 null이거나 List가 아닙니다: ${data['paths']}');
+        }
+
+        return MountainWithRoutes(
+            mountain: mountain, routes: routes, location: mountain.location);
+      } else if (response.statusCode >= 400 && response.statusCode < 500) {
+        throw Exception('클라이언트 오류 ${response.statusCode}');
+      } else {
+        throw Exception('서버 오류 ${response.statusCode}');
+      }
+    } on FormatException catch (e) {
+      debugPrint('Nearby JSON 오류: $e');
+      // 오류 발생 시 기본 객체 반환
+      return MountainWithRoutes(
+        mountain: Mountain(
+          id: 0, // 임시 ID
+          name: mountainName,
+          location: '',
+          height: 0.0,
+        ),
+        routes: [],
+        location: '',
+      );
+    } catch (e) {
+      debugPrint('주변 산 데이터 불러오기 실패: $e');
+      // 오류 발생 시 기본 객체 반환
+      return MountainWithRoutes(
+        mountain: Mountain(
+          id: 0, // 임시 ID
+          name: mountainName,
+          location: '',
+          height: 0.0,
+        ),
+        routes: [],
+        location: '',
+      );
+    }
+  }
+
+  /// 산 ID로 상세 정보 및 등산로 조회
+  Future<MountainWithRoutes> getMountainById(num mountainId) async {
+    final uri = Uri.parse('$_baseUrl/tracking/search/mountain/$mountainId');
+    try {
+      final response = await _client.get(uri, headers: {
+        'Accept': 'application/json',
+      });
+
+      if (response.statusCode == 200) {
+        final body = utf8.decode(response.bodyBytes);
+        final jsonData = jsonDecode(body);
+        debugPrint('API 응답 구조: ${jsonData.runtimeType}');
+
+        if (jsonData == null) {
+          throw FormatException('API 응답이 null입니다');
+        }
+
+        if (jsonData['status'] != true) {
+          throw FormatException('API 상태가 true가 아닙니다: ${jsonData['status']}');
+        }
+
+        if (jsonData['data'] == null) {
+          throw FormatException('API 데이터가 null입니다');
+        }
+
+        // 새로운 응답 구조에 맞게 파싱
+        final data = jsonData['data'];
+        debugPrint('data 내용: $data');
+
+        // Mountain 객체 생성
+        Mountain mountain;
+        if (data['mountain'] == null) {
+          debugPrint('mountain 데이터가 null입니다');
+          mountain = Mountain(
+            id: mountainId,
+            name: '알 수 없는 산',
+            location: '',
+            height: 0.0,
+          );
+        } else {
+          try {
+            // 새 데이터 구조에 맞게 Mountain 객체 생성
+            final mountainData = data['mountain'];
+            mountain = Mountain(
+              id: mountainData['mountainId'],
+              name: mountainData['mountainName'] ?? '',
+              location: mountainData['location'] ?? '',
+              height: 0.0, // API에서 height가 제공되지 않는 경우
+            );
+          } catch (e) {
+            debugPrint('Mountain 객체 생성 오류: $e');
+            mountain = Mountain(
+              id: mountainId,
+              name: '알 수 없는 산',
+              location: '',
+              height: 0.0,
+            );
+          }
+        }
+
+        // 등산로 정보 처리
+        List<HikingRoute> routes = [];
+        if (data['paths'] != null && data['paths'] is List) {
+          try {
+            final pathsList = data['paths'] as List;
+            for (var pathData in pathsList) {
+              if (pathData != null && pathData is Map<String, dynamic>) {
+                try {
+                  // 새 데이터 구조에 맞게 HikingRoute 객체 생성
+                  final List<Map<String, double>> pathCoordinates = [];
+
+                  if (pathData['route'] != null && pathData['route'] is List) {
+                    for (var point in pathData['route']) {
+                      if (point is Map<String, dynamic>) {
+                        pathCoordinates.add({
+                          'latitude': (point['latitude'] as num).toDouble(),
+                          'longitude': (point['longitude'] as num).toDouble(),
+                        });
+                      }
+                    }
+                  }
+
+                  final route = HikingRoute(
+                    id: pathData['pathId'] ?? 0,
+                    mountainId: mountain.id,
+                    name: pathData['pathName'] ?? '',
+                    distance:
+                        (pathData['pathLength'] as num?)?.toDouble() ?? 0.0,
+                    estimatedTime:
+                        int.tryParse(pathData['pathTime'] ?? '0') ?? 0,
+                    difficulty: '중', // API에서 난이도가 제공되지 않는 경우 기본값
+                    path: pathCoordinates,
+                  );
+                  routes.add(route);
+                } catch (routeError) {
+                  debugPrint('등산로 변환 오류: $routeError');
+                }
+              } else {
+                debugPrint('등산로 데이터가 null이거나 Map이 아닙니다: $pathData');
+              }
+            }
+          } catch (pathError) {
+            debugPrint('등산로 목록 처리 오류: $pathError');
+          }
+        } else {
+          debugPrint('paths 데이터가 null이거나 List가 아닙니다: ${data['paths']}');
+        }
+
+        return MountainWithRoutes(
+            mountain: mountain, routes: routes, location: mountain.location);
+      } else if (response.statusCode >= 400 && response.statusCode < 500) {
+        throw Exception('클라이언트 오류 ${response.statusCode}');
+      } else {
+        throw Exception('서버 오류 ${response.statusCode}');
+      }
+    } on FormatException catch (e) {
+      debugPrint('JSON 파싱 오류: $e');
+      // 오류 발생 시 기본 객체 반환
+      return MountainWithRoutes(
+        mountain: Mountain(
+          id: 0, // 임시 ID
+          name: '알 수 없는 산',
+          location: '',
+          height: 0.0,
+        ),
+        routes: [],
+        location: '',
+      );
+    } catch (e) {
+      debugPrint('산 데이터 불러오기 실패: $e');
+      // 오류 발생 시 기본 객체 반환
+      return MountainWithRoutes(
+        mountain: Mountain(
+          id: 0, // 임시 ID
+          name: '알 수 없는 산',
+          location: '',
+          height: 0.0,
+        ),
+        routes: [],
+        location: '',
+      );
+    }
   }
 }
