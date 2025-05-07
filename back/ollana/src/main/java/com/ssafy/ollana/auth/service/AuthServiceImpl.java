@@ -96,6 +96,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public LoginResponseDto kakaoLogin(String accessCode, HttpServletResponse response) {
         // kakao 에 access token 요청
         KakaoTokenDto kakaoTokenDto = kakaoService.getAccessToken(accessCode);
@@ -110,7 +111,7 @@ public class AuthServiceImpl implements AuthService {
             User user = userOpt.get();
             return generateAuthTokensAndResponse(user, response);
         } else {
-            // 가입 X -> 카카오 정보를 넣은 dto 생성 -> 추가 입력 (프론트) -> 유저 생성
+            // 가입 X -> 카카오 정보를 넣은 dto 생성 -> 추가 정보 입력 (프론트) -> 유저 생성(/auth/oauth/kakao/complete)
             TempUserDto tempUser = TempUserDto.builder()
                     .email(kakaoProfileDto.getKakaoAccount().getEmail())
                     .nickname(kakaoProfileDto.getKakaoAccount().getProfile().getNickname())

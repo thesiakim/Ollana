@@ -59,7 +59,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/auth/login",
                                 "/auth/signup",
-                                "/auth/oauth/kakao",
+                                "/auth/oauth/kakao/**",
                                 "/auth/email/send",
                                 "/auth/email/verify",
                                 "/auth/password/reset",
