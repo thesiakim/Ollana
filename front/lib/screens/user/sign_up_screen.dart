@@ -64,27 +64,48 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     final baseUrl = dotenv.get('BASE_URL');
     final uri = Uri.parse('$baseUrl/auth/signup');
-    final req = http.MultipartRequest('POST', uri)
-      ..fields['userData'] = jsonEncode({
-        'email': _emailCtrl.text.trim(),
-        'password': _passwordCtrl.text.trim(),
-        'nickname': _nickCtrl.text.trim(),
-        'birth': _birthCtrl.text.trim(),
-        'gender': _gender,
-      });
+    final req = http.MultipartRequest('POST', uri);
+// 1) userData JSON 파트를 files로 추가
+    req.files.add(
+      http.MultipartFile.fromString(
+        'userData',
+        jsonEncode({
+          'email': _emailCtrl.text.trim(),
+          'password': _passwordCtrl.text.trim(),
+          'nickname': _nickCtrl.text.trim(),
+          'birth': _birthCtrl.text.trim(),
+          'gender': _gender,
+        }),
+        contentType: MediaType('application', 'json'),
+      ),
+    );
 
+// 2) 프로필 이미지(선택)가 있으면 파일 파트로 추가
     if (_profileImage != null) {
-      req.files.add(await http.MultipartFile.fromPath(
-        'profileImage',
-        _profileImage!.path,
-        contentType: MediaType('image', _profileImage!.path.split('.').last),
-      ));
+      req.files.add(
+        await http.MultipartFile.fromPath(
+          'profileImage',
+          _profileImage!.path,
+          contentType: MediaType('image', _profileImage!.path.split('.').last),
+        ),
+      );
     }
 
     try {
+      debugPrint('회원가입 실행');
       final streamed = await req.send();
+      debugPrint('회원가입 요청 전송 완료');
+      // 스트림에서 Response 객체 생성
       final resp = await http.Response.fromStream(streamed);
-      final data = jsonDecode(resp.body);
+      debugPrint('회원가입 응답 수신 완료: ${resp.statusCode}');
+
+      // 바이트를 utf8로 수동 디코딩
+      final bodyString = utf8.decode(resp.bodyBytes);
+      debugPrint('디코딩된 응답 문자열 → $bodyString');
+
+      // JSON 파싱
+      final data = jsonDecode(bodyString);
+      debugPrint('회원가입 응답 데이터: $data');
 
       if (!mounted) return;
 
@@ -109,6 +130,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         );
       }
     } catch (e) {
+      debugPrint('회원가입 오류: $e');
       if (!mounted) return;
       await showDialog(
         context: context,
