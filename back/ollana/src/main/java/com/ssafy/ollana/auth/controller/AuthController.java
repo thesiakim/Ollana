@@ -54,9 +54,20 @@ public class AuthController {
         return ResponseEntity.ok(Response.success());
     }
 
+    // 이미 회원 -> 로그인
+    // 회원 X -> 회원가입 (카카오 데이터까지 저장한 채로 response)
     @GetMapping("/oauth/kakao")
-    public ResponseEntity<Response<Void>> kakaoLogin() {
+    public ResponseEntity<Response<LoginResponseDto>> kakaoLogin(@RequestParam("code") String accessCode, HttpServletResponse response) {
+        LoginResponseDto loginResponse = authService.kakaoLogin(accessCode, response);
+        return ResponseEntity.ok(Response.success(loginResponse));
+    }
 
+    // 추가 정보를 request로 받아서 카카오 회원가입 마무리
+    // user 저장 후 로그인까지
+    @PostMapping("/oauth/kakao/complete")
+    public ResponseEntity<Response<LoginResponseDto>> completeKakaoSignup(@RequestBody KakaoSignupRequestDto request, HttpServletResponse response) {
+        LoginResponseDto loginResponseDto = authService.saveKakaoUserAndLogin(request, response);
+        return ResponseEntity.ok(Response.success(loginResponseDto));
     }
 
     // 리프레시 토큰으로 새로운 액세스 토큰 생성
