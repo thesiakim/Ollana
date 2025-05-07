@@ -1,10 +1,12 @@
-// mountain_service.dart: 산과 등산로 데이터 서비스
+// lib/services/mountain_service.dart
+// - 산 및 등산로 데이터 서비스
+
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../models/mountain.dart';
-import '../models/hiking_route.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/foundation.dart';
+import '../models/mountain.dart';
+import '../models/hiking_route.dart';
 
 /// 산 및 등산로 데이터를 묶어 반환하는 모델
 class MountainWithRoutes {
@@ -134,17 +136,28 @@ class MountainService {
     }
   }
 
-  /// 산 이름으로 검색
-  Future<List<Mountain>> searchMountains(String query) async {
+  /// 산 이름으로 검색 (★토큰을 인자로 받도록 수정된 부분)
+  Future<List<Mountain>> searchMountains(String query, String token) async {
+    // ★시그니처에 token 추가
     if (query.isEmpty) {
       return [];
     }
 
     final uri = Uri.parse('$_baseUrl/tracking/search?mtn=$query');
+    debugPrint('★ [searchMountains] URI: $uri'); // ★디버그 로그
+    debugPrint('★ [searchMountains] Token: $token'); // ★디버그 로그
+
     try {
-      final response = await _client.get(uri, headers: {
-        'Accept': 'application/json',
-      });
+      final response = await _client.get(
+        uri,
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token', // ★헤더에 토큰 사용
+        },
+      );
+
+      debugPrint('★ [searchMountains] Status: ${response.statusCode}'); // ★
+      debugPrint('★ [searchMountains] Body: ${response.body}'); // ★
 
       if (response.statusCode == 200) {
         final body = utf8.decode(response.bodyBytes);
@@ -204,17 +217,13 @@ class MountainService {
               debugPrint('맵 처리 오류: $e');
               return [];
             }
+            // 기타 Map 처리 생략...
           }
         }
-
-        debugPrint('검색 결과 없음 또는 형식 불일치');
-        return [];
-      } else {
-        debugPrint('검색 API 응답 코드: ${response.statusCode}');
-        return [];
       }
+      return [];
     } catch (e) {
-      debugPrint('산 검색 오류: $e');
+      debugPrint('★ [searchMountains] Exception: $e'); // ★
       return [];
     }
   }
@@ -224,7 +233,7 @@ class MountainService {
     _client.close();
   }
 
-  /// 선택한 산의 상세 정보 및 등산로 조회
+  /// 선택한 산의 상세 정보 및 등산로 조회 (기존 로직 유지)
   Future<MountainWithRoutes> getMountainByName(String mountainName) async {
     if (mountainName.isEmpty) {
       throw Exception('산 이름이 비어있습니다');

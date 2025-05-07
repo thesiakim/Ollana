@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:jwt_decode/jwt_decode.dart'; // 🔥 JWT 디코딩 패키지
 import '../../models/app_state.dart';
 import './sign_up_screen.dart';
 
@@ -65,13 +66,19 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (response.statusCode == 200 && data['status'] == true) {
         final accessToken = data['data']['accessToken'];
-        debugPrint('🔑 [Login] 토큰 얻음: $accessToken');
+        debugPrint('🔑 [Login] accessToken: $accessToken');
 
-        context.read<AppState>().setToken(accessToken);
-        debugPrint('🗝️ [Login] 토큰 저장 완료');
+        // 🔥 refreshToken 관련 코드 제거 (백엔드 미제공)
 
-        context.read<AppState>().toggleLogin();
-        debugPrint('👤 [Login] 로그인 상태 변경 완료');
+        // 🔥 JWT에서 만료 시간(exp) 디코딩 (accessToken만)
+        final payloadA = Jwt.parseJwt(accessToken);
+        final expA = payloadA['exp'] as int;
+        final expiryA = DateTime.fromMillisecondsSinceEpoch(expA * 1000);
+        debugPrint('⏳ [Login] accessToken 만료 시각: $expiryA');
+
+        // 🔥 토큰 저장 및 로그인 상태 설정
+        await context.read<AppState>().setToken(accessToken);
+        debugPrint('🗝️ [Login] 토큰 저장 및 로그인 완료');
 
         Navigator.of(context).pop();
         debugPrint('↩️ [Login] 화면 닫기');

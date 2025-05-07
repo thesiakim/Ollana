@@ -266,40 +266,26 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
       return;
     }
 
+    setState(() => _isLoading = true);
     try {
-      final mountains = await _mountainService.searchMountains(query);
+      // ★ AppState에서 토큰 꺼내기
+      final token = context.read<AppState>().accessToken ?? '';
+
+      // ★ 수정된 서비스 호출: query와 token 전달
+      final mountains = await _mountainService.searchMountains(query, token);
 
       if (!mounted) return;
-
       setState(() {
         _filteredMountains = mountains;
-
-        if (_searchFocusNode.hasFocus) {
-          // 이미 오버레이가 있으면 업데이트, 없으면 생성
-          if (_overlayEntry != null) {
-            _updateOverlay();
-          } else {
-            _showSearchResults();
-          }
-        }
+        _isLoading = false;
       });
     } catch (e) {
-      debugPrint("산 검색 오류: $e");
-
-      // 오류가 발생해도 UI가 업데이트되도록 처리
-      if (mounted) {
+      debugPrint('산 검색 오류: $e');
+      if (mounted)
         setState(() {
           _filteredMountains = [];
-
-          if (_searchFocusNode.hasFocus) {
-            if (_overlayEntry != null) {
-              _updateOverlay();
-            } else {
-              _showSearchResults();
-            }
-          }
+          _isLoading = false;
         });
-      }
     }
   }
 
