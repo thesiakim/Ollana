@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.ollana.auth.dto.KakaoProfileDto;
 import com.ssafy.ollana.auth.dto.KakaoTokenDto;
 import com.ssafy.ollana.auth.exception.KakaoResponseParsingException;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -16,6 +17,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 @Service
+@RequiredArgsConstructor
 public class KakaoService {
 
     @Value("${spring.kakao.auth.client}")
@@ -24,8 +26,8 @@ public class KakaoService {
     @Value("${spring.kakao.auth.redirect}")
     private String redirect;
 
-    private RestTemplate restTemplate;
-    private ObjectMapper objectMapper;
+    private final RestTemplate restTemplate;
+    private final ObjectMapper objectMapper;
 
     // 카카오 인가 코드로 토큰 받아오기
     public KakaoTokenDto getAccessToken(String accessCode) {
