@@ -9,6 +9,5 @@ public class TempUserDto {
     private String email;
     private String nickname;
     private String profileImage;
-    private Long kakaoId;
     private boolean isSocial;
 }

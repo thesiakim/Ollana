@@ -6,7 +6,6 @@ import lombok.NoArgsConstructor;
 
 @Getter
 public class KakaoProfileDto {
-    private Long id;
 
     @JsonProperty("kakao_account")
     private KakaoAccount kakaoAccount;
@@ -27,6 +26,30 @@ public class KakaoProfileDto {
 
             @JsonProperty("is_default_image")
             private boolean isDefaultImage;
+
+            @Override
+            public String toString() {
+                return "Profile{" +
+                        "nickname='" + nickname + '\'' +
+                        ", profileImageUrl='" + profileImageUrl + '\'' +
+                        ", isDefaultImage=" + isDefaultImage +
+                        '}';
+            }
         }
+
+        @Override
+        public String toString() {
+            return "KakaoAccount{" +
+                    "email='" + email + '\'' +
+                    ", profile=" + profile +
+                    '}';
+        }
+    }
+
+    @Override
+    public String toString() {
+        return "KakaoProfileDto{" +
+                ", kakaoAccount=" + kakaoAccount +
+                '}';
     }
 }
