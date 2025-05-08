@@ -56,7 +56,7 @@ public class AuthController {
 
     // 이미 회원 -> 로그인
     // 회원 X -> 회원가입 (카카오 데이터까지 저장한 채로 response)
-    @GetMapping("/oauth/kakao/callback")
+    @GetMapping("/oauth/kakao")
     public ResponseEntity<Response<LoginResponseDto>> kakaoLogin(@RequestParam("code") String accessCode, HttpServletResponse response) {
         LoginResponseDto loginResponse = authService.kakaoLogin(accessCode, response);
         return ResponseEntity.ok(Response.success(loginResponse));
