@@ -28,14 +28,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
 
-        // JWT 토큰 추출
+        // 요청 헤더에서 access token 추출
         String accessToken = getAccessTokenFromRequest(request);
 
         if (accessToken != null && !tokenService.isBlacklisted(accessToken)) {
+
             // 토큰 유효성 검사
             if (jwtUtil.validateToken(accessToken)) {
                 setAuthentication(accessToken);
-                // 토큰 만료 여부 확인
+
+            // 토큰 만료 여부 확인
             } else if (jwtUtil.isTokenExpired(accessToken)) {
                 // 만료 되었으면 refresh token 통해서 access token 새로 발금
                 String refreshToken = getRefreshTokenFromCookie(request);
