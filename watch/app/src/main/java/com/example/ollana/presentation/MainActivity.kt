@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.*
+import com.example.ollana.presentation.data.MessageSender
 import com.example.ollana.presentation.screen.HomeScreen
 import com.example.ollana.presentation.screen.TestScreen
 import com.google.android.gms.wearable.MessageClient
@@ -40,7 +41,18 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
 
             if (isHome.value) {
                 // 실제 메시지 수신 후 화면
-                HomeScreen(receivedMessage = message.value)
+                HomeScreen(
+                    receivedMessage = message.value,
+                    onStopTracking={
+                        //앱에 트래킹 종료 메시지 전송
+                        MessageSender.send(
+                         "/STOP_TRACKING_CONFIRM",
+                           "",
+                            this
+                        )
+                        //워치 화면도 종료 UI로 전환
+                        message.value="종료"
+                    })
             } else {
                 // 테스트 모드 화면
                 TestScreen(
@@ -89,8 +101,7 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
     // 메시지를 받아 UI용 텍스트로 변환
     private fun handleIncomingMessage(event: MessageEvent) {
         val newMessage = when (event.path) {
-            "/REACHED" -> "정상 도착 알림!"
-
+            "/REACHED" -> "도착"
             "/PROGRESS" -> {
                 try {
                     val obj = JSONObject(String(event.data))

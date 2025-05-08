@@ -15,6 +15,7 @@ fun TestScreen(
     onFastTestClick: () -> Unit,
     onSlowTestClick: () -> Unit,
     onReachClick: () -> Unit
+
 ) {
     Column(
         modifier = Modifier
@@ -27,21 +28,22 @@ fun TestScreen(
         Text(text = receivedMessage, fontSize = 16.sp)
         Spacer(modifier = Modifier.height(20.dp))
 
-        // 🐇 빠름 테스트 버튼
+        //빠름 테스트 버튼
         Button(onClick = onFastTestClick) {
             Text("🐇 빠름 테스트", fontSize = 14.sp)
         }
         Spacer(modifier = Modifier.height(10.dp))
 
-        // 🐢 느림 테스트 버튼
+        //느림 테스트 버튼
         Button(onClick = onSlowTestClick) {
             Text("🐢 느림 테스트", fontSize = 14.sp)
         }
         Spacer(modifier = Modifier.height(10.dp))
 
-        // ⛰ 정상 도착 테스트 버튼
+        //정상 도착 테스트 버튼
         Button(onClick = onReachClick) {
             Text("정상 도착 테스트", fontSize = 14.sp)
         }
+
     }
 }

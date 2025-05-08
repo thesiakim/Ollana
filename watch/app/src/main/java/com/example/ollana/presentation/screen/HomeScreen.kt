@@ -13,30 +13,38 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ollana.R
-import androidx.wear.compose.material.Scaffold
-import androidx.wear.compose.material.Text
+import androidx.wear.compose.material.*
 
 @Composable
-fun HomeScreen(receivedMessage: String) {
-
+fun HomeScreen(
+    receivedMessage: String,
+    onStopTracking: () -> Unit
+) {
     val isFast = receivedMessage.contains("🐇")
     val isSlow = receivedMessage.contains("🐢")
-    val distanceInfo = receivedMessage.substringAfter(" ").trim() // "+0.3km" 또는 "-0.1km"
+    val isArrived = receivedMessage == "도착"
+    val isStopped = receivedMessage == "종료"
+
+    // 거리 정보만 추출
+    val distanceInfo = receivedMessage.substringAfter(" ").trim()
 
     Scaffold {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black)
-                .padding(8.dp), // 글자 및 이미지 위치를 위로 올림
+                .background(Color.Black),
             contentAlignment = Alignment.TopCenter
         ) {
             Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)  // 👉 간격 조절
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
+                Spacer(modifier = Modifier.height(20.dp))
 
-                // 🐇 or 🐢 이미지
+                // 이미지 표시
                 when {
                     isFast -> {
                         Image(
@@ -55,23 +63,66 @@ fun HomeScreen(receivedMessage: String) {
                             contentScale = ContentScale.Fit
                         )
                     }
+
+                    isStopped -> {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_check), // ✅ 아이콘
+                            contentDescription = "종료",
+                            modifier = Modifier.size(80.dp),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
                 }
 
-                // 거리 차이 텍스트만 보여주기 (ex. "+0.3km", "-0.1km")
-                if (distanceInfo.isNotBlank()) {
-                    Text(
-                        text = distanceInfo,
-                        fontSize = 20.sp,
-                        textAlign = TextAlign.Center
-                    )
-                } else {
-                    // 예외적으로 기타 메시지일 때 출력
-                    Text(
-                        text = receivedMessage,
-                        fontSize = 18.sp,
-                        textAlign = TextAlign.Center,
-                        color = Color.White
-                    )
+                // 거리 차이 or 메시지
+                when {
+                    isFast || isSlow -> {
+                        Text(
+                            text = distanceInfo,
+                            fontSize = 20.sp,
+                            color = Color.White,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
+                    isArrived -> {
+                        Text(
+                            text = "정상 도착!\n트래킹을 종료할까요?",
+                            fontSize = 16.sp,
+                            color = Color.White,
+                            textAlign = TextAlign.Center
+                        )
+
+                        Button(
+                            onClick = onStopTracking,
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp)
+                                .fillMaxWidth(0.8f),
+                            colors = ButtonDefaults.buttonColors(
+                                backgroundColor = Color.Red
+                            )
+                        ) {
+                            Text("트래킹 종료", fontSize = 14.sp, color = Color.White)
+                        }
+                    }
+
+                    isStopped -> {
+                        Text(
+                            text = "트래킹이 종료되었습니다 👏",
+                            fontSize = 16.sp,
+                            color = Color.White,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
+                    else -> {
+                        Text(
+                            text = receivedMessage,
+                            fontSize = 16.sp,
+                            color = Color.White,
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
             }
         }
