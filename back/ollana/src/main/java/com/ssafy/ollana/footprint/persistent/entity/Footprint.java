@@ -4,12 +4,10 @@ import com.ssafy.ollana.common.BaseEntity;
 import com.ssafy.ollana.mountain.persistent.entity.Mountain;
 import com.ssafy.ollana.user.entity.User;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Getter
+@Builder
 @Entity
 @Table(
 		name = "footprint",

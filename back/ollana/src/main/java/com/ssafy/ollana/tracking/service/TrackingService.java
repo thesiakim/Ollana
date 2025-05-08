@@ -21,6 +21,7 @@ import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.locationtech.jts.geom.Coordinate;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +36,7 @@ public class TrackingService {
     private final UserRepository userRepository;
     private final HikingHistoryRepository hikingHistoryRepository;
     private final HikingLiveRecordsRepository hikingLiveRecordsRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
 
 
@@ -213,6 +215,19 @@ public class TrackingService {
                 .toList();
 
         hikingLiveRecordsRepository.saveAll(entityList);
+
+        // 비동기 이벤트 발행
+        List<Integer> heartRates = request.getRecords().stream()
+                                                       .map(BattleRecordsForTrackingResponseDto::getHeartRate)
+                                                       .filter(Objects::nonNull)
+                                                       .toList();
+
+        TrackingFinishedEvent event = new TrackingFinishedEvent(
+                userId, mountain.getId(), path.getId(), request.getFinalTime(), heartRates
+        );
+        eventPublisher.publishEvent(event);
+        log.info("등산 기록 이벤트 발행");
+
         return "등산을 완료했습니다";
     }
 

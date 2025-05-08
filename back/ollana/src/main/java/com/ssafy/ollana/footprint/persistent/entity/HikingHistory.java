@@ -3,12 +3,10 @@ package com.ssafy.ollana.footprint.persistent.entity;
 import com.ssafy.ollana.common.BaseEntity;
 import com.ssafy.ollana.mountain.persistent.entity.Path;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Getter
+@Builder
 @Entity
 @Table(
 		name = "hiking_history",
