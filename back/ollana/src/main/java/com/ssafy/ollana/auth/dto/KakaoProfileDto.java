@@ -15,6 +15,8 @@ public class KakaoProfileDto {
     public static class KakaoAccount {
         private String email;
         private Profile profile;
+        @JsonProperty("profile_image_needs_agreement")
+        private boolean profileImageNeedsAgreement;
 
         @Getter
         @NoArgsConstructor

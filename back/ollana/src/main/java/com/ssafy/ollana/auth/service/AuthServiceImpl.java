@@ -112,14 +112,27 @@ public class AuthServiceImpl implements AuthService {
             return generateAuthTokensAndResponse(user, response);
         } else {
             // 가입 X -> 카카오 정보를 넣은 dto 생성 -> 추가 정보 입력 (프론트) -> 유저 생성(/auth/oauth/kakao/complete)
-            TempUserDto tempUser = TempUserDto.builder()
+            // 필수 동의 항목 (이메일, 닉네임)
+            TempUserDto.TempUserDtoBuilder builder = TempUserDto.builder()
                     .email(kakaoProfileDto.getKakaoAccount().getEmail())
                     .nickname(kakaoProfileDto.getKakaoAccount().getProfile().getNickname())
-                    .profileImage(kakaoProfileDto.getKakaoAccount().getProfile().isDefaultImage()
-                            ? s3Service.getDefaultProfileImageUrl()
-                            : kakaoProfileDto.getKakaoAccount().getProfile().getProfileImageUrl())
-                    .socialLogin(true)
-                    .build();
+                    .socialLogin(true);
+
+            // 선택 동의 (프로필 이미지)
+            // 동의 O
+            if (!kakaoProfileDto.getKakaoAccount().isProfileImageNeedsAgreement()) {
+                // 기본 프로필 이미지 => ollana 기본 프로필 이미지 제공
+                if (kakaoProfileDto.getKakaoAccount().getProfile().isDefaultImage()) {
+                    builder.profileImage(s3Service.getDefaultProfileImageUrl());
+                } else {
+                    builder.profileImage(kakaoProfileDto.getKakaoAccount().getProfile().getProfileImageUrl());
+                }
+            } else {
+                // 동의 X => ollana 기본 프로필 이미지 제공
+                builder.profileImage(s3Service.getDefaultProfileImageUrl());
+            }
+
+            TempUserDto tempUser = builder.build();
 
             throw new AdditionalInfoRequiredException(tempUser);
         }
