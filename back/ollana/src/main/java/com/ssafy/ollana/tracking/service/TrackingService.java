@@ -11,6 +11,7 @@ import com.ssafy.ollana.mountain.persistent.repository.PathRepository;
 import com.ssafy.ollana.mountain.web.dto.response.MountainResponseDto;
 import com.ssafy.ollana.tracking.persistent.repository.HikingLiveRecordsRepository;
 import com.ssafy.ollana.tracking.persistent.entity.HikingLiveRecords;
+import com.ssafy.ollana.tracking.service.exception.AlreadyTrackingException;
 import com.ssafy.ollana.tracking.service.exception.NoNearbyMountainException;
 import com.ssafy.ollana.tracking.web.dto.request.TrackingFinishRequestDto;
 import com.ssafy.ollana.tracking.web.dto.request.TrackingStartRequestDto;
@@ -21,9 +22,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.locationtech.jts.geom.Coordinate;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.*;
 
 @Service
@@ -36,6 +39,10 @@ public class TrackingService {
     private final HikingHistoryRepository hikingHistoryRepository;
     private final HikingLiveRecordsRepository hikingLiveRecordsRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final RedisTemplate<String, String> redisTemplate;
+    private static final String TRACKING_STATUS_KEY_PREFIX = "tracking:";
+
+
 
 
 
@@ -134,7 +141,13 @@ public class TrackingService {
      * 트래킹 시작 요청
      */
     @Transactional(readOnly = true)
-    public TrackingStartResponseDto getTrackingStartInfo(TrackingStartRequestDto request) {
+    public TrackingStartResponseDto getTrackingStartInfo(Integer userId, TrackingStartRequestDto request) {
+        String redisKey = getTrackingStatusKey(userId);
+
+        if (redisTemplate.hasKey(redisKey)) {
+            throw new AlreadyTrackingException();
+        }
+
         Mountain mountain = mountainRepository.findById(request.getMountainId())
                 .orElseThrow(NotFoundException::new);
 
@@ -163,6 +176,8 @@ public class TrackingService {
                     );
             opponentDto = OpponentResponseDto.from(opponent, records);
         }
+
+        redisTemplate.opsForValue().set(redisKey, "ON", Duration.ofHours(24));
 
         return TrackingStartResponseDto.builder()
                 .isNearby(isNearby)
@@ -215,7 +230,11 @@ public class TrackingService {
         eventPublisher.publishEvent(event);
         log.info("등산 기록 이벤트 발행");
 
+        redisTemplate.delete(getTrackingStatusKey(userId));
         return "등산을 완료했습니다";
     }
 
+    private String getTrackingStatusKey(Integer userId) {
+        return TRACKING_STATUS_KEY_PREFIX + userId;
+    }
 }
