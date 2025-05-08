@@ -1,49 +1,64 @@
 package com.example.ollana.presentation.screen
 
-import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.wear.compose.material.Button
-import androidx.wear.compose.material.Text
+import androidx.compose.ui.Alignment
+import androidx.wear.compose.material.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 
 @Composable
 fun TestScreen(
     receivedMessage: String,
     onFastTestClick: () -> Unit,
     onSlowTestClick: () -> Unit,
-    onReachClick: () -> Unit
-
+    onReachClick: () -> Unit,
+    onBadgeClick: () -> Unit
 ) {
-    Column(
+    // Wear OS 전용 스크롤 가능한 컬럼
+    ScalingLazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+            .background(Color.Black), // 배경 어둡게
+        horizontalAlignment = Alignment.CenterHorizontally,
+        contentPadding = PaddingValues(vertical = 24.dp) // 상하 여백 확보
     ) {
-        // 현재 메시지 표시
-        Text(text = receivedMessage, fontSize = 16.sp)
-        Spacer(modifier = Modifier.height(20.dp))
-
-        //빠름 테스트 버튼
-        Button(onClick = onFastTestClick) {
-            Text("🐇 빠름 테스트", fontSize = 14.sp)
-        }
-        Spacer(modifier = Modifier.height(10.dp))
-
-        //느림 테스트 버튼
-        Button(onClick = onSlowTestClick) {
-            Text("🐢 느림 테스트", fontSize = 14.sp)
-        }
-        Spacer(modifier = Modifier.height(10.dp))
-
-        //정상 도착 테스트 버튼
-        Button(onClick = onReachClick) {
-            Text("정상 도착 테스트", fontSize = 14.sp)
+        // 상태 메시지 표시
+        item {
+            Text(
+                text = receivedMessage,
+                fontSize = 14.sp,
+                color = Color.White,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
         }
 
+        // 각 테스트 버튼 항목
+        item {
+            Button(onClick = onFastTestClick) {
+                Text("🐇 빠름 테스트", fontSize = 14.sp)
+            }
+        }
+
+        item {
+            Button(onClick = onSlowTestClick) {
+                Text("🐢 느림 테스트", fontSize = 14.sp)
+            }
+        }
+
+        item {
+            Button(onClick = onReachClick) {
+                Text("⛰ 정상 도착 테스트", fontSize = 14.sp)
+            }
+        }
+
+        item {
+            Button(onClick = onBadgeClick) {
+                Text("🏅 뱃지 테스트", fontSize = 14.sp)
+            }
+        }
     }
 }
