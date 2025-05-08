@@ -5,6 +5,8 @@ import com.ssafy.ollana.mountain.persistent.entity.Path;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.List;
+
 @Getter
 @Builder
 @Entity
@@ -34,4 +36,17 @@ public class HikingHistory extends BaseEntity {
 	private int hikingTime;
 	private double averageHeartRate;
 	private int maxHeartRate;
+
+	public static HikingHistory of(Footprint footprint, Path path, int hikingTime, List<Integer> heartRates) {
+		double avg = heartRates.stream().mapToInt(i -> i).average().orElse(0);
+		int max = heartRates.stream().mapToInt(i -> i).max().orElse(0);
+
+		return HikingHistory.builder()
+				.footprint(footprint)
+				.path(path)
+				.hikingTime(hikingTime)
+				.averageHeartRate(avg)
+				.maxHeartRate(max)
+				.build();
+	}
 }

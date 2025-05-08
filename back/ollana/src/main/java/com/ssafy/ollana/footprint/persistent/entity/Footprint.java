@@ -31,5 +31,13 @@ public class Footprint extends BaseEntity {
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "mountain_id")
 	private Mountain mountain;
+
+	public static Footprint of(User user, Mountain mountain) {
+		return Footprint.builder()
+				.user(user)
+				.mountain(mountain)
+				.build();
+	}
+
 }
 

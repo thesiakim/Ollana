@@ -36,23 +36,11 @@ public class TrackingFinishedEventHandler {
             Path path = pathRepository.findById(event.pathId()).orElseThrow();
 
             Footprint footprint = footprintRepository.findByUserAndMountain(user, mountain)
-                                                     .orElseGet(() -> footprintRepository.save(Footprint.builder()
-                                                                                                    .user(user)
-                                                                                                    .mountain(mountain)
-                                                                                                    .build()));
+                                                     .orElseGet(() -> footprintRepository.save(Footprint.of(user, mountain)));
 
-            double avg = event.heartRates().stream().mapToInt(i -> i).average().orElse(0);
-            int max = event.heartRates().stream().mapToInt(i -> i).max().orElse(0);
-
-            HikingHistory history = HikingHistory.builder()
-                                                 .footprint(footprint)
-                                                 .path(path)
-                                                 .hikingTime(event.finalTime())
-                                                 .averageHeartRate(avg)
-                                                 .maxHeartRate(max)
-                                                 .build();
-
+            HikingHistory history = HikingHistory.of(footprint, path, event.finalTime(), event.heartRates());
             hikingHistoryRepository.save(history);
+            log.info("HikingHistory 저장 성공");
         } catch (Exception e) {
             log.warn("HikingHistory 저장 실패: {}", e.getMessage(), e);
         }
