@@ -11,5 +11,5 @@ public class TrackingStartRequestDto {
     private String mode;
     private Integer opponentId;
     private Double latitude;
-    private Double longtitude;
+    private Double longitude;
 }
