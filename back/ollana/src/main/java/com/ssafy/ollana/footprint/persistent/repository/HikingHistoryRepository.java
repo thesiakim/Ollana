@@ -7,4 +7,6 @@ import java.util.List;
 
 public interface HikingHistoryRepository extends JpaRepository<HikingHistory, Integer>, HikingHistoryRepositoryCustom {
     List<HikingHistory> findAllByFootprintIdOrderByCreatedAtAsc(Integer footprintId);
+
+
 }

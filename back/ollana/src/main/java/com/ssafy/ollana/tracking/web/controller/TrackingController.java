@@ -5,6 +5,7 @@ import com.ssafy.ollana.footprint.web.dto.response.TodayHikingResultResponseDto;
 import com.ssafy.ollana.mountain.web.dto.response.PathResponseDto;
 import com.ssafy.ollana.security.CustomUserDetails;
 import com.ssafy.ollana.tracking.service.TrackingService;
+import com.ssafy.ollana.tracking.web.dto.request.TrackingFinishRequestDto;
 import com.ssafy.ollana.tracking.web.dto.request.TrackingStartRequestDto;
 import com.ssafy.ollana.tracking.web.dto.response.*;
 import lombok.RequiredArgsConstructor;
@@ -89,5 +90,15 @@ public class TrackingController {
     public ResponseEntity<Response<TrackingStartResponseDto>> getTrackingStartInfo(@RequestBody TrackingStartRequestDto request) {
         TrackingStartResponseDto response = trackingService.getTrackingStartInfo(request);
         return ResponseEntity.ok(Response.success(response));
+    }
+
+    /*
+     * 트래킹 종료 요청
+     */
+    @PostMapping("/finish")
+    public ResponseEntity<Response<String>> manageTrackingFinish(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                                                 @RequestBody TrackingFinishRequestDto request) {
+        String message = trackingService.manageTrackingFinish(userDetails.getUser().getId(), request);
+        return ResponseEntity.ok(Response.success(message));
     }
 }

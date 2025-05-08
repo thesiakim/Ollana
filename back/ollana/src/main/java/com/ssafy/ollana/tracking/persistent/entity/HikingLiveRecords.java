@@ -5,19 +5,22 @@ import com.ssafy.ollana.mountain.persistent.entity.Mountain;
 import com.ssafy.ollana.mountain.persistent.entity.Path;
 import com.ssafy.ollana.user.entity.User;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Getter
 @Entity
 @AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Builder
 public class HikingLiveRecords extends BaseEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "hiking_seq")
+    @SequenceGenerator(
+            name = "hiking_seq",
+            sequenceName = "hiking_live_records_seq",
+            allocationSize = 100
+    )
     @Column(name = "hiking_live_records_id")
     private Integer id;
 
@@ -36,6 +39,6 @@ public class HikingLiveRecords extends BaseEntity {
     private int totalTime;
     private double totalDistance;
     private Double latitude;
-    private Double longtitude;
+    private Double longitude;
     private Integer heartRate;
 }
