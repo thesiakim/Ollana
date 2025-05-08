@@ -4,15 +4,15 @@ import com.ssafy.ollana.footprint.persistent.entity.HikingHistory;
 import com.ssafy.ollana.footprint.persistent.repository.HikingHistoryRepository;
 import com.ssafy.ollana.footprint.service.exception.NotFoundException;
 import com.ssafy.ollana.footprint.web.dto.response.TodayHikingResultResponseDto;
-import com.ssafy.ollana.mountain.persistent.entity.Level;
 import com.ssafy.ollana.mountain.persistent.entity.Mountain;
 import com.ssafy.ollana.mountain.persistent.entity.Path;
 import com.ssafy.ollana.mountain.persistent.repository.MountainRepository;
 import com.ssafy.ollana.mountain.persistent.repository.PathRepository;
 import com.ssafy.ollana.mountain.web.dto.response.MountainResponseDto;
-import com.ssafy.ollana.tracking.persistent.HikingLiveRecordsRepository;
+import com.ssafy.ollana.tracking.persistent.repository.HikingLiveRecordsRepository;
 import com.ssafy.ollana.tracking.persistent.entity.HikingLiveRecords;
 import com.ssafy.ollana.tracking.service.exception.NoNearbyMountainException;
+import com.ssafy.ollana.tracking.web.dto.request.TrackingFinishRequestDto;
 import com.ssafy.ollana.tracking.web.dto.request.TrackingStartRequestDto;
 import com.ssafy.ollana.tracking.web.dto.response.*;
 import com.ssafy.ollana.user.entity.User;
@@ -20,15 +20,11 @@ import com.ssafy.ollana.user.repository.UserRepository;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.locationtech.jts.geom.*;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
+import org.locationtech.jts.geom.Coordinate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -39,7 +35,6 @@ public class TrackingService {
     private final UserRepository userRepository;
     private final HikingHistoryRepository hikingHistoryRepository;
     private final HikingLiveRecordsRepository hikingLiveRecordsRepository;
-    private final EntityManager entityManager;
 
 
 
@@ -149,7 +144,7 @@ public class TrackingService {
         boolean isNearby = mountainRepository.isMountainWithin10km(
                 request.getMountainId(),
                 request.getLatitude(),
-                request.getLongtitude()
+                request.getLongitude()
         );
 
         OpponentResponseDto opponentDto = null;
@@ -175,4 +170,50 @@ public class TrackingService {
                 .opponent(opponentDto)
                 .build();
     }
+
+    /*
+     * 트래킹 종료 요청
+     */
+    @Transactional
+    public String manageTrackingFinish(Integer userId, TrackingFinishRequestDto request) {
+        User user = userRepository.findById(userId)
+                                  .orElseThrow(NotFoundException::new);
+        Path path = pathRepository.findById(request.getPathId())
+                                  .orElseThrow(NotFoundException::new);
+        Mountain mountain = mountainRepository.findById(request.getMountainId())
+                                              .orElseThrow(NotFoundException::new);
+
+        // 거리 측정
+        Coordinate end = path.getRoute().getEndPoint().getCoordinate();
+        double endLat = end.y;
+        double endLng = end.x;
+        double userLat = request.getFinalLatitude();
+        double userLng = request.getFinalLongitude();
+        double distance = TrackingUtils.calculateDistance(endLat, endLng, userLat, userLng);
+
+        if (distance > 300) {
+            return "등반하시는 코스의 마지막 지점까지 도착하지 않았습니다";
+        }
+
+        // 기존 데이터가 존재할 경우 삭제
+        hikingLiveRecordsRepository.deleteByUserAndMountainAndPath(user, mountain, path);
+
+        // 새 데이터 저장
+        List<HikingLiveRecords> entityList = request.getRecords().stream()
+                .map(dto -> HikingLiveRecords.builder()
+                                             .user(user)
+                                             .mountain(mountain)
+                                             .path(path)
+                                             .totalTime(dto.getTime())
+                                             .totalDistance(dto.getDistance())
+                                             .latitude(dto.getLatitude())
+                                             .longitude(dto.getLongitude())
+                                             .heartRate(dto.getHeartRate())
+                                             .build())
+                .toList();
+
+        hikingLiveRecordsRepository.saveAll(entityList);
+        return "등산을 완료했습니다";
+    }
+
 }
