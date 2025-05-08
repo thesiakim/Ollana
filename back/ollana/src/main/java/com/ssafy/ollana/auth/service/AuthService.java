@@ -1,5 +1,6 @@
 package com.ssafy.ollana.auth.service;
 
+import com.ssafy.ollana.auth.dto.request.KakaoSignupRequestDto;
 import com.ssafy.ollana.auth.dto.request.LoginRequestDto;
 import com.ssafy.ollana.auth.dto.request.SignupRequestDto;
 import com.ssafy.ollana.auth.dto.response.AccessTokenResponseDto;
@@ -13,4 +14,6 @@ public interface AuthService {
     LoginResponseDto login(LoginRequestDto request, HttpServletResponse response);
     void logout(HttpServletRequest request, HttpServletResponse response);
     AccessTokenResponseDto refreshToken(HttpServletRequest request);
+    LoginResponseDto kakaoLogin(String accessCode, HttpServletResponse response);
+    LoginResponseDto saveKakaoUserAndLogin(KakaoSignupRequestDto request, HttpServletResponse response);
 }

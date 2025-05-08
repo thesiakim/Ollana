@@ -1,9 +1,14 @@
 package com.ssafy.ollana.auth.service;
 
+import com.ssafy.ollana.auth.dto.KakaoProfileDto;
+import com.ssafy.ollana.auth.dto.KakaoTokenDto;
+import com.ssafy.ollana.auth.dto.TempUserDto;
+import com.ssafy.ollana.auth.dto.request.KakaoSignupRequestDto;
 import com.ssafy.ollana.auth.dto.request.LoginRequestDto;
 import com.ssafy.ollana.auth.dto.request.SignupRequestDto;
 import com.ssafy.ollana.auth.dto.response.AccessTokenResponseDto;
 import com.ssafy.ollana.auth.dto.response.LoginResponseDto;
+import com.ssafy.ollana.auth.exception.AdditionalInfoRequiredException;
 import com.ssafy.ollana.auth.exception.AuthenticationException;
 import com.ssafy.ollana.user.exception.NicknameAlreadyExistsException;
 import com.ssafy.ollana.auth.exception.RefreshTokenException;
@@ -23,6 +28,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Optional;
+
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
@@ -33,6 +40,7 @@ public class AuthServiceImpl implements AuthService {
     private final UserService userService;
     private final TokenService tokenService;
     private final S3Service s3Service;
+    private final KakaoService kakaoService;
 
     @Override
     @Transactional
@@ -84,28 +92,53 @@ public class AuthServiceImpl implements AuthService {
             throw AuthenticationException.passwordMismatch();
         }
 
-        // JWT 토큰 생성
-        String accessToken = jwtUtil.createAccessToken(user.getEmail());
-        String refreshToken = jwtUtil.createRefreshToken(user.getEmail());
+        return generateAuthTokensAndResponse(user, response);
+    }
 
-        // 리프레시 토큰 레디스 저장
-        tokenService.saveRefreshToken(user.getEmail(), refreshToken);
+    @Override
+    @Transactional(readOnly = true)
+    public LoginResponseDto kakaoLogin(String accessCode, HttpServletResponse response) {
+        // kakao 에 access token 요청
+        KakaoTokenDto kakaoTokenDto = kakaoService.getAccessToken(accessCode);
+        // kakao 에 사용자 정보 요청
+        KakaoProfileDto kakaoProfileDto = kakaoService.getKakaoProfile(kakaoTokenDto);
 
-        // refreshToken을 HTTP-only 쿠키로 설정
-        Cookie refreshCookie = new Cookie("refreshToken", refreshToken);
-        refreshCookie.setHttpOnly(true);  // JavaScript에서 접근 불가
-        refreshCookie.setSecure(true);    // HTTPS에서만 전송
-        refreshCookie.setPath("/");       // 모든 경로에서 접근 가능
-        refreshCookie.setMaxAge((int) (jwtUtil.getRefreshTokenExpiration() / 1000)); // 초 단위로 변환
-        response.addCookie(refreshCookie); // 쿠키를 응답에 추가
+        // user 가입 여부 확인
+        Optional<User> userOpt = userRepository.findByEmail(kakaoProfileDto.getKakaoAccount().getEmail());
 
-        LoginResponseDto loginResponse = LoginResponseDto.builder()
-                .accessToken(accessToken)
-                .user(userService.getUserInfo(user))
-                .latestRecord(userService.getLatestRecord(user))
+        // 이미 가입된 유저 -> 로그인
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            return generateAuthTokensAndResponse(user, response);
+        } else {
+            // 가입 X -> 카카오 정보를 넣은 dto 생성 -> 추가 정보 입력 (프론트) -> 유저 생성(/auth/oauth/kakao/complete)
+            TempUserDto tempUser = TempUserDto.builder()
+                    .email(kakaoProfileDto.getKakaoAccount().getEmail())
+                    .nickname(kakaoProfileDto.getKakaoAccount().getProfile().getNickname())
+                    .profileImage(kakaoProfileDto.getKakaoAccount().getProfile().isDefaultImage()
+                            ? s3Service.getDefaultProfileImageUrl()
+                            : kakaoProfileDto.getKakaoAccount().getProfile().getProfileImageUrl())
+                    .isSocial(true)
+                    .build();
+
+            throw new AdditionalInfoRequiredException(tempUser);
+        }
+    }
+
+    @Override
+    @Transactional
+    public LoginResponseDto saveKakaoUserAndLogin(KakaoSignupRequestDto request, HttpServletResponse response) {
+        User newUser = User.builder()
+                .email(request.getEmail())
+                .nickname(request.getNickname())
+                .birth(request.getBirth())
+                .gender(Gender.valueOf(request.getGender()))
+                .profileImage(request.getProfileImage())
+                .isSocial(request.isSocial())
                 .build();
+        userRepository.save(newUser);
 
-        return loginResponse;
+        return generateAuthTokensAndResponse(newUser, response);
     }
 
     @Override
@@ -180,5 +213,31 @@ public class AuthServiceImpl implements AuthService {
             return header.substring(7);
         }
         return null;
+    }
+
+    // 로그인
+    private LoginResponseDto generateAuthTokensAndResponse(User user, HttpServletResponse response) {
+        // JWT 토큰 생성
+        String accessToken = jwtUtil.createAccessToken(user.getEmail());
+        String refreshToken = jwtUtil.createRefreshToken(user.getEmail());
+
+        // 리프레시 토큰 레디스 저장
+        tokenService.saveRefreshToken(user.getEmail(), refreshToken);
+
+        // refreshToken을 HTTP-only 쿠키로 설정
+        Cookie refreshCookie = new Cookie("refreshToken", refreshToken);
+        refreshCookie.setHttpOnly(true);  // JavaScript에서 접근 불가
+        refreshCookie.setSecure(true);    // HTTPS에서만 전송
+        refreshCookie.setPath("/");       // 모든 경로에서 접근 가능
+        refreshCookie.setMaxAge((int) (jwtUtil.getRefreshTokenExpiration() / 1000)); // 초 단위로 변환
+        response.addCookie(refreshCookie); // 쿠키를 응답에 추가
+
+        LoginResponseDto loginResponse = LoginResponseDto.builder()
+                .accessToken(accessToken)
+                .user(userService.getUserInfo(user))
+                .latestRecord(userService.getLatestRecord(user))
+                .build();
+
+        return loginResponse;
     }
 }
