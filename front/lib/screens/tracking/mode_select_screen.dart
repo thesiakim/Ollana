@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/app_state.dart';
 import '../../services/mode_service.dart';
+import 'friend_search_screen.dart';
 
 class ModeSelectScreen extends StatefulWidget {
   const ModeSelectScreen({super.key});
@@ -15,6 +16,13 @@ class ModeSelectScreen extends StatefulWidget {
 }
 
 class _ModeSelectScreenState extends State<ModeSelectScreen> {
+  // 친구 검색 상태 변수들 제거
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
@@ -104,7 +112,12 @@ class _ModeSelectScreenState extends State<ModeSelectScreen> {
                         '친구와 경쟁하며 등산해보세요! 친구의 기록과 실시간으로 비교됩니다.',
                         Icons.people,
                         Colors.green,
-                        () => appState.startTracking('나 vs 친구'),
+                        () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const FriendSearchScreen(),
+                          ),
+                        ),
                       ),
 
                       // 나 vs AI추천 모드
@@ -221,7 +234,8 @@ class _ModeSelectScreenState extends State<ModeSelectScreen> {
                         ),
                         child: const Center(
                           child: Text(
-                            '기록이 없습니다',
+                            '기록이 없습니다\n일반모드를 선택해 주세요',
+                            textAlign: TextAlign.center,
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
@@ -230,14 +244,13 @@ class _ModeSelectScreenState extends State<ModeSelectScreen> {
                         ),
                       ),
 
-                      // 시작하기 버튼
+                      // 확인 버튼으로 변경
                       Container(
                         margin: const EdgeInsets.only(top: 20),
                         width: double.infinity,
                         child: ElevatedButton(
                           onPressed: () {
                             Navigator.of(context).pop();
-                            appState.startTracking('나 vs 나');
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blue,
@@ -247,7 +260,7 @@ class _ModeSelectScreenState extends State<ModeSelectScreen> {
                             ),
                           ),
                           child: const Text(
-                            '시작하기',
+                            '확인',
                             style: TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
@@ -447,7 +460,8 @@ class _ModeSelectScreenState extends State<ModeSelectScreen> {
                       ),
                       child: const Center(
                         child: Text(
-                          '기록이 없습니다',
+                          '기록이 없습니다\n일반모드를 선택해 주세요',
+                          textAlign: TextAlign.center,
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
@@ -456,14 +470,13 @@ class _ModeSelectScreenState extends State<ModeSelectScreen> {
                       ),
                     ),
 
-                    // 시작하기 버튼
+                    // 확인 버튼으로 변경
                     Container(
                       margin: const EdgeInsets.only(top: 20),
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () {
                           Navigator.of(context).pop();
-                          appState.startTracking('나 vs 나');
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blue,
@@ -473,7 +486,7 @@ class _ModeSelectScreenState extends State<ModeSelectScreen> {
                           ),
                         ),
                         child: const Text(
-                          '시작하기',
+                          '확인',
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
