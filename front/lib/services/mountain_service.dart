@@ -90,13 +90,21 @@ class MountainService {
 
   /// 주변 산 및 등산로 조회
   Future<MountainWithRoutes> getNearbyMountains(
-      double latitude, double longitude) async {
+      double latitude, double longitude,
+      [String? token]) async {
     final uri = Uri.parse(
         '$_baseUrl/tracking/mountains/nearby?lat=$latitude&lng=$longitude');
     try {
-      final response = await _client.get(uri, headers: {
+      final headers = {
         'Accept': 'application/json',
-      });
+      };
+
+      // 토큰이 있으면 인증 헤더 추가
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      final response = await _client.get(uri, headers: headers);
 
       if (response.statusCode == 200) {
         final body = utf8.decode(response.bodyBytes);
@@ -114,12 +122,19 @@ class MountainService {
   }
 
   /// 전체 산 및 등산로 조회
-  Future<MountainWithRoutes> getMountainRoutes() async {
+  Future<MountainWithRoutes> getMountainRoutes([String? token]) async {
     final uri = Uri.parse('$_baseUrl/tracking/mountains');
     try {
-      final response = await _client.get(uri, headers: {
+      final headers = {
         'Accept': 'application/json',
-      });
+      };
+
+      // 토큰이 있으면 인증 헤더 추가
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      final response = await _client.get(uri, headers: headers);
 
       if (response.statusCode == 200) {
         final body = utf8.decode(response.bodyBytes);
@@ -136,23 +151,23 @@ class MountainService {
     }
   }
 
-  /// 산 이름으로 검색 (★토큰을 인자로 받도록 수정된 부분)
+  /// 산 이름으로 검색 (토큰을 인자로 받도록 수정된 부분)
   Future<List<Mountain>> searchMountains(String query, String token) async {
-    // ★시그니처에 token 추가
+    // 시그니처에 token 추가
     if (query.isEmpty) {
       return [];
     }
 
     final uri = Uri.parse('$_baseUrl/tracking/search?mtn=$query');
-    debugPrint('★ [searchMountains] URI: $uri'); // ★디버그 로그
-    debugPrint('★ [searchMountains] Token: $token'); // ★디버그 로그
+    debugPrint('[searchMountains] URI: $uri');
+    debugPrint('[searchMountains] Token: $token');
 
     try {
       final response = await _client.get(
         uri,
         headers: {
           'Accept': 'application/json',
-          'Authorization': 'Bearer $token', // ★헤더에 토큰 사용
+          'Authorization': 'Bearer $token', // 헤더에 토큰 사용
         },
       );
 
@@ -223,7 +238,7 @@ class MountainService {
       }
       return [];
     } catch (e) {
-      debugPrint('★ [searchMountains] Exception: $e'); // ★
+      debugPrint('[searchMountains] Exception: $e');
       return [];
     }
   }
@@ -234,7 +249,8 @@ class MountainService {
   }
 
   /// 선택한 산의 상세 정보 및 등산로 조회 (기존 로직 유지)
-  Future<MountainWithRoutes> getMountainByName(String mountainName) async {
+  Future<MountainWithRoutes> getMountainByName(String mountainName,
+      [String? token]) async {
     if (mountainName.isEmpty) {
       throw Exception('산 이름이 비어있습니다');
     }
@@ -242,9 +258,16 @@ class MountainService {
     final uri =
         Uri.parse('$_baseUrl/tracking/search/results?mtn=$mountainName');
     try {
-      final response = await _client.get(uri, headers: {
+      final headers = {
         'Accept': 'application/json',
-      });
+      };
+
+      // 토큰이 있으면 인증 헤더 추가
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      final response = await _client.get(uri, headers: headers);
 
       if (response.statusCode == 200) {
         final body = utf8.decode(response.bodyBytes);
@@ -359,12 +382,20 @@ class MountainService {
   }
 
   /// 산 ID로 상세 정보 및 등산로 조회
-  Future<MountainWithRoutes> getMountainById(num mountainId) async {
+  Future<MountainWithRoutes> getMountainById(num mountainId,
+      [String? token]) async {
     final uri = Uri.parse('$_baseUrl/tracking/search/mountain/$mountainId');
     try {
-      final response = await _client.get(uri, headers: {
+      final headers = {
         'Accept': 'application/json',
-      });
+      };
+
+      // 토큰이 있으면 인증 헤더 추가
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      final response = await _client.get(uri, headers: headers);
 
       if (response.statusCode == 200) {
         final body = utf8.decode(response.bodyBytes);
