@@ -133,8 +133,8 @@ public class TrackingService {
         List<FriendInfoResponseDto> friends = userRepository.searchFriends(nickname, mountainId, pathId);
 
         return FriendListResponseDto.builder()
-                .users(friends)
-                .build();
+                                    .users(friends)
+                                    .build();
     }
 
     /*
@@ -178,13 +178,7 @@ public class TrackingService {
         }
 
         redisTemplate.opsForValue().set(redisKey, "ON", Duration.ofHours(24));
-
-        return TrackingStartResponseDto.builder()
-                .isNearby(isNearby)
-                .mountain(MountainLocationResponseDto.from(mountain))
-                .path(PathForTrackingResponseDto.from(path))
-                .opponent(opponentDto)
-                .build();
+        return TrackingStartResponseDto.from(isNearby, mountain, path, opponentDto);
     }
 
     /*
