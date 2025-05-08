@@ -87,8 +87,9 @@ public class TrackingController {
      * 트래킹 시작 요청
      */
     @GetMapping("/start")
-    public ResponseEntity<Response<TrackingStartResponseDto>> getTrackingStartInfo(@RequestBody TrackingStartRequestDto request) {
-        TrackingStartResponseDto response = trackingService.getTrackingStartInfo(request);
+    public ResponseEntity<Response<TrackingStartResponseDto>> getTrackingStartInfo(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                                                                   @RequestBody TrackingStartRequestDto request) {
+        TrackingStartResponseDto response = trackingService.getTrackingStartInfo(userDetails.getUser().getId(), request);
         return ResponseEntity.ok(Response.success(response));
     }
 

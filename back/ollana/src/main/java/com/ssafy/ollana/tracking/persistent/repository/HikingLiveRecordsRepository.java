@@ -14,5 +14,4 @@ public interface HikingLiveRecordsRepository extends JpaRepository<HikingLiveRec
     );
     List<HikingLiveRecords> findByUserAndMountainAndPath(User user, Mountain mountain, Path path);
     void deleteByUserAndMountainAndPath(User user, Mountain mountain, Path path);
-
 }
