@@ -2,6 +2,7 @@ package com.ssafy.ollana.tracking.web.controller;
 
 import com.ssafy.ollana.common.util.Response;
 import com.ssafy.ollana.footprint.web.dto.response.TodayHikingResultResponseDto;
+import com.ssafy.ollana.mountain.web.dto.response.PathResponseDto;
 import com.ssafy.ollana.security.CustomUserDetails;
 import com.ssafy.ollana.tracking.service.TrackingService;
 import com.ssafy.ollana.tracking.web.dto.request.TrackingStartRequestDto;
@@ -89,9 +90,4 @@ public class TrackingController {
         TrackingStartResponseDto response = trackingService.getTrackingStartInfo(request);
         return ResponseEntity.ok(Response.success(response));
     }
-
-
-
-
-
 }

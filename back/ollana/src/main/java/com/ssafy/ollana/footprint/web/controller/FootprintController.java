@@ -17,7 +17,7 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/back-api/footprint")
+@RequestMapping("/footprint")
 public class FootprintController {
 
     private final FootprintService footprintService;
