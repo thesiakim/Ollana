@@ -228,10 +228,17 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
   void _setupSearchListener() {
     _searchFocusNode.addListener(() {
       if (_searchFocusNode.hasFocus) {
-        // 포커스 얻으면 빈 검색어로 시작
+        // 포커스 얻으면 검색 상태로 변경
         setState(() {
-          _filteredMountains = _allMountains;
           _isSearching = true;
+          // 검색어가 비어있을 때는 빈 결과 표시
+          if (_searchController.text.isEmpty) {
+            _filteredMountains = [];
+          } else if (_filteredMountains.isEmpty) {
+            // 검색어가 있지만 결과가 없는 경우 새로 검색 요청
+            _searchMountains(_searchController.text);
+            return; // 검색 요청 후 리턴하여 아래 _showSearchResults() 호출 방지
+          }
         });
         _showSearchResults();
       } else {
@@ -254,45 +261,31 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
   void _searchMountains(String query) async {
     if (query.isEmpty) {
       setState(() {
-        _filteredMountains = _allMountains;
+        _filteredMountains = []; // 빈 검색어일 때는 빈 결과 표시
       });
       return;
     }
 
+    setState(() => _isLoading = true);
     try {
-      final mountains = await _mountainService.searchMountains(query);
+      // ★ AppState에서 토큰 꺼내기
+      final token = context.read<AppState>().accessToken ?? '';
+
+      // ★ 수정된 서비스 호출: query와 token 전달
+      final mountains = await _mountainService.searchMountains(query, token);
 
       if (!mounted) return;
-
       setState(() {
         _filteredMountains = mountains;
-
-        if (_searchFocusNode.hasFocus) {
-          // 이미 오버레이가 있으면 업데이트, 없으면 생성
-          if (_overlayEntry != null) {
-            _updateOverlay();
-          } else {
-            _showSearchResults();
-          }
-        }
+        _isLoading = false;
       });
     } catch (e) {
-      debugPrint("산 검색 오류: $e");
-
-      // 오류가 발생해도 UI가 업데이트되도록 처리
-      if (mounted) {
+      debugPrint('산 검색 오류: $e');
+      if (mounted)
         setState(() {
           _filteredMountains = [];
-
-          if (_searchFocusNode.hasFocus) {
-            if (_overlayEntry != null) {
-              _updateOverlay();
-            } else {
-              _showSearchResults();
-            }
-          }
+          _isLoading = false;
         });
-      }
     }
   }
 
@@ -367,6 +360,14 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
                                 fontSize: 14,
                               ),
                             ),
+                            subtitle: Text(
+                              mountain.location,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
                             trailing: Text(
                               '${mountain.height}m',
                               style: TextStyle(
@@ -411,11 +412,12 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
     _removeOverlay();
 
     // 검색 결과에서 선택한 산의 상세 정보 가져오기
-    _loadSelectedMountainData(mountain.name);
+    _loadSelectedMountainData(mountain.id, mountain.name);
   }
 
   // 검색 결과에서 선택한 산의 상세 정보 가져오기
-  Future<void> _loadSelectedMountainData(String mountainName) async {
+  Future<void> _loadSelectedMountainData(
+      num mountainId, String mountainName) async {
     // 지도를 다시 생성하기 위한 설정
     _shouldRebuildMap = true;
 
@@ -428,7 +430,7 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
 
     try {
       // 선택한 산의 상세 정보를 새 API로 가져오기
-      final data = await _mountainService.getMountainByName(mountainName);
+      final data = await _mountainService.getMountainById(mountainId);
       debugPrint(
           '산 데이터 수신 성공: ${data.mountain.name}, 등산로 수: ${data.routes.length}');
 
@@ -474,7 +476,7 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
 
       // 오류 발생 시 기존 방식으로 데이터 로드 시도
       _loadRouteData(Mountain(
-        id: '',
+        id: 0,
         name: mountainName,
         location: '',
         height: 0,
@@ -940,11 +942,11 @@ class _RouteMapWidgetState extends State<RouteMapWidget> {
 
     // 산 ID에 따라 다른 초기 위치 반환
     switch (widget.mountain!.id) {
-      case 'm1': // 북한산
+      case 1: // 북한산
         return NLatLng(37.6584, 126.9443);
-      case 'm2': // 설악산
+      case 2: // 설악산
         return NLatLng(38.1200, 128.4700);
-      case 'm3': // 지리산
+      case 3: // 지리산
         return NLatLng(35.3300, 127.7200);
       default:
         // 기본 위치 (서울)

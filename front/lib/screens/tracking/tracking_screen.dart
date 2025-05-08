@@ -169,8 +169,8 @@ class _IntegratedMountainRouteScreenState
       // HikingRoute 객체 생성
       final routeData = _routes[_selectedRouteIndex];
       final route = HikingRoute(
-        id: 'r${_selectedRouteIndex + 1}',
-        mountainId: 'm1', // 산 ID 추가
+        id: _selectedRouteIndex + 1,
+        mountainId: 1, // 산 ID 추가 (숫자로 변경)
         name: routeData['name'],
         difficulty: routeData['difficulty'],
         distance:

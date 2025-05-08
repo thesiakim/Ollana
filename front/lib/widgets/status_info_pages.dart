@@ -1,6 +1,6 @@
 // status_info_pages.dart
 // - 사용자 상태 정보 페이지 위젯들
-// - FirstStatusInfo: 첫 번째 상태 정보 페이지 (무등산 정보)
+// - FirstStatusInfo: 첫 번째 상태 정보 페이지 (등산 지수)
 // - SecondStatusInfo: 두 번째 상태 정보 페이지 (한라산 성장 일지)
 
 import 'package:flutter/material.dart';
@@ -10,102 +10,43 @@ class FirstStatusInfo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, constraints) {
-      // 사용 가능한 공간에 따라 크기 조절
-      double fontSize = constraints.maxHeight < 150 ? 11.0 : 13.0; // 폰트 크기 더 줄임
-      double spacing = constraints.maxHeight < 150 ? 2.0 : 2.0; // 간격 더 줄임
-
-      return Column(
+    return Center(
+      child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 등산 버튼 - 자동 크기 조절
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(
-                height: 24, // 버튼 높이 고정
-                width: 80,
-                child: ElevatedButton(
-                  onPressed: () {
-                    debugPrint('이전 등산 기록 버튼 클릭');
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 6, vertical: 2), // 패딩 더 줄임
-                    textStyle: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold), // 폰트 크기 더 줄임
-                    minimumSize: Size.zero, // 최소 크기 제약 제거
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap, // 탭 영역 축소
-                  ),
-                  child: const Text('이전 등산 기록'),
+        children: const [
+          Text(
+            '등산지수',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              shadows: [
+                Shadow(
+                  color: Colors.black26,
+                  offset: Offset(2, 2),
+                  blurRadius: 4,
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-
-          const SizedBox(height: 10), // 간격 줄임
-
-          // 등산 정보
-          Expanded(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.zero, // 패딩 제거
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '무등산',
-                    style: TextStyle(
-                      fontSize: fontSize,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[800],
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
-                  Text(
-                    '(25.04.23)',
-                    style: TextStyle(
-                      fontSize: fontSize - 1,
-                      color: Colors.grey[600],
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
-                  SizedBox(height: spacing),
-                  Text(
-                    '내 등산 거리: 3km',
-                    style: TextStyle(
-                      color: Colors.grey[700],
-                      fontSize: fontSize - 1,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
-                  SizedBox(height: spacing),
-                  Text(
-                    '내 등산 시간: 2h 40m',
-                    style: TextStyle(
-                      color: Colors.grey[700],
-                      fontSize: fontSize - 1,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
-                ],
-              ),
+          SizedBox(height: 8),
+          Text(
+            '78',
+            style: TextStyle(
+              fontSize: 48,
+              fontWeight: FontWeight.bold,
+              color: Colors.green,
+              shadows: [
+                Shadow(
+                  color: Colors.black26,
+                  offset: Offset(2, 2),
+                  blurRadius: 6,
+                ),
+              ],
             ),
           ),
         ],
-      );
-    });
+      ),
+    );
   }
 }
 
@@ -116,20 +57,20 @@ class SecondStatusInfo extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, constraints) {
       // 사용 가능한 공간에 따라 크기 조절
-      double fontSize = constraints.maxHeight < 150 ? 11.0 : 13.0; // 폰트 크기 더 줄임
-      double spacing = constraints.maxHeight < 150 ? 2.0 : 2.0; // 간격 더 줄임
-      double iconSize = constraints.maxHeight < 150 ? 8.0 : 10.0; // 아이콘 크기 더 줄임
+      double fontSize = constraints.maxHeight < 150 ? 11.0 : 13.0;
+      double spacing = constraints.maxHeight < 150 ? 2.0 : 2.0;
+      double iconSize = constraints.maxHeight < 150 ? 8.0 : 10.0;
 
       return Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 등산 성장 일지 버튼 - 자동 크기 조절
+          // 등산 성장 일지 버튼
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               SizedBox(
-                height: 24, // 버튼 높이 고정
+                height: 24,
                 width: 80,
                 child: ElevatedButton(
                   onPressed: () {
@@ -141,13 +82,12 @@ class SecondStatusInfo extends StatelessWidget {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 6, vertical: 2), // 패딩 더 줄임
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     textStyle: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold), // 폰트 크기 더 줄임
-                    minimumSize: Size.zero, // 최소 크기 제약 제거
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap, // 탭 영역 축소
+                        fontSize: 10, fontWeight: FontWeight.bold),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                   child: const Text('등산 성장 일지'),
                 ),
@@ -155,12 +95,12 @@ class SecondStatusInfo extends StatelessWidget {
             ],
           ),
 
-          const SizedBox(height: 10), // 간격 줄임
+          const SizedBox(height: 10),
 
           // 성장 정보
           Expanded(
             child: SingleChildScrollView(
-              padding: EdgeInsets.zero, // 패딩 제거
+              padding: EdgeInsets.zero,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
