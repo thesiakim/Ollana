@@ -69,11 +69,4 @@ public class AuthController {
         LoginResponseDto loginResponseDto = authService.saveKakaoUserAndLogin(request, response);
         return ResponseEntity.ok(Response.success(loginResponseDto));
     }
-
-    // 리프레시 토큰으로 새로운 액세스 토큰 생성
-    @PostMapping("/refresh")
-    public ResponseEntity<Response<AccessTokenResponseDto>> refreshToken(HttpServletRequest request) {
-        AccessTokenResponseDto response = authService.refreshToken(request);
-        return ResponseEntity.ok(Response.success(response));
-    }
 }
