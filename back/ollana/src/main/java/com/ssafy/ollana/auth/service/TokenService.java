@@ -60,4 +60,15 @@ public class TokenService {
         String key = "PRT:" + userEmail;
         redisTemplate.delete(key);
     }
+
+    // redis 블랙리스트 저장
+    public void blacklistAccessToken(String accessToken, long expirationMillis) {
+        String key = "BL:" + accessToken;
+        redisTemplate.opsForValue().set(key, "logout", expirationMillis, TimeUnit.MILLISECONDS);
+    }
+
+    // 블랙리스트에 있는지 확인
+    public boolean isBlacklisted(String accessToken) {
+        return redisTemplate.hasKey("BL:" + accessToken);
+    }
 }

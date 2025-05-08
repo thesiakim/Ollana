@@ -31,7 +31,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // JWT 토큰 추출
         String accessToken = getAccessTokenFromRequest(request);
 
-        if (accessToken != null) {
+        if (accessToken != null && !tokenService.isBlacklisted(accessToken)) {
             // 토큰 유효성 검사
             if (jwtUtil.validateToken(accessToken)) {
                 setAuthentication(accessToken);

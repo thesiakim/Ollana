@@ -1,5 +1,6 @@
 package com.ssafy.ollana.security.config;
 
+import com.ssafy.ollana.auth.service.TokenService;
 import com.ssafy.ollana.security.jwt.JwtAuthenticationFilter;
 import com.ssafy.ollana.security.jwt.JwtUtil;
 import com.ssafy.ollana.user.service.CustomUserDetailsService;
@@ -24,6 +25,7 @@ public class SecurityConfig {
 
     private final JwtUtil jwtUtil;
     private final CustomUserDetailsService customUserDetailsService;
+    private final TokenService tokenService;
 
     // 비밀번호 암호화
     @Bean
@@ -40,7 +42,7 @@ public class SecurityConfig {
     // JWT 필터 등록
     @Bean
     public JwtAuthenticationFilter jwtAuthenticationFilter() {
-        return new JwtAuthenticationFilter(jwtUtil, customUserDetailsService);
+        return new JwtAuthenticationFilter(jwtUtil, customUserDetailsService, tokenService);
     }
 
     @Bean
