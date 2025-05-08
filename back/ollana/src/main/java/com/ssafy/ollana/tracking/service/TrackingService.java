@@ -154,7 +154,7 @@ public class TrackingService {
         Path path = pathRepository.findById(request.getPathId())
                 .orElseThrow(NotFoundException::new);
 
-        // 선택한 산이 사용자 현 위치를 기준으로 반경 10km 이내에 존재하는지 검증
+        // 선택한 산이 사용자 현 위치를 기준으로 반경 15km 이내에 존재하는지 검증
         boolean isNearby = mountainRepository.isMountainWithin10km(
                 request.getMountainId(),
                 request.getLatitude(),

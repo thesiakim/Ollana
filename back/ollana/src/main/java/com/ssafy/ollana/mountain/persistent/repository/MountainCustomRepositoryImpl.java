@@ -21,7 +21,7 @@ public class MountainCustomRepositoryImpl implements MountainCustomRepository {
             WHERE ST_DWithin(
                 ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography,
                 geom::geography,
-                10000
+                15000
             )
             ORDER BY ST_Distance(
                 ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography,
@@ -46,7 +46,7 @@ public class MountainCustomRepositoryImpl implements MountainCustomRepository {
           AND ST_DWithin(
               ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography,
               geom::geography,
-              10000
+              15000
           )
     """;
 
