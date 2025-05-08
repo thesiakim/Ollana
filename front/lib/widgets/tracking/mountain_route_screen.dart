@@ -660,53 +660,9 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
       body: _isLoading || (_selectedMountain == null && !_isSearching)
           ? const Center(child: CircularProgressIndicator())
           : _isSearching && _selectedMountain == null
-              ? _buildMountainList()
+              ? const Center(child: Text('검색 결과가 없습니다.'))
               : _buildRouteContent(),
     );
-  }
-
-  // 산 목록 화면
-  Widget _buildMountainList() {
-    return _isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : _filteredMountains.isEmpty
-            ? const Center(child: Text('검색 결과가 없습니다.'))
-            : ListView.builder(
-                itemCount: _filteredMountains.length,
-                itemBuilder: (context, index) {
-                  final mountain = _filteredMountains[index];
-                  final isSelected = _selectedMountain?.id == mountain.id;
-
-                  return Card(
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 12.0,
-                      vertical: 4.0,
-                    ),
-                    child: ListTile(
-                      title: Text(
-                        mountain.name,
-                        style: TextStyle(
-                          fontWeight:
-                              isSelected ? FontWeight.bold : FontWeight.normal,
-                        ),
-                      ),
-                      subtitle: Text(mountain.location),
-                      trailing: Text(
-                        '${mountain.height}m',
-                        style: TextStyle(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      selected: isSelected,
-                      selectedTileColor: AppColors.primary.withAlpha(20),
-                      onTap: () {
-                        _loadRouteData(mountain);
-                      },
-                    ),
-                  );
-                },
-              );
   }
 
   // 등산로 목록 및 시각화 화면
