@@ -83,6 +83,13 @@ public class JwtUtil {
         }
     }
 
+    // 토큰 남은 시간 계산
+    public long getTokenRemainingTime(String token) {
+        Claims claims = getClaims(token);
+        Date expiration = claims.getExpiration();
+        return expiration.getTime() - System.currentTimeMillis();
+    }
+
     // 클레임 추출
     public Claims getClaims(String token) {
         return Jwts.parserBuilder()
