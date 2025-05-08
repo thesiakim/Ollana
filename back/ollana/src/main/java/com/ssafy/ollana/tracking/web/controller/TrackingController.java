@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/back-api/tracking")
+@RequestMapping("/tracking")
 @Slf4j
 public class TrackingController {
 
@@ -90,25 +90,4 @@ public class TrackingController {
         TrackingStartResponseDto response = trackingService.getTrackingStartInfo(request);
         return ResponseEntity.ok(Response.success(response));
     }
-
-
-    @GetMapping("/nearest-path")
-    public ResponseEntity<Response<PathForTrackingResponseDto>> getNearestPath(
-            @RequestParam double lat,
-            @RequestParam double lng
-    ) {
-        PathForTrackingResponseDto result = trackingService.findNearestPath(lat, lng);
-        return ResponseEntity.ok(Response.success(result));
-    }
-
-    @PostMapping("/moo")
-    public String moo() {
-        trackingService.moo();
-        return "완료";
-    }
-
-
-
-
-
 }
