@@ -34,7 +34,6 @@ class ModeService {
         final jsonData = jsonDecode(body);
 
         return MeVsMe.fromJson(jsonData['data']);
-        
       } else {
         debugPrint('MeVsMe API 오류: ${response.statusCode}');
         return null;
