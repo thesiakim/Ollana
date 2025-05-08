@@ -17,7 +17,6 @@ import com.ssafy.ollana.tracking.web.dto.request.TrackingStartRequestDto;
 import com.ssafy.ollana.tracking.web.dto.response.*;
 import com.ssafy.ollana.user.entity.User;
 import com.ssafy.ollana.user.repository.UserRepository;
-import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.locationtech.jts.geom.Coordinate;
@@ -200,20 +199,8 @@ public class TrackingService {
         // 기존 데이터가 존재할 경우 삭제
         hikingLiveRecordsRepository.deleteByUserAndMountainAndPath(user, mountain, path);
 
-        // 새 데이터 저장
-        List<HikingLiveRecords> entityList = request.getRecords().stream()
-                .map(dto -> HikingLiveRecords.builder()
-                                             .user(user)
-                                             .mountain(mountain)
-                                             .path(path)
-                                             .totalTime(dto.getTime())
-                                             .totalDistance(dto.getDistance())
-                                             .latitude(dto.getLatitude())
-                                             .longitude(dto.getLongitude())
-                                             .heartRate(dto.getHeartRate())
-                                             .build())
-                .toList();
-
+        // 데이터 저장
+        List<HikingLiveRecords> entityList = TrackingUtils.toEntities(request.getRecords(), user, mountain, path);
         hikingLiveRecordsRepository.saveAll(entityList);
 
         // 비동기 이벤트 발행
