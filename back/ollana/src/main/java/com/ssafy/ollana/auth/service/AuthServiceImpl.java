@@ -118,7 +118,6 @@ public class AuthServiceImpl implements AuthService {
                     .profileImage(kakaoProfileDto.getKakaoAccount().getProfile().isDefaultImage()
                             ? s3Service.getDefaultProfileImageUrl()
                             : kakaoProfileDto.getKakaoAccount().getProfile().getProfileImageUrl())
-                    .kakaoId(kakaoProfileDto.getId())
                     .isSocial(true)
                     .build();
 
@@ -135,7 +134,6 @@ public class AuthServiceImpl implements AuthService {
                 .birth(request.getBirth())
                 .gender(Gender.valueOf(request.getGender()))
                 .profileImage(request.getProfileImage())
-                .kakaoId(request.getKakaoId())
                 .isSocial(request.isSocial())
                 .build();
         userRepository.save(newUser);

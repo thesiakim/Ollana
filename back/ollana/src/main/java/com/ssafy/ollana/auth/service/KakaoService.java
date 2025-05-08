@@ -36,14 +36,14 @@ public class KakaoService {
         headers.add("Content-Type", "application/x-www-form-urlencoded;charset=UTF-8");
 
         // 바디
-        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-        params.add("grant_type", "authorization_code");
-        params.add("client_id", client);
-        params.add("redirect_uri", redirect);
-        params.add("code", accessCode);
+        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+        body.add("grant_type", "authorization_code");
+        body.add("client_id", client);
+        body.add("redirect_uri", redirect);
+        body.add("code", accessCode);
 
         // 헤더, 바디 연결
-        HttpEntity<MultiValueMap<String, String>> kakaoTokenRequest = new HttpEntity<>(params, headers);
+        HttpEntity<MultiValueMap<String, String>> kakaoTokenRequest = new HttpEntity<>(body, headers);
 
         // request 통해서 response 받아오기
         ResponseEntity<String> response = restTemplate.exchange(
@@ -53,6 +53,8 @@ public class KakaoService {
                 String.class
         );
 
+        System.out.println("request access token response = " + response);
+
         // response -> dto
         KakaoTokenDto kakaoTokenDto = null;
         try {
@@ -60,6 +62,9 @@ public class KakaoService {
         } catch (JsonProcessingException e) {
             throw new KakaoResponseParsingException();
         }
+
+        System.out.println("kakaoTokenDto = " + kakaoTokenDto.toString());
+        System.out.println("accessToken = " + kakaoTokenDto.getAccessToken());
 
         return kakaoTokenDto;
     }
@@ -71,6 +76,8 @@ public class KakaoService {
         headers.add("Content-Type", "application/x-www-form-urlencoded;charset=UTF-8");
         headers.add("Authorization", "Bearer " + kakaoTokenDto.getAccessToken());
 
+        System.out.println("사용자 정보 가져오기 accessToken = " + kakaoTokenDto.getAccessToken());
+
         HttpEntity<MultiValueMap<String, String>> kakaoProfileRequest = new HttpEntity<>(headers);
 
         // request 통해서 response 받아오기
@@ -81,6 +88,8 @@ public class KakaoService {
                 String.class
         );
 
+        System.out.println("request user information response = " + response);
+
         // response -> dto
         KakaoProfileDto kakaoProfileDto = null;
         try {
@@ -88,6 +97,10 @@ public class KakaoService {
         } catch (JsonProcessingException e) {
             throw new KakaoResponseParsingException();
         }
+
+        System.out.println("kakaoProfileDto = " + kakaoProfileDto.toString());
+        System.out.println("kakaoAccount = " + kakaoProfileDto.getKakaoAccount().toString());
+        System.out.println("profile = " + kakaoProfileDto.getKakaoAccount().getProfile().toString());
 
         return kakaoProfileDto;
     }
