@@ -4,6 +4,7 @@ import com.ssafy.ollana.footprint.persistent.entity.HikingHistory;
 import com.ssafy.ollana.footprint.persistent.repository.HikingHistoryRepository;
 import com.ssafy.ollana.footprint.service.exception.NotFoundException;
 import com.ssafy.ollana.footprint.web.dto.response.TodayHikingResultResponseDto;
+import com.ssafy.ollana.mountain.persistent.entity.Level;
 import com.ssafy.ollana.mountain.persistent.entity.Mountain;
 import com.ssafy.ollana.mountain.persistent.entity.Path;
 import com.ssafy.ollana.mountain.persistent.repository.MountainRepository;
@@ -16,11 +17,18 @@ import com.ssafy.ollana.tracking.web.dto.request.TrackingStartRequestDto;
 import com.ssafy.ollana.tracking.web.dto.response.*;
 import com.ssafy.ollana.user.entity.User;
 import com.ssafy.ollana.user.repository.UserRepository;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.locationtech.jts.geom.*;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.List;
+
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +39,9 @@ public class TrackingService {
     private final UserRepository userRepository;
     private final HikingHistoryRepository hikingHistoryRepository;
     private final HikingLiveRecordsRepository hikingLiveRecordsRepository;
+    private final EntityManager entityManager;
+
+
 
     /*
      * 사용자 위치 인식 후 가장 가까운 산 반환
@@ -38,16 +49,16 @@ public class TrackingService {
     @Transactional(readOnly = true)
     public NearestMountainResponseDto findNearestMountain(double lat, double lng) {
         Mountain mountain = mountainRepository.findNearestMountain(lat, lng)
-                                              .orElseThrow(NoNearbyMountainException::new);
+                .orElseThrow(NoNearbyMountainException::new);
 
         List<Path> paths = pathRepository.findByMountainId(mountain.getId());
 
         return NearestMountainResponseDto.builder()
-                                         .mountain(MountainResponseDto.from(mountain))
-                                         .paths(paths.stream()
-                                                  .map(PathForTrackingResponseDto::from)
-                                                  .toList())
-                                         .build();
+                .mountain(MountainResponseDto.from(mountain))
+                .paths(paths.stream()
+                        .map(PathForTrackingResponseDto::from)
+                        .toList())
+                .build();
     }
 
     /*
@@ -71,13 +82,13 @@ public class TrackingService {
                     List<Path> paths = pathRepository.findByMountainId(mountain.getId());
 
                     return MountainSearchListResponseDto.builder()
-                                                     .mountain(MountainAddressResponseDto.from(mountain))
-                                                     .paths(paths.stream()
-                                                            .map(PathForTrackingResponseDto::from)
-                                                            .toList())
-                                                     .build();
+                            .mountain(MountainAddressResponseDto.from(mountain))
+                            .paths(paths.stream()
+                                    .map(PathForTrackingResponseDto::from)
+                                    .toList())
+                            .build();
                 })
-                            .toList();
+                .toList();
 
         return MountainSearchResponseDto.from(results);
     }
@@ -88,7 +99,7 @@ public class TrackingService {
     @Transactional(readOnly = true)
     public MountainSearchListResponseDto getMountainSelectResult(Integer mountainId) {
         Mountain mountain = mountainRepository.findById(mountainId)
-                                              .orElseThrow(NotFoundException::new);
+                .orElseThrow(NotFoundException::new);
 
         List<Path> paths = pathRepository.findByMountainId(mountainId);
 
@@ -106,7 +117,7 @@ public class TrackingService {
     @Transactional(readOnly = true)
     public TodayHikingResultResponseDto getHikingRecord(Integer userId, Integer mountainId, Integer pathId) {
         HikingHistory history = hikingHistoryRepository.findLatestRecord(userId, mountainId, pathId)
-                                                       .orElseThrow(NotFoundException::new);
+                .orElseThrow(NotFoundException::new);
 
         return TodayHikingResultResponseDto.from(history);
     }
@@ -129,31 +140,31 @@ public class TrackingService {
     @Transactional(readOnly = true)
     public TrackingStartResponseDto getTrackingStartInfo(TrackingStartRequestDto request) {
         Mountain mountain = mountainRepository.findById(request.getMountainId())
-                                              .orElseThrow(NotFoundException::new);
+                .orElseThrow(NotFoundException::new);
 
         Path path = pathRepository.findById(request.getPathId())
-                                  .orElseThrow(NotFoundException::new);
+                .orElseThrow(NotFoundException::new);
 
         // 선택한 산이 사용자 현 위치를 기준으로 반경 10km 이내에 존재하는지 검증
         boolean isNearby = mountainRepository.isMountainWithin10km(
-                                                    request.getMountainId(),
-                                                    request.getLatitude(),
-                                                    request.getLongtitude()
-                                            );
+                request.getMountainId(),
+                request.getLatitude(),
+                request.getLongtitude()
+        );
 
         OpponentResponseDto opponentDto = null;
 
         // 일반 모드일 때는 대결 상대 데이터를 조회하지 않음
         if (!"GENERAL".equals(request.getMode()) && request.getOpponentId() != null) {
             User opponent = userRepository.findById(request.getOpponentId())
-                                          .orElseThrow(NotFoundException::new);
+                    .orElseThrow(NotFoundException::new);
 
-        List<HikingLiveRecords> records = hikingLiveRecordsRepository
-                .findByUserIdAndMountainIdAndPathIdOrderByTotalTimeAsc(
-                        request.getOpponentId(),
-                        request.getMountainId(),
-                        request.getPathId()
-                );
+            List<HikingLiveRecords> records = hikingLiveRecordsRepository
+                    .findByUserIdAndMountainIdAndPathIdOrderByTotalTimeAsc(
+                            request.getOpponentId(),
+                            request.getMountainId(),
+                            request.getPathId()
+                    );
             opponentDto = OpponentResponseDto.from(opponent, records);
         }
 
@@ -164,6 +175,4 @@ public class TrackingService {
                 .opponent(opponentDto)
                 .build();
     }
-
-
 }
