@@ -5,6 +5,8 @@ import com.ssafy.ollana.auth.dto.request.EmailVerifyRequestDto;
 import com.ssafy.ollana.auth.exception.EmailCodeExpiredException;
 import com.ssafy.ollana.auth.exception.InvalidEmailCodeException;
 import com.ssafy.ollana.auth.exception.MailSendException;
+import com.ssafy.ollana.user.exception.DuplicateEmailException;
+import com.ssafy.ollana.user.repository.UserRepository;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
@@ -27,10 +29,17 @@ public class MailService {
 
     private final JavaMailSender mailSender;
     private final RedisTemplate<String, String> redisTemplate;
+    private final UserRepository userRepository;
 
     // 이메일 인증 코드 메일 전송
     public void sendMail(EmailSendRequestDto request) {
         String recipientEmail = request.getEmail();
+
+        // 이미 가입된 이메일인지 확인
+        if (userRepository.existsByEmail(recipientEmail)) {
+            throw new DuplicateEmailException();
+        }
+
         int code = createCode();
         MimeMessage message = createMail(recipientEmail, code);
 
