@@ -761,26 +761,9 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                       locOverlay.setIsVisible(true);
                     }
 
-                    // 모드에 따라 추적 모드 확인 및 재설정
-                    // 토글 중이 아닐 때만 수행하여 충돌 방지
+                    // 모드에 따라 추적 모드 확인 및 재설정 (비동기 처리를 위해 별도 함수 호출)
                     if (!_isToggling) {
-                      if (_isNavigationMode) {
-                        // 네비게이션 모드인데 추적 모드가 face가 아니면 재설정
-                        if (_mapController!.getLocationTrackingMode() !=
-                            NLocationTrackingMode.face) {
-                          _mapController!.setLocationTrackingMode(
-                              NLocationTrackingMode.face);
-                          debugPrint('네비게이션 모드로 추적 모드 재설정 (Face)');
-                        }
-                      } else {
-                        // 전체 맵 모드인데 추적 모드가 noFollow가 아니면 재설정
-                        if (_mapController!.getLocationTrackingMode() !=
-                            NLocationTrackingMode.noFollow) {
-                          _mapController!.setLocationTrackingMode(
-                              NLocationTrackingMode.noFollow);
-                          debugPrint('전체 맵 모드로 추적 모드 재설정 (NoFollow)');
-                        }
-                      }
+                      _checkAndUpdateTrackingMode();
                     }
                   } catch (e) {
                     debugPrint('위치 오버레이/추적 모드 확인 중 오류: $e');
@@ -1549,5 +1532,30 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
     }
 
     return newHeading;
+  }
+
+  // 위치 추적 모드를 확인하고 필요하면 업데이트하는 별도 함수
+  Future<void> _checkAndUpdateTrackingMode() async {
+    if (_mapController == null) return;
+
+    try {
+      final currentMode = await _mapController!.getLocationTrackingMode();
+      if (_isNavigationMode) {
+        // 네비게이션 모드인데 추적 모드가 face가 아니면 재설정
+        if (currentMode != NLocationTrackingMode.face) {
+          _mapController!.setLocationTrackingMode(NLocationTrackingMode.face);
+          debugPrint('네비게이션 모드로 추적 모드 재설정 (Face)');
+        }
+      } else {
+        // 전체 맵 모드인데 추적 모드가 noFollow가 아니면 재설정
+        if (currentMode != NLocationTrackingMode.noFollow) {
+          _mapController!
+              .setLocationTrackingMode(NLocationTrackingMode.noFollow);
+          debugPrint('전체 맵 모드로 추적 모드 재설정 (NoFollow)');
+        }
+      }
+    } catch (e) {
+      debugPrint('추적 모드 확인/재설정 중 비동기 오류: $e');
+    }
   }
 }
