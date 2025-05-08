@@ -117,6 +117,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
 
   // 디바이스 방향 (나침반 방향)
   double _deviceHeading = 0.0;
+  double _lastAppliedHeading = 0.0; // 마지막으로 적용된 방향
+  static const double _minHeadingChangeForUpdate = 1.0; // 업데이트를 위한 최소 방향 변화 (도)
 
   // 최고/평균 심박수
   int _maxHeartRate = 120;
@@ -161,6 +163,9 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   // 위치 버튼 클릭 처리를 위한 변수
   bool _isLocationButtonProcessing = false;
   int _pendingLocationClicks = 0; // 대기 중인 위치 버튼 클릭 수
+
+  // 카메라 이동 중인지 확인하는 플래그
+  bool _isMovingToCurrentLocation = false;
 
   @override
   void initState() {
@@ -1112,6 +1117,10 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
       if (_mapController != null) {
         if (_isNavigationMode) {
           debugPrint('네비게이션 모드 활성화');
+
+          // 카메라 이동 중 플래그 설정 - 방향 회전 방지
+          _isMovingToCurrentLocation = true;
+
           // 네비게이션 모드 활성화: 현재 위치 중심, 3D 기울기 적용
           // 현재 보고 있는 방향(디바이스 방향 또는 이동 방향) 적용
           await _mapController!.updateCamera(
@@ -1122,6 +1131,10 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
               tilt: 50.0,
             ),
           );
+
+          // 이동 완료 후 방향 기준점 재설정 및 이동 플래그 해제
+          _lastAppliedHeading = _deviceHeading;
+          _isMovingToCurrentLocation = false;
         } else {
           // 네비게이션 모드 비활성화: 전체 경로 조망
           final bounds = await compute(
@@ -1147,6 +1160,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
       }
     } catch (e) {
       debugPrint('네비게이션 모드 전환 오류: $e');
+      // 오류 발생 시 이동 플래그 초기화
+      _isMovingToCurrentLocation = false;
     } finally {
       // 토글 완료
       if (mounted) {
@@ -1200,6 +1215,9 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
     }
 
     try {
+      // 카메라 이동 중 플래그 설정
+      _isMovingToCurrentLocation = true;
+
       // debugPrint('카메라를 현재 위치로 이동합니다: $_currentLat, $_currentLng');
 
       // 카메라를 현재 위치로 이동
@@ -1208,7 +1226,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
         NCameraUpdate.withParams(
           target: NLatLng(_currentLat, _currentLng),
           zoom: 17,
-          // tilt: 50,
+          tilt: _isNavigationMode ? 50 : 0,
+          bearing: _isNavigationMode ? _deviceHeading : 0,
         ),
       )
           .then((_) {
@@ -1217,17 +1236,25 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
 
         // 모든 클릭 처리 완료
         _isLocationButtonProcessing = false;
+
+        // 이동이 완료되면 이동 중 플래그 해제
+        _isMovingToCurrentLocation = false;
+
+        // 이동 후에는 마지막 적용 방향을 현재 방향과 동기화 (움직이지 않는 효과)
+        _lastAppliedHeading = _deviceHeading;
       }).catchError((error) {
         debugPrint('카메라 업데이트 오류: $error');
         // 오류 발생 시 처리 완료
         _pendingLocationClicks = 0;
         _isLocationButtonProcessing = false;
+        _isMovingToCurrentLocation = false;
       });
     } catch (e) {
       debugPrint('위치 버튼 처리 중 오류: $e');
       // 오류 발생 시 처리 완료
       _pendingLocationClicks = 0;
       _isLocationButtonProcessing = false;
+      _isMovingToCurrentLocation = false;
     }
   }
 
@@ -1240,14 +1267,38 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
 
         // 유효한 방향 데이터가 있을 때만 업데이트
         if (event.heading != null) {
+          // 현재 방향 저장
+          final newHeading = event.heading!;
+
+          // 방향 변화량 계산 (절대값)
+          final double headingChange = (newHeading - _lastAppliedHeading).abs();
+          // 360도 근처에서의 방향 변화 특별 처리 (예: 355도 -> 5도)
+          final double circularHeadingChange =
+              math.min(headingChange, 360 - headingChange);
+
           setState(() {
-            _deviceHeading = event.heading!;
-            // debugPrint('디바이스 방향: $_deviceHeading°');
+            _deviceHeading = newHeading;
           });
 
-          // 네비게이션 모드이고 디바이스 방향을 따라가는 설정인 경우 카메라 회전
-          if (_isNavigationMode && _mapController != null) {
-            // 네비게이션 모드이고 디바이스 방향을 따라가는 설정인 경우 카메라 회전
+          // 네비게이션 모드이고 방향 변화가 충분할 때만 카메라 회전
+          // 그리고 현재 위치로 이동 중이 아닐 때만 방향 갱신
+          if (_isNavigationMode &&
+              _mapController != null &&
+              circularHeadingChange >= _minHeadingChangeForUpdate &&
+              !_isMovingToCurrentLocation) {
+            // 현재 위치에 초점을 맞추고 카메라를 디바이스 방향으로 회전
+            _mapController!
+                .updateCamera(
+              NCameraUpdate.withParams(
+                target: NLatLng(_currentLat, _currentLng),
+                bearing: _deviceHeading,
+                tilt: 50,
+              ),
+            )
+                .then((_) {
+              // 성공적으로 적용된 경우 마지막 적용 방향 업데이트
+              _lastAppliedHeading = _deviceHeading;
+            });
           }
         }
       });
