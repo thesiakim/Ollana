@@ -618,26 +618,16 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
 
           // 경로 업데이트와 베어링은 UI 상태 변경 후에 수행
 
-          // 네비게이션 모드일 경우 카메라 위치 업데이트
-          if (_mapController != null) {
-            // 네비게이션 모드에서만 방향과 틸트를 적용
-            if (_isNavigationMode) {
-              _mapController!.updateCamera(
-                NCameraUpdate.withParams(
-                  target: NLatLng(_currentLat, _currentLng),
-                  zoom: 17,
-                  tilt: 50,
-                ),
-              );
-            } else {
-              // 일반 모드에서는 위치만 업데이트 (방향과 틸트 없음)
-              _mapController!.updateCamera(
-                NCameraUpdate.withParams(
-                  target: NLatLng(_currentLat, _currentLng),
-                  zoom: 15,
-                ),
-              );
-            }
+          // 네비게이션 모드일 경우에만 카메라 위치 업데이트
+          // 전체 맵 보기 모드에서는 카메라를 자동으로 이동시키지 않음
+          if (_mapController != null && _isNavigationMode) {
+            _mapController!.updateCamera(
+              NCameraUpdate.withParams(
+                target: NLatLng(_currentLat, _currentLng),
+                zoom: 17,
+                tilt: 50,
+              ),
+            );
           }
 
           // AppState 업데이트
@@ -667,9 +657,16 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
     if (_mapController == null) return;
 
     try {
-      // face 모드로 설정 - 아이콘이 방향에 따라 회전
-      _mapController!.setLocationTrackingMode(NLocationTrackingMode.face);
-      debugPrint('위치 추적 모드가 활성화되었습니다 (Face 모드)');
+      // 모드에 따라 다른 추적 모드 설정
+      if (_isNavigationMode) {
+        // 네비게이션 모드는 face 모드로 설정 (방향에 따라 회전)
+        _mapController!.setLocationTrackingMode(NLocationTrackingMode.face);
+        debugPrint('위치 추적 모드가 활성화되었습니다 (Face 모드)');
+      } else {
+        // 전체 맵 보기 모드는 NoFollow로 설정 (현재 위치는 표시하되 카메라는 이동하지 않음)
+        _mapController!.setLocationTrackingMode(NLocationTrackingMode.noFollow);
+        debugPrint('위치 추적 모드가 활성화되었습니다 (NoFollow 모드)');
+      }
     } catch (e) {
       debugPrint('위치 추적 모드 설정 중 오류 발생: $e');
     }
@@ -754,10 +751,22 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                 // 위치 오버레이 항상 보이게 하기 위한 타이머 설정
                 _locationOverlayTimer =
                     Timer.periodic(const Duration(seconds: 1), (_) {
-                  // 정기적으로 위치 오버레이가 보이는지 확인하고 필요하면 다시 표시
-                  if (!locOverlay.isVisible) {
-                    debugPrint('위치 오버레이가 보이지 않아 다시 표시합니다.');
-                    locOverlay.setIsVisible(true);
+                  if (_mapController == null) return;
+
+                  try {
+                    // 정기적으로 위치 오버레이가 보이는지 확인하고 필요하면 다시 표시
+                    final locOverlay = _mapController!.getLocationOverlay();
+                    if (!locOverlay.isVisible) {
+                      debugPrint('위치 오버레이가 보이지 않아 다시 표시합니다.');
+                      locOverlay.setIsVisible(true);
+                    }
+
+                    // 모드에 따라 추적 모드 확인 및 재설정 (비동기 처리를 위해 별도 함수 호출)
+                    if (!_isToggling) {
+                      _checkAndUpdateTrackingMode();
+                    }
+                  } catch (e) {
+                    debugPrint('위치 오버레이/추적 모드 확인 중 오류: $e');
                   }
                 });
 
@@ -1233,6 +1242,19 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
           // 이동 완료 후 방향 기준점 재설정 및 이동 플래그 해제
           _lastAppliedHeading = _deviceHeading;
           _isMovingToCurrentLocation = false;
+
+          // 모드 변경 후 일정 시간 후 다시 한번 추적 모드 확인
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted && _mapController != null && _isNavigationMode) {
+              try {
+                _mapController!
+                    .setLocationTrackingMode(NLocationTrackingMode.face);
+                debugPrint('네비게이션 모드 추적 모드 재확인');
+              } catch (e) {
+                debugPrint('추적 모드 재설정 오류: $e');
+              }
+            }
+          });
         } else {
           // 위치 추적 모드를 noFollow로 설정 (방향 회전 없음)
           await _mapController!
@@ -1258,6 +1280,19 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
             NCameraUpdate.withParams(tilt: 0, bearing: 0),
           );
           debugPrint('전체 지도 모드 카메라 설정 완료');
+
+          // 모드 변경 후 일정 시간 후 다시 한번 추적 모드 확인
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted && _mapController != null && !_isNavigationMode) {
+              try {
+                _mapController!
+                    .setLocationTrackingMode(NLocationTrackingMode.noFollow);
+                debugPrint('전체 맵 모드 추적 모드 재확인');
+              } catch (e) {
+                debugPrint('추적 모드 재설정 오류: $e');
+              }
+            }
+          });
         }
       }
     } catch (e) {
@@ -1497,5 +1532,30 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
     }
 
     return newHeading;
+  }
+
+  // 위치 추적 모드를 확인하고 필요하면 업데이트하는 별도 함수
+  Future<void> _checkAndUpdateTrackingMode() async {
+    if (_mapController == null) return;
+
+    try {
+      final currentMode = await _mapController!.getLocationTrackingMode();
+      if (_isNavigationMode) {
+        // 네비게이션 모드인데 추적 모드가 face가 아니면 재설정
+        if (currentMode != NLocationTrackingMode.face) {
+          _mapController!.setLocationTrackingMode(NLocationTrackingMode.face);
+          debugPrint('네비게이션 모드로 추적 모드 재설정 (Face)');
+        }
+      } else {
+        // 전체 맵 모드인데 추적 모드가 noFollow가 아니면 재설정
+        if (currentMode != NLocationTrackingMode.noFollow) {
+          _mapController!
+              .setLocationTrackingMode(NLocationTrackingMode.noFollow);
+          debugPrint('전체 맵 모드로 추적 모드 재설정 (NoFollow)');
+        }
+      }
+    } catch (e) {
+      debugPrint('추적 모드 확인/재설정 중 비동기 오류: $e');
+    }
   }
 }
