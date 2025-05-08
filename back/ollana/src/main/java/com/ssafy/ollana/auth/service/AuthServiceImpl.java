@@ -118,7 +118,7 @@ public class AuthServiceImpl implements AuthService {
                     .profileImage(kakaoProfileDto.getKakaoAccount().getProfile().isDefaultImage()
                             ? s3Service.getDefaultProfileImageUrl()
                             : kakaoProfileDto.getKakaoAccount().getProfile().getProfileImageUrl())
-                    .isSocial(true)
+                    .socialLogin(true)
                     .build();
 
             throw new AdditionalInfoRequiredException(tempUser);
