@@ -6,12 +6,10 @@ import com.ssafy.ollana.auth.dto.TempUserDto;
 import com.ssafy.ollana.auth.dto.request.KakaoSignupRequestDto;
 import com.ssafy.ollana.auth.dto.request.LoginRequestDto;
 import com.ssafy.ollana.auth.dto.request.SignupRequestDto;
-import com.ssafy.ollana.auth.dto.response.AccessTokenResponseDto;
 import com.ssafy.ollana.auth.dto.response.LoginResponseDto;
 import com.ssafy.ollana.auth.exception.AdditionalInfoRequiredException;
 import com.ssafy.ollana.auth.exception.AuthenticationException;
 import com.ssafy.ollana.user.exception.NicknameAlreadyExistsException;
-import com.ssafy.ollana.auth.exception.RefreshTokenException;
 import com.ssafy.ollana.common.s3.service.S3Service;
 import com.ssafy.ollana.security.jwt.JwtUtil;
 import com.ssafy.ollana.user.entity.User;
@@ -174,36 +172,7 @@ public class AuthServiceImpl implements AuthService {
         response.addCookie(cookie); // 삭제용 쿠키를 응답에 추가
     }
 
-    @Override
-    public AccessTokenResponseDto refreshToken(HttpServletRequest request) {
-        String refreshToken = extractRefreshTokenFromCookie(request);
 
-        if (refreshToken == null) {
-            throw RefreshTokenException.notFound();
-        }
-
-        // 토큰 유효성 검사
-        if (!jwtUtil.validateToken(refreshToken)) {
-            throw RefreshTokenException.invalid();
-        }
-
-        // 토큰에서 userEmail 추출
-        String userEmail = jwtUtil.getUserEmailFromToken(refreshToken);
-
-        // redis에 저장된 리프레시 토큰과 비교
-        if (!tokenService.validateRefreshToken(userEmail, refreshToken)) {
-            throw RefreshTokenException.mismatch();
-        }
-
-        // 새로운 액세스 토큰 발급
-        String newAccessToken = jwtUtil.createAccessToken(userEmail);
-
-        AccessTokenResponseDto response = AccessTokenResponseDto.builder()
-                .accessToken(newAccessToken)
-                .build();
-
-        return response;
-    }
 
 
     // 쿠키에서 리프레시 토큰 추출

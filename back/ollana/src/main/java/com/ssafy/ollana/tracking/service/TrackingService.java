@@ -11,6 +11,8 @@ import com.ssafy.ollana.mountain.persistent.repository.PathRepository;
 import com.ssafy.ollana.mountain.web.dto.response.MountainResponseDto;
 import com.ssafy.ollana.tracking.persistent.repository.HikingLiveRecordsRepository;
 import com.ssafy.ollana.tracking.persistent.entity.HikingLiveRecords;
+import com.ssafy.ollana.tracking.service.exception.AlreadyTrackingException;
+import com.ssafy.ollana.tracking.service.exception.InvalidTrackingException;
 import com.ssafy.ollana.tracking.service.exception.NoNearbyMountainException;
 import com.ssafy.ollana.tracking.web.dto.request.TrackingFinishRequestDto;
 import com.ssafy.ollana.tracking.web.dto.request.TrackingStartRequestDto;
@@ -21,9 +23,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.locationtech.jts.geom.Coordinate;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.*;
 
 @Service
@@ -36,7 +40,8 @@ public class TrackingService {
     private final HikingHistoryRepository hikingHistoryRepository;
     private final HikingLiveRecordsRepository hikingLiveRecordsRepository;
     private final ApplicationEventPublisher eventPublisher;
-
+    private final RedisTemplate<String, String> redisTemplate;
+    private static final String TRACKING_STATUS_KEY_PREFIX = "tracking:";
 
 
     /*
@@ -126,22 +131,29 @@ public class TrackingService {
         List<FriendInfoResponseDto> friends = userRepository.searchFriends(nickname, mountainId, pathId);
 
         return FriendListResponseDto.builder()
-                .users(friends)
-                .build();
+                                    .users(friends)
+                                    .build();
     }
 
     /*
      * 트래킹 시작 요청
      */
     @Transactional(readOnly = true)
-    public TrackingStartResponseDto getTrackingStartInfo(TrackingStartRequestDto request) {
+    public TrackingStartResponseDto getTrackingStartInfo(Integer userId, TrackingStartRequestDto request) {
+
+        // 등산 중인지 검증
+        String redisKey = getTrackingStatusKey(userId);
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(redisKey))) {
+            throw new AlreadyTrackingException();
+        }
+
         Mountain mountain = mountainRepository.findById(request.getMountainId())
                 .orElseThrow(NotFoundException::new);
 
         Path path = pathRepository.findById(request.getPathId())
                 .orElseThrow(NotFoundException::new);
 
-        // 선택한 산이 사용자 현 위치를 기준으로 반경 10km 이내에 존재하는지 검증
+        // 선택한 산이 사용자 현 위치를 기준으로 반경 15km 이내에 존재하는지 검증
         boolean isNearby = mountainRepository.isMountainWithin10km(
                 request.getMountainId(),
                 request.getLatitude(),
@@ -164,12 +176,11 @@ public class TrackingService {
             opponentDto = OpponentResponseDto.from(opponent, records);
         }
 
-        return TrackingStartResponseDto.builder()
-                .isNearby(isNearby)
-                .mountain(MountainLocationResponseDto.from(mountain))
-                .path(PathForTrackingResponseDto.from(path))
-                .opponent(opponentDto)
-                .build();
+        // redis에 등산 상태 저장
+        String redisValue = request.getMountainId() + ":" + request.getPathId();
+        redisTemplate.opsForValue().set(redisKey, redisValue, Duration.ofHours(24));
+
+        return TrackingStartResponseDto.from(isNearby, mountain, path, opponentDto);
     }
 
     /*
@@ -177,6 +188,16 @@ public class TrackingService {
      */
     @Transactional
     public String manageTrackingFinish(Integer userId, TrackingFinishRequestDto request) {
+
+        // 등산 중인지 + 그 산의 등산로를 등산 중인지 검증
+        String redisKey = getTrackingStatusKey(userId);
+        String redisValue = (String) redisTemplate.opsForValue().get(redisKey);
+
+        String expectedValue = request.getMountainId() + ":" + request.getPathId();
+        if (redisValue == null || !redisValue.equals(expectedValue)) {
+            throw new InvalidTrackingException();
+        }
+
         User user = userRepository.findById(userId)
                                   .orElseThrow(NotFoundException::new);
         Path path = pathRepository.findById(request.getPathId())
@@ -215,7 +236,11 @@ public class TrackingService {
         eventPublisher.publishEvent(event);
         log.info("등산 기록 이벤트 발행");
 
+        redisTemplate.delete(getTrackingStatusKey(userId));
         return "등산을 완료했습니다";
     }
 
+    private String getTrackingStatusKey(Integer userId) {
+        return TRACKING_STATUS_KEY_PREFIX + userId;
+    }
 }
