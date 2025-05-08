@@ -82,6 +82,7 @@ flutter:
     - lib/assets/images/cablecar.jpg
     - lib/assets/images/spring.jpg
     - lib/assets/images/seed.png
+    - lib/assets/images/up-arrow.png
     - .env
 
   # An image asset can refer to one or more resolution-specific "variants", see
