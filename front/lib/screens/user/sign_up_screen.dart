@@ -11,7 +11,7 @@ import '../../models/app_state.dart';
 import 'package:http_parser/http_parser.dart';
 
 class SignUpScreen extends StatefulWidget {
-  const SignUpScreen({Key? key}) : super(key: key);
+  const SignUpScreen({super.key});
 
   @override
   State<SignUpScreen> createState() => _SignUpScreenState();

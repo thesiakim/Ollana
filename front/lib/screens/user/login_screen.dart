@@ -9,7 +9,7 @@ import '../../models/app_state.dart';
 import './sign_up_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -39,6 +39,11 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = true;
       _errorMsg = null;
     });
+
+    // 비동기 작업 전에 필요한 값 캡처
+    final appState = context.read<AppState>();
+    final navigator = Navigator.of(context);
+
     debugPrint('⏳ [Login] 네트워크 요청 중...');
 
     try {
@@ -64,6 +69,8 @@ class _LoginScreenState extends State<LoginScreen> {
       final data = jsonDecode(bodyString);
       debugPrint('💾 [Login] 파싱된 데이터: $data');
 
+      if (!mounted) return;
+
       if (response.statusCode == 200 && data['status'] == true) {
         final accessToken = data['data']['accessToken'];
         debugPrint('🔑 [Login] accessToken: $accessToken');
@@ -77,10 +84,11 @@ class _LoginScreenState extends State<LoginScreen> {
         debugPrint('⏳ [Login] accessToken 만료 시각: $expiryA');
 
         // 🔥 토큰 저장 및 로그인 상태 설정
-        await context.read<AppState>().setToken(accessToken);
+        await appState.setToken(accessToken);
         debugPrint('🗝️ [Login] 토큰 저장 및 로그인 완료');
 
-        Navigator.of(context).pop();
+        if (!mounted) return;
+        navigator.pop();
         debugPrint('↩️ [Login] 화면 닫기');
       } else {
         final message = data['message'] ?? '로그인에 실패했습니다.';
@@ -91,9 +99,11 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       debugPrint('🚨 [Login] 예외 발생: $e');
-      setState(() {
-        _errorMsg = '네트워크 오류가 발생했습니다.';
-      });
+      if (mounted) {
+        setState(() {
+          _errorMsg = '네트워크 오류가 발생했습니다.';
+        });
+      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
