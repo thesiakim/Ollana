@@ -118,7 +118,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   // 디바이스 방향 (나침반 방향)
   double _deviceHeading = 0.0;
   double _lastAppliedHeading = 0.0; // 마지막으로 적용된 방향
-  static const double _minHeadingChangeForUpdate = 1.0; // 업데이트를 위한 최소 방향 변화 (도)
+  static const double _minHeadingChangeForUpdate = 10.0; // 업데이트를 위한 최소 방향 변화 (도)
 
   // 최고/평균 심박수
   int _maxHeartRate = 120;
@@ -1542,10 +1542,10 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
       final currentMode = await _mapController!.getLocationTrackingMode();
       if (_isNavigationMode) {
         // 네비게이션 모드인데 추적 모드가 face가 아니면 재설정
-        if (currentMode != NLocationTrackingMode.face) {
-          _mapController!.setLocationTrackingMode(NLocationTrackingMode.face);
-          debugPrint('네비게이션 모드로 추적 모드 재설정 (Face)');
-        }
+        // if (currentMode != NLocationTrackingMode.face) {
+        //   _mapController!.setLocationTrackingMode(NLocationTrackingMode.face);
+        //   debugPrint('네비게이션 모드로 추적 모드 재설정 (Face)');
+        // }
       } else {
         // 전체 맵 모드인데 추적 모드가 noFollow가 아니면 재설정
         if (currentMode != NLocationTrackingMode.noFollow) {
