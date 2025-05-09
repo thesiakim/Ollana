@@ -2,7 +2,6 @@ package com.ssafy.ollana.tracking.web.controller;
 
 import com.ssafy.ollana.common.util.Response;
 import com.ssafy.ollana.footprint.web.dto.response.TodayHikingResultResponseDto;
-import com.ssafy.ollana.mountain.web.dto.response.PathResponseDto;
 import com.ssafy.ollana.security.CustomUserDetails;
 import com.ssafy.ollana.tracking.service.TrackingService;
 import com.ssafy.ollana.tracking.web.dto.request.TrackingFinishRequestDto;
@@ -82,6 +81,21 @@ public class TrackingController {
         FriendListResponseDto response = trackingService.getFriendsInfo(mountainId, pathId, nickname);
         return ResponseEntity.ok(Response.success(response));
     }
+
+    /*
+     * 대결 상대의 등산 기록 조회
+     */
+    @GetMapping("/options")
+    public ResponseEntity<Response<OpponentRecordListDto>> getOpponentRecords(
+                                                        @AuthenticationPrincipal CustomUserDetails userDetails,
+                                                        @RequestParam Integer mountainId,
+                                                        @RequestParam Integer pathId,
+                                                        @RequestParam(required = false) Integer opponentId
+    ) {
+        OpponentRecordListDto response = trackingService.findOpponentRecords(userDetails.getUser().getId(), mountainId, pathId, opponentId);
+        return ResponseEntity.ok(Response.success(response));
+    }
+
 
     /*
      * 트래킹 시작 요청

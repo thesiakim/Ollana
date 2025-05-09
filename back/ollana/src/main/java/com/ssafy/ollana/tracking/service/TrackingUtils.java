@@ -1,5 +1,6 @@
 package com.ssafy.ollana.tracking.service;
 
+import com.ssafy.ollana.footprint.persistent.entity.HikingHistory;
 import com.ssafy.ollana.mountain.persistent.entity.Mountain;
 import com.ssafy.ollana.mountain.persistent.entity.Path;
 import com.ssafy.ollana.tracking.persistent.entity.HikingLiveRecords;
@@ -33,20 +34,26 @@ public class TrackingUtils {
         return EARTH_RADIUS * c;
     }
 
-    public static List<HikingLiveRecords> toEntities(List<BattleRecordsForTrackingResponseDto> dtos,
-                                                     User user, Mountain mountain, Path path) {
+    public static List<HikingLiveRecords> toEntities(
+                                                    List<BattleRecordsForTrackingResponseDto> dtos,
+                                                    User user,
+                                                    Mountain mountain,
+                                                    Path path,
+                                                    HikingHistory hikingHistory) {
         return dtos.stream()
                 .map(dto -> HikingLiveRecords.builder()
-                        .user(user)
-                        .mountain(mountain)
-                        .path(path)
-                        .totalTime(dto.getTime())
-                        .totalDistance(dto.getDistance())
-                        .latitude(dto.getLatitude())
-                        .longitude(dto.getLongitude())
-                        .heartRate(dto.getHeartRate())
-                        .build())
+                                             .user(user)
+                                             .mountain(mountain)
+                                             .path(path)
+                                             .hikingHistory(hikingHistory)
+                                             .totalTime(dto.getTime())
+                                             .totalDistance(dto.getDistance())
+                                             .latitude(dto.getLatitude())
+                                             .longitude(dto.getLongitude())
+                                             .heartRate(dto.getHeartRate())
+                                             .build())
                 .toList();
     }
+
 
 }

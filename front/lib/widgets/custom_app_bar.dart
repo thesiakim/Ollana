@@ -147,7 +147,7 @@ class _CustomAppBarState extends State<CustomAppBar> {
             await _handleLogout();
           },
           child: Text(
-            isLoggedIn ? 'Logout' : 'Login',
+            isLoggedIn ? '로그아웃' : '로그인',
             style: const TextStyle(color: Colors.black),
           ),
         ),

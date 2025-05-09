@@ -10,6 +10,7 @@ import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_footer.dart';
 import '../widgets/home_body.dart';
 import './tracking/tracking_screen.dart';
+import '../screens/user/my_page_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -19,7 +20,7 @@ class HomeScreen extends StatelessWidget {
     return Consumer<AppState>(
       builder: (context, appState, child) {
         return Scaffold(
-          appBar: const CustomAppBar(), 
+          appBar: const CustomAppBar(),
           body: Stack(
             children: [
               // 현재 선택된 탭에 따라 화면 표시
@@ -34,7 +35,7 @@ class HomeScreen extends StatelessWidget {
                   case 3:
                     return const Center(child: Text('나의 발자취 페이지'));
                   case 4:
-                    return const Center(child: Text('마이페이지'));
+                    return const MyPageScreen();
                   default:
                     return HomeBody();
                 }
