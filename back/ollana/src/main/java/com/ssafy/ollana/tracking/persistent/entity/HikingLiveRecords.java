@@ -1,6 +1,7 @@
 package com.ssafy.ollana.tracking.persistent.entity;
 
 import com.ssafy.ollana.common.BaseEntity;
+import com.ssafy.ollana.footprint.persistent.entity.HikingHistory;
 import com.ssafy.ollana.mountain.persistent.entity.Mountain;
 import com.ssafy.ollana.mountain.persistent.entity.Path;
 import com.ssafy.ollana.user.entity.User;
@@ -35,6 +36,10 @@ public class HikingLiveRecords extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "path_id")
     private Path path;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "hiking_history_id")
+    private HikingHistory hikingHistory;
 
     private int totalTime;
     private double totalDistance;
