@@ -1,14 +1,10 @@
 package com.ssafy.ollana.mountain.persistent.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.*;
 import org.locationtech.jts.geom.Point;
+
+import java.util.List;
 
 @Getter
 @Entity
@@ -43,4 +39,6 @@ public class Mountain {
 
 	private String mountainBadge;
 
+	@OneToMany(mappedBy = "mountain", fetch = FetchType.LAZY)
+	private List<MountainImg> mountainImgs;
 }
