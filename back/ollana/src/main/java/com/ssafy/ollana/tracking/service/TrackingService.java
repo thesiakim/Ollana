@@ -1,6 +1,8 @@
 package com.ssafy.ollana.tracking.service;
 
+import com.ssafy.ollana.footprint.persistent.entity.Footprint;
 import com.ssafy.ollana.footprint.persistent.entity.HikingHistory;
+import com.ssafy.ollana.footprint.persistent.repository.FootprintRepository;
 import com.ssafy.ollana.footprint.persistent.repository.HikingHistoryRepository;
 import com.ssafy.ollana.footprint.service.exception.NotFoundException;
 import com.ssafy.ollana.footprint.web.dto.response.TodayHikingResultResponseDto;
@@ -35,6 +37,7 @@ import java.util.*;
 @Slf4j
 public class TrackingService {
     private final MountainRepository mountainRepository;
+    private final FootprintRepository footprintRepository;
     private final PathRepository pathRepository;
     private final UserRepository userRepository;
     private final HikingHistoryRepository hikingHistoryRepository;
@@ -171,19 +174,22 @@ public class TrackingService {
                 request.getLongitude()
         );
 
+        User opponent = null;
         OpponentResponseDto opponentDto = null;
 
-        // 일반 모드일 때는 대결 상대 데이터를 조회하지 않음
-        if (!"GENERAL".equals(request.getMode()) && request.getOpponentId() != null) {
-            User opponent = userRepository.findById(request.getOpponentId())
-                    .orElseThrow(NotFoundException::new);
+        // mode가 ME이면 userId로 조회
+        if ("ME".equals(request.getMode())) {
+            opponent = userRepository.findById(userId)
+                                     .orElseThrow(NotFoundException::new);
+        }
+        // mode가 FRIEND이면 opponentId로 조회
+        else if ("FRIEND".equals(request.getMode()) && request.getOpponentId() != null) {
+            opponent = userRepository.findById(request.getOpponentId())
+                                     .orElseThrow(NotFoundException::new);
+        }
+        List<HikingLiveRecords> records = hikingLiveRecordsRepository.findByHikingHistoryId(request.getRecordId());
 
-            List<HikingLiveRecords> records = hikingLiveRecordsRepository
-                    .findByUserIdAndMountainIdAndPathIdOrderByTotalTimeAsc(
-                            request.getOpponentId(),
-                            request.getMountainId(),
-                            request.getPathId()
-                    );
+        if (opponent != null) {
             opponentDto = OpponentResponseDto.from(opponent, records);
         }
 
@@ -230,20 +236,23 @@ public class TrackingService {
 
         // 실시간 등산 기록 저장
         if (request.isSave()) {
-            List<HikingLiveRecords> entityList = TrackingUtils.toEntities(request.getRecords(), user, mountain, path);
-            hikingLiveRecordsRepository.saveAll(entityList);
+            Footprint footprint = footprintRepository.findByUserAndMountain(user, mountain)
+                                                     .orElseGet(() -> footprintRepository.save(Footprint.of(user, mountain)));
 
-            // 비동기 이벤트 발행
+            // HikingHistory 저장
             List<Integer> heartRates = request.getRecords().stream()
-                    .map(BattleRecordsForTrackingResponseDto::getHeartRate)
-                    .filter(Objects::nonNull)
-                    .toList();
+                                                           .map(BattleRecordsForTrackingResponseDto::getHeartRate)
+                                                           .filter(Objects::nonNull)
+                                                           .toList();
 
-            TrackingFinishedEvent event = new TrackingFinishedEvent(
-                    userId, mountain.getId(), path.getId(), request.getFinalTime(), heartRates
-            );
-            eventPublisher.publishEvent(event);
-            log.info("등산 기록 이벤트 발행");
+            HikingHistory history = HikingHistory.of(footprint, path, request.getFinalTime(), heartRates);
+            hikingHistoryRepository.save(history);
+
+            // HikingLiveRecords 저장
+            List<HikingLiveRecords> entityList = TrackingUtils.toEntities(
+                                            request.getRecords(), user, mountain, path, history);
+            hikingLiveRecordsRepository.saveAll(entityList);
+            log.info("등산 기록 저장 완료");
         }
 
         redisTemplate.delete(getTrackingStatusKey(userId));
