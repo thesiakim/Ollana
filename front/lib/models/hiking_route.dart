@@ -1,6 +1,9 @@
 // hiking_route.dart: 등산로 모델 클래스
 // 산의 등산로 정보를 저장하는 데이터 모델
 
+import 'package:flutter/foundation.dart';
+import 'dart:math';
+
 class HikingRoute {
   final num id;
   final num mountainId;
@@ -48,9 +51,18 @@ class HikingRoute {
       }
     }
 
+    // mountainId가 없는 경우 로그 출력
+    final hasMountainId =
+        json.containsKey('mountainId') && json['mountainId'] != null;
+    if (!hasMountainId) {
+      debugPrint(
+          '⚠️ HikingRoute.fromJson: mountainId가 없음 - JSON: ${json.toString().substring(0, min(100, json.toString().length))}...');
+    }
+
     return HikingRoute(
       id: json['pathId'] ?? 0,
-      mountainId: json['mountainId'] ?? 0,
+      mountainId:
+          json['mountainId'] ?? json['mountain_id'] ?? 0, // mountain_id도 확인
       name: json['pathName'] ?? '',
       distance: (json['distance'] is num)
           ? json['distance'].toDouble()

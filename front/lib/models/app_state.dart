@@ -135,6 +135,8 @@ class AppState extends ChangeNotifier {
 
   // 등산로 선택 및 단계 전환
   void selectRoute(HikingRoute route) {
+    debugPrint(
+        'AppState.selectRoute - 등산로 설정: id=${route.id}, mountainId=${route.mountainId}, name=${route.name}');
     _selectedRoute = route;
     _trackingStage = TrackingStage.modeSelect;
     notifyListeners();
@@ -169,12 +171,47 @@ class AppState extends ChangeNotifier {
         modeRecordId = recordId;
       }
 
+      // 모드 문자열을 서버에서 요구하는 값으로 변환
+      String serverMode;
+      switch (mode) {
+        case '나 vs 나':
+          serverMode = 'ME';
+          break;
+        case '나 vs 친구':
+          serverMode = 'FRIEND';
+          break;
+        case '일반 등산':
+          serverMode = 'GENERAL';
+          break;
+        default:
+          serverMode = 'GENERAL'; // 기본값 설정
+          break;
+      }
+
+      debugPrint('모드 변환: $mode -> $serverMode');
+
+      // opponentId 설정
+      int? modeOpponentId;
+      if (mode == '나 vs 나') {
+        // 나 vs 나 모드에서는 자신의 ID를 opponentId로 설정
+        // 실제 ID는 서버에서 토큰을 통해 가져오므로 null 전달
+        modeOpponentId = null;
+      } else if (mode == '나 vs 친구') {
+        // 나 vs 친구 모드에서는 선택한 친구의 ID를 사용
+        modeOpponentId = opponentId;
+      } else {
+        // 일반 모드에서는 null 설정
+        modeOpponentId = null;
+      }
+
+      debugPrint('opponentId 설정: $modeOpponentId');
+
       // 서버에 등산 시작 요청
       final result = await modeService.startTracking(
         mountainId: _selectedRoute!.mountainId.toInt(),
         pathId: _selectedRoute!.id.toInt(),
-        mode: mode,
-        opponentId: opponentId, // 나 vs 친구 모드에서만 사용
+        mode: serverMode, // 변환된 모드값 사용
+        opponentId: modeOpponentId, // 모드에 따라 다르게 설정
         recordId: modeRecordId,
         latitude: _currentLat,
         longitude: _currentLng,

@@ -41,11 +41,16 @@ class ModeService {
         'longitude': longitude,
       });
 
-      final response = await _client.post(
-        uri,
-        headers: headers,
-        body: body,
-      );
+      debugPrint(
+          '등산 시작 요청 데이터: mountainId=$mountainId, pathId=$pathId, mode=$mode, recordId=$recordId');
+
+      // Request 객체를 생성하여 GET 요청 with body 구현
+      final request = http.Request('GET', uri);
+      request.headers.addAll(headers);
+      request.body = body;
+
+      final streamedResponse = await _client.send(request);
+      final response = await http.Response.fromStream(streamedResponse);
 
       final decodedBody = utf8.decode(response.bodyBytes);
       final jsonData = jsonDecode(decodedBody);
