@@ -12,4 +12,5 @@ public class UserInfoDto {
     private String grade;
     private double totalDistance;
     private String profileImageUrl;
+    private boolean isTempPassword;
 }

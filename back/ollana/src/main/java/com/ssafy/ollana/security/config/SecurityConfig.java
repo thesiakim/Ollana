@@ -60,8 +60,6 @@ public class SecurityConfig {
                                 "/auth/email/send",
                                 "/auth/email/verify",
                                 "/auth/password/reset",
-                                "/auth/password/change",
-                                "/auth/refresh",
                                 "/tracking/import/mtn",
                                 "/tracking/import/path",
                                 "/mountain/save-image")

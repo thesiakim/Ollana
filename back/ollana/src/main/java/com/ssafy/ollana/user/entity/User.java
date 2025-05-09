@@ -63,6 +63,10 @@ public class User extends BaseEntity {
     @Builder.Default
     private boolean isAgree = true;
 
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    @Builder.Default
+    private boolean isTempPassword = false;
+
     // exp 증가 및 그에 따른 grade 업데이트
     public void addExp(int exp) {
         this.exp += exp;

@@ -42,25 +42,6 @@ public class TokenService {
         return isValid;
     }
 
-    // password reset token을 redis에 저장
-    public void savePasswordResetToken( String userEmail, String passwordResetToken) {
-        String key = "PRT:" + userEmail;
-        long expiration = jwtUtil.getPasswordResetTokenExpiration() / 1000;
-        redisTemplate.opsForValue().set(key, passwordResetToken, expiration, TimeUnit.SECONDS);
-    }
-
-    // user의 password reset token 조회
-    public String getPasswordResetToken(String userEmail) {
-        String key = "PRT:" + userEmail;
-        return redisTemplate.opsForValue().get(key);
-    }
-
-    // user의 password reset token 삭제
-    public void deletePasswordResetToken(String userEmail) {
-        String key = "PRT:" + userEmail;
-        redisTemplate.delete(key);
-    }
-
     // redis 블랙리스트 저장
     public void blacklistAccessToken(String accessToken, long expirationMillis) {
         String key = "BL:" + accessToken;
