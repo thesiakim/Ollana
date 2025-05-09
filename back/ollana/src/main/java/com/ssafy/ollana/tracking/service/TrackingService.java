@@ -142,9 +142,11 @@ public class TrackingService {
      * 대결 상대의 등산 기록 조회
      */
     @Transactional(readOnly = true)
-    public OpponentRecordListDto findOpponentRecords(Integer mountainId, Integer pathId, Integer opponentId) {
+    public OpponentRecordListDto findOpponentRecords(Integer userId, Integer mountainId, Integer pathId, Integer opponentId) {
+        Integer targetId = (opponentId != null) ? opponentId : userId;
+
         List<HikingHistory> histories = hikingHistoryRepository
-                                .findOpponentHistories(opponentId, mountainId, pathId);
+                .findOpponentHistories(targetId, mountainId, pathId);
 
         return OpponentRecordListDto.from(histories);
     }

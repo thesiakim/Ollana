@@ -87,11 +87,12 @@ public class TrackingController {
      */
     @GetMapping("/options")
     public ResponseEntity<Response<OpponentRecordListDto>> getOpponentRecords(
+                                                        @AuthenticationPrincipal CustomUserDetails userDetails,
                                                         @RequestParam Integer mountainId,
                                                         @RequestParam Integer pathId,
-                                                        @RequestParam Integer opponentId
+                                                        @RequestParam(required = false) Integer opponentId
     ) {
-        OpponentRecordListDto response = trackingService.findOpponentRecords(mountainId, pathId, opponentId);
+        OpponentRecordListDto response = trackingService.findOpponentRecords(userDetails.getUser().getId(), mountainId, pathId, opponentId);
         return ResponseEntity.ok(Response.success(response));
     }
 
