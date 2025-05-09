@@ -3,10 +3,9 @@ package com.ssafy.ollana.auth.password.service;
 import com.ssafy.ollana.auth.password.dto.request.PasswordChangeRequestDto;
 import com.ssafy.ollana.auth.password.dto.request.PasswordResetRequestDto;
 import com.ssafy.ollana.auth.service.MailService;
-import com.ssafy.ollana.auth.service.TokenService;
 import com.ssafy.ollana.security.CustomUserDetails;
-import com.ssafy.ollana.security.jwt.JwtUtil;
 import com.ssafy.ollana.user.entity.User;
+import com.ssafy.ollana.user.exception.UnsupportedPasswordOperationException;
 import com.ssafy.ollana.user.exception.UserNotFoundException;
 import com.ssafy.ollana.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,8 +20,6 @@ import java.security.SecureRandom;
 public class PasswordService {
 
     private final UserRepository userRepository;
-    private final JwtUtil jwtUtil;
-    private final TokenService tokenService;
     private final MailService mailService;
     private final PasswordEncoder passwordEncoder;
 
@@ -34,7 +31,7 @@ public class PasswordService {
 
         // 소셜 회원인지 확인
         if (user.isSocial()) {
-            throw new UnsupportedOperationException();
+            throw new UnsupportedPasswordOperationException();
         }
 
         // 임시 비밀번호 생성 및 저장
@@ -56,7 +53,7 @@ public class PasswordService {
 
         // 소셜 회원인지 확인
         if (user.isSocial()) {
-            throw new UnsupportedOperationException();
+            throw new UnsupportedPasswordOperationException();
         }
 
         // 새로운 비밀번호 설정
