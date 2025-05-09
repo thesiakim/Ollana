@@ -217,12 +217,11 @@ public class TrackingService {
             return "등반하시는 코스의 마지막 지점까지 도착하지 않았습니다";
         }
 
-        // 기존 데이터가 존재할 경우 삭제
-        hikingLiveRecordsRepository.deleteByUserAndMountainAndPath(user, mountain, path);
-
-        // 데이터 저장
-        List<HikingLiveRecords> entityList = TrackingUtils.toEntities(request.getRecords(), user, mountain, path);
-        hikingLiveRecordsRepository.saveAll(entityList);
+        // 실시간 등산 기록 저장
+        if (request.isSave()) {
+            List<HikingLiveRecords> entityList = TrackingUtils.toEntities(request.getRecords(), user, mountain, path);
+            hikingLiveRecordsRepository.saveAll(entityList);
+        }
 
         // 비동기 이벤트 발행
         List<Integer> heartRates = request.getRecords().stream()
