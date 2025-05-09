@@ -9,7 +9,7 @@ import '../../models/app_state.dart';
 import './sign_up_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({Key? key}) : super(key: key);
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -39,11 +39,6 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = true;
       _errorMsg = null;
     });
-
-    // 비동기 작업 전에 필요한 값 캡처
-    final appState = context.read<AppState>();
-    final navigator = Navigator.of(context);
-
     debugPrint('⏳ [Login] 네트워크 요청 중...');
 
     try {
@@ -63,32 +58,24 @@ class _LoginScreenState extends State<LoginScreen> {
       debugPrint('✅ [Login] 요청 전송 완료');
       debugPrint('🔎 [Login] 응답 코드: ${response.statusCode}');
 
-      // UTF-8로 정확히 디코딩
       final bodyString = utf8.decode(response.bodyBytes);
       debugPrint('📦 [Login] 응답 바디 문자열: $bodyString');
       final data = jsonDecode(bodyString);
       debugPrint('💾 [Login] 파싱된 데이터: $data');
 
-      if (!mounted) return;
-
       if (response.statusCode == 200 && data['status'] == true) {
         final accessToken = data['data']['accessToken'];
         debugPrint('🔑 [Login] accessToken: $accessToken');
 
-        // 🔥 refreshToken 관련 코드 제거 (백엔드 미제공)
-
-        // 🔥 JWT에서 만료 시간(exp) 디코딩 (accessToken만)
         final payloadA = Jwt.parseJwt(accessToken);
         final expA = payloadA['exp'] as int;
         final expiryA = DateTime.fromMillisecondsSinceEpoch(expA * 1000);
         debugPrint('⏳ [Login] accessToken 만료 시각: $expiryA');
 
-        // 🔥 토큰 저장 및 로그인 상태 설정
-        await appState.setToken(accessToken);
+        await context.read<AppState>().setToken(accessToken);
         debugPrint('🗝️ [Login] 토큰 저장 및 로그인 완료');
 
-        if (!mounted) return;
-        navigator.pop();
+        Navigator.of(context).pop();
         debugPrint('↩️ [Login] 화면 닫기');
       } else {
         final message = data['message'] ?? '로그인에 실패했습니다.';
@@ -99,11 +86,9 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       debugPrint('🚨 [Login] 예외 발생: $e');
-      if (mounted) {
-        setState(() {
-          _errorMsg = '네트워크 오류가 발생했습니다.';
-        });
-      }
+      setState(() {
+        _errorMsg = '네트워크 오류가 발생했습니다.';
+      });
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -168,6 +153,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     : '6자 이상 비밀번호를 입력해 주세요.',
               ),
               const SizedBox(height: 24),
+
+              // 로그인 버튼
               SizedBox(
                 width: double.infinity,
                 height: 48,
@@ -180,7 +167,32 @@ class _LoginScreenState extends State<LoginScreen> {
                       : const Text('로그인'),
                 ),
               ),
+
               const SizedBox(height: 12),
+
+              // 카카오톡으로 시작하기 버튼
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    // TODO: 카카오톡 로그인 기능 구현
+                  },
+                  icon: const Icon(Icons.chat),
+                  label: const Text('카카오톡으로 시작하기'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFEE500),
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // 회원가입 버튼
               SizedBox(
                 width: double.infinity,
                 height: 48,
