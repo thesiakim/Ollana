@@ -7,6 +7,9 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart'; // 🔥 sec
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import '../models/hiking_route.dart';
 import '../services/mode_service.dart';
+import './hiking_route.dart';
+import './friend.dart';
+import './mode_data.dart'; // ModeData 모델 임포트
 
 enum TrackingStage { search, routeSelect, modeSelect, tracking }
 
@@ -42,6 +45,9 @@ class AppState extends ChangeNotifier {
   bool _isNavigationMode = true;
   double _deviceHeading = 0;
 
+  // 모드 데이터 (API에서 받은 등산 시작 정보)
+  ModeData? _modeData;
+
   // 생성자: 앱 시작 시 저장된 토큰 복원
   AppState() {
     _initAuth(); // 🔥 초기 인증 정보 로드
@@ -69,6 +75,9 @@ class AppState extends ChangeNotifier {
   int get avgHeartRate => _avgHeartRate;
   bool get isNavigationMode => _isNavigationMode;
   double get deviceHeading => _deviceHeading;
+
+  // 모드 데이터 Getter
+  ModeData? get modeData => _modeData;
 
   // 🔥 앱 시작 시 SecureStorage에서 토큰을 읽어 로그인 상태 복원
   Future<void> _initAuth() async {
@@ -218,6 +227,13 @@ class AppState extends ChangeNotifier {
         token: _accessToken ?? '',
       );
 
+      // 모드 데이터 저장
+      _modeData = result;
+      debugPrint('모드 데이터 저장: ${result.mountain.name}, ${result.path.name}');
+      if (result.opponent != null) {
+        debugPrint('대결 상대: ${result.opponent!.nickname}');
+      }
+
       // 트래킹 시작 상태로 변경
       _isTracking = true;
       _trackingStage = TrackingStage.tracking;
@@ -342,6 +358,7 @@ class AppState extends ChangeNotifier {
     _selectedMountain = null;
     _selectedRoute = null;
     _selectedMode = null;
+    _modeData = null; // 모드 데이터 초기화
     _resetTrackingData();
     notifyListeners();
   }
