@@ -46,4 +46,18 @@ public class HikingHistoryRepositoryImpl implements HikingHistoryRepositoryCusto
                             .fetchOne()
             );
     }
+
+    @Override
+    public List<HikingHistory> findOpponentHistories(Integer userId, Integer mountainId, Integer pathId) {
+        return queryFactory
+                .selectFrom(hikingHistory)
+                .join(hikingHistory.footprint, footprint).fetchJoin()
+                .where(
+                        footprint.user.id.eq(userId),
+                        footprint.mountain.id.eq(mountainId),
+                        hikingHistory.path.id.eq(pathId)
+                )
+                .orderBy(hikingHistory.createdAt.desc())
+                .fetch();
+    }
 }

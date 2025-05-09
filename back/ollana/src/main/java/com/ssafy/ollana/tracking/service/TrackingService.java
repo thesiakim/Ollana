@@ -136,6 +136,17 @@ public class TrackingService {
     }
 
     /*
+     * 대결 상대의 등산 기록 조회
+     */
+    @Transactional(readOnly = true)
+    public OpponentRecordListDto findOpponentRecords(Integer mountainId, Integer pathId, Integer opponentId) {
+        List<HikingHistory> histories = hikingHistoryRepository
+                                .findOpponentHistories(opponentId, mountainId, pathId);
+
+        return OpponentRecordListDto.from(histories);
+    }
+
+    /*
      * 트래킹 시작 요청
      */
     @Transactional(readOnly = true)
@@ -221,19 +232,19 @@ public class TrackingService {
         if (request.isSave()) {
             List<HikingLiveRecords> entityList = TrackingUtils.toEntities(request.getRecords(), user, mountain, path);
             hikingLiveRecordsRepository.saveAll(entityList);
+
+            // 비동기 이벤트 발행
+            List<Integer> heartRates = request.getRecords().stream()
+                    .map(BattleRecordsForTrackingResponseDto::getHeartRate)
+                    .filter(Objects::nonNull)
+                    .toList();
+
+            TrackingFinishedEvent event = new TrackingFinishedEvent(
+                    userId, mountain.getId(), path.getId(), request.getFinalTime(), heartRates
+            );
+            eventPublisher.publishEvent(event);
+            log.info("등산 기록 이벤트 발행");
         }
-
-        // 비동기 이벤트 발행
-        List<Integer> heartRates = request.getRecords().stream()
-                                                       .map(BattleRecordsForTrackingResponseDto::getHeartRate)
-                                                       .filter(Objects::nonNull)
-                                                       .toList();
-
-        TrackingFinishedEvent event = new TrackingFinishedEvent(
-                userId, mountain.getId(), path.getId(), request.getFinalTime(), heartRates
-        );
-        eventPublisher.publishEvent(event);
-        log.info("등산 기록 이벤트 발행");
 
         redisTemplate.delete(getTrackingStatusKey(userId));
         return "등산을 완료했습니다";
@@ -242,4 +253,5 @@ public class TrackingService {
     private String getTrackingStatusKey(Integer userId) {
         return TRACKING_STATUS_KEY_PREFIX + userId;
     }
+
 }
