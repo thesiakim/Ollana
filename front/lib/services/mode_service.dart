@@ -4,12 +4,66 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/foundation.dart';
 import '../models/me_vs_me.dart';
 import '../models/friend.dart';
+import '../models/mode_data.dart';
 
 class ModeService {
   final String _baseUrl = dotenv.get('BASE_URL');
   final http.Client _client;
 
   ModeService({http.Client? client}) : _client = client ?? http.Client();
+
+  /// 등산 시작 요청
+  Future<ModeData> startTracking({
+    required int mountainId,
+    required int pathId,
+    required String mode,
+    int? opponentId,
+    required int recordId,
+    required double latitude,
+    required double longitude,
+    required String token,
+  }) async {
+    final uri = Uri.parse('$_baseUrl/tracking/start');
+
+    try {
+      final headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      };
+
+      final body = jsonEncode({
+        'mountainId': mountainId,
+        'pathId': pathId,
+        'mode': mode,
+        'opponentId': opponentId,
+        'recordId': recordId,
+        'latitude': latitude,
+        'longitude': longitude,
+      });
+
+      final response = await _client.post(
+        uri,
+        headers: headers,
+        body: body,
+      );
+
+      final decodedBody = utf8.decode(response.bodyBytes);
+      final jsonData = jsonDecode(decodedBody);
+
+      debugPrint('등산 시작 응답: ${response.statusCode}, ${jsonData['status']}');
+
+      if (response.statusCode == 200 && jsonData['status'] == true) {
+        // data 필드에서 ModeData 객체 생성
+        return ModeData.fromJson(jsonData['data']);
+      } else {
+        final errorMessage = jsonData['message'] ?? '등산 시작 요청 실패';
+        throw Exception('$errorMessage (${response.statusCode})');
+      }
+    } catch (e) {
+      debugPrint('등산 시작 요청 오류: $e');
+      throw Exception('등산 시작 요청 중 오류 발생: $e');
+    }
+  }
 
   /// 나 vs 나 모드를 위한 이전 기록 조회
   Future<MeVsMe?> getMeVsMeRecord(num mountainId, num pathId,

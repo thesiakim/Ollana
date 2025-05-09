@@ -178,9 +178,12 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: _selectedFriend != null
-                      ? () {
+                      ? () async {
                           Navigator.of(context).pop();
-                          appState.startTracking('나 vs 친구');
+                          await appState.startTracking(
+                            '나 vs 친구',
+                            opponentId: _selectedFriend!.id.toInt(),
+                          );
                         }
                       : null,
                   style: ElevatedButton.styleFrom(

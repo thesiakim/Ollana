@@ -127,7 +127,7 @@ class _ModeSelectScreenState extends State<ModeSelectScreen> {
                         'AI가 추천하는 페이스로 등산해보세요! 최적의 페이스로 등산할 수 있습니다.',
                         Icons.smart_toy,
                         Colors.purple,
-                        () => appState.startTracking('나 vs AI추천'),
+                        () async => await appState.startTracking('나 vs AI추천'),
                       ),
 
                       // 일반 등산 모드
@@ -137,7 +137,7 @@ class _ModeSelectScreenState extends State<ModeSelectScreen> {
                         '경쟁 없이 편안하게 등산해보세요! 기본적인 등산 정보만 제공됩니다.',
                         Icons.directions_walk,
                         Colors.orange,
-                        () => appState.startTracking('일반 등산'),
+                        () async => await appState.startTracking('일반 등산'),
                       ),
                     ],
                   );
@@ -379,7 +379,8 @@ class _ModeSelectScreenState extends State<ModeSelectScreen> {
                       child: ElevatedButton(
                         onPressed: () {
                           Navigator.of(context).pop();
-                          appState.startTracking('나 vs 나');
+                          appState.startTracking('나 vs 나',
+                              recordId: previousRecord.recordId.toInt());
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blue,

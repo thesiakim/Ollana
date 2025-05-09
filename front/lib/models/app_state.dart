@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart'; // 🔥 secure storage
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import '../models/hiking_route.dart';
+import '../services/mode_service.dart';
 
 enum TrackingStage { search, routeSelect, modeSelect, tracking }
 
@@ -147,24 +148,75 @@ class AppState extends ChangeNotifier {
   }
 
   // 모드 선택 및 트래킹 시작
-  void startTracking(String mode) {
+  Future<void> startTracking(String mode,
+      {int? opponentId, int? recordId}) async {
     _selectedMode = mode;
-    _isTracking = true;
-    _trackingStage = TrackingStage.tracking;
-    if (_elapsedSeconds == 0 && _elapsedMinutes == 0) {
-      _resetTrackingData();
-      if (_selectedRoute != null && _selectedRoute!.path.isNotEmpty) {
-        final pathPoints = _selectedRoute!.path
-            .map((coord) =>
-                NLatLng(coord['latitude'] ?? 0.0, coord['longitude'] ?? 0.0))
-            .toList();
-        if (pathPoints.isNotEmpty) {
-          _routeCoordinates = pathPoints;
-          debugPrint('경로 좌표 설정 완료 (${pathPoints.length} 포인트)');
+
+    try {
+      // 현재 위치, 산, 경로 데이터 확인
+      if (_selectedRoute == null) {
+        debugPrint('선택된 경로 없음');
+        return;
+      }
+
+      // 모드 서비스 인스턴스 생성
+      final modeService = ModeService();
+
+      // 모드에 따른 파라미터 설정
+      int modeRecordId = 0;
+      if (mode == '나 vs 나' && recordId != null) {
+        // 나 vs 나 모드에서는 비교할 이전 기록의 ID가 필요
+        modeRecordId = recordId;
+      }
+
+      // 서버에 등산 시작 요청
+      final result = await modeService.startTracking(
+        mountainId: _selectedRoute!.mountainId.toInt(),
+        pathId: _selectedRoute!.id.toInt(),
+        mode: mode,
+        opponentId: opponentId, // 나 vs 친구 모드에서만 사용
+        recordId: modeRecordId,
+        latitude: _currentLat,
+        longitude: _currentLng,
+        token: _accessToken ?? '',
+      );
+
+      // 트래킹 시작 상태로 변경
+      _isTracking = true;
+      _trackingStage = TrackingStage.tracking;
+
+      // 트래킹 관련 데이터 초기화
+      if (_elapsedSeconds == 0 && _elapsedMinutes == 0) {
+        _resetTrackingData();
+
+        // 서버에서 받은 경로 데이터가 있으면 사용, 없으면 기존 경로 사용
+        if (result.path.path.isNotEmpty) {
+          final pathPoints = result.path.path
+              .map((coord) =>
+                  NLatLng(coord['latitude'] ?? 0.0, coord['longitude'] ?? 0.0))
+              .toList();
+          if (pathPoints.isNotEmpty) {
+            _routeCoordinates = pathPoints;
+            debugPrint('경로 좌표 설정 완료 (${pathPoints.length} 포인트)');
+          }
+        } else if (_selectedRoute!.path.isNotEmpty) {
+          final pathPoints = _selectedRoute!.path
+              .map((coord) =>
+                  NLatLng(coord['latitude'] ?? 0.0, coord['longitude'] ?? 0.0))
+              .toList();
+          if (pathPoints.isNotEmpty) {
+            _routeCoordinates = pathPoints;
+            debugPrint('경로 좌표 설정 완료 (${pathPoints.length} 포인트)');
+          }
         }
       }
+
+      notifyListeners();
+      debugPrint('트래킹 시작: $mode');
+    } catch (e) {
+      debugPrint('트래킹 시작 오류: $e');
+      // 오류 발생 시 처리
     }
-    notifyListeners();
   }
 
   // 트래킹 데이터 초기화
