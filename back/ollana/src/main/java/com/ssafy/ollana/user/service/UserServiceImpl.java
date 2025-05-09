@@ -38,6 +38,7 @@ public class UserServiceImpl implements UserService {
                 .grade(String.valueOf(user.getGrade()))
                 .totalDistance(user.getTotalDistance())
                 .profileImageUrl(user.getProfileImage())
+                .isTempPassword(user.isTempPassword())
                 .build();
     }
 

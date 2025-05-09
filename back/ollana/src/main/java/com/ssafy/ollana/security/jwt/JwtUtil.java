@@ -103,32 +103,4 @@ public class JwtUtil {
     public String getUserEmailFromToken(String token) {
         return getClaims(token).getSubject();
     }
-
-
-    // password reset token 생성
-    public String createPasswordResetToken(String userId) {
-        Date now = new Date();
-        Date expiration = new Date(now.getTime() + passwordResetTokenExpiration);
-
-        return Jwts.builder()
-                .setSubject(userId)
-                .claim("purpose", "password_reset")
-                .setIssuedAt(now)
-                .setExpiration(expiration)
-                .signWith(key, SignatureAlgorithm.HS256)
-                .compact();
-    }
-
-    // password reset token 검증
-    public boolean validatePasswordResetToken(String token) {
-        try {
-            Claims claims = getClaims(token);
-
-            // 토큰 용도 검증
-            return "password_reset".equals(claims.get("purpose"));
-        } catch (Exception e) {
-            log.error("비밀번호 재설정 토큰 검증 실패", e);
-            return false;
-        }
-    }
 }

@@ -4,8 +4,10 @@ import com.ssafy.ollana.auth.password.dto.request.PasswordChangeRequestDto;
 import com.ssafy.ollana.auth.password.dto.request.PasswordResetRequestDto;
 import com.ssafy.ollana.auth.password.service.PasswordService;
 import com.ssafy.ollana.common.util.Response;
+import com.ssafy.ollana.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,8 +27,9 @@ public class PasswordController {
     }
 
     @PostMapping("/change")
-    public ResponseEntity<Response<Void>> passwordChange(@RequestBody PasswordChangeRequestDto request) {
-        passwordService.passwordChange(request);
+    public ResponseEntity<Response<Void>> passwordChange(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                                         @RequestBody PasswordChangeRequestDto request) {
+        passwordService.passwordChange(userDetails, request);
         return ResponseEntity.ok(Response.success());
     }
 }

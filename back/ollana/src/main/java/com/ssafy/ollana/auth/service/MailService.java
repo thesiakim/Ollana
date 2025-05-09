@@ -46,7 +46,7 @@ public class MailService {
         try {
             mailSender.send(message);
         } catch (MailSendException e) {
-            log.error("메일 전송 중 오류 발생", e);
+            log.error("이메일 인증 코드 전송 중 오류 발생", e);
             throw new MailSendException();
         }
 
@@ -77,14 +77,14 @@ public class MailService {
         redisTemplate.delete(key); // 인증 성공했으면 삭제
     }
 
-    // 비밀번호 재설정 메일 전송
-    public void sendPasswordResetMail(String recipientEmail, String passwordResetToken) {
-        MimeMessage message = createPasswordResetMail(recipientEmail, passwordResetToken);
+    // 임시 비밀번호 메일 전송
+    public void sendTempPasswordMail(String recipientEmail, String tempPassword) {
+        MimeMessage message = createTempPasswordMail(recipientEmail, tempPassword);
 
         try {
             mailSender.send(message);
         } catch (MailSendException e) {
-            log.error("비밀번호 재설정 이메일 전송 중 오류 발생", e);
+            log.error("임시 비밀번호 메일 전송 중 오류 발생", e);
             throw new MailSendException();
         }
     }
@@ -114,38 +114,36 @@ public class MailService {
 
             message.setText(body, "utf-8", "html");
         } catch (MessagingException e) {
-            log.error("메일 전송 중 오류 발생", e);
-            throw new MailSendException();
+            log.error("이메일 인증 코드 메일 생성 중 오류 발생", e);
+            throw new IllegalStateException("메일 생성 실패", e);
         }
 
         return message;
     }
 
-    // 비밀번호 재설정 메일 생성
-    private MimeMessage createPasswordResetMail(String recipientEmail, String passwordResetToken) {
+    // 임시 비밀번호 메일 생성
+    private MimeMessage createTempPasswordMail(String recipientEmail, String tempPassword) {
         MimeMessage message = mailSender.createMimeMessage();
 
         try {
             message.setFrom(sender);
             message.setRecipients(MimeMessage.RecipientType.TO, recipientEmail);
-            message.setSubject("[Ollana] 비밀번호 재설정 요청");
-
-            String resetLink = "https://k12c104.p.ssafy.io/back-api/auth/password/change?token=" + passwordResetToken;
+            message.setSubject("[Ollana] 임시 비밀번호 안내");
 
             String body = "<div style='font-family: Arial; padding: 20px;'>"
-                    + "<h2 style='color:#4CAF50;'>[Ollana] 비밀번호 재설정 요청</h2>"
-                    + "<p style='font-size: 16px;'>아래 링크를 클릭하여 비밀번호를 재설정하십시오:</p>"
-                    + "<div style='font-size: 18px; font-weight: bold; color: black; margin: 20px 0;'>"
-                    + "<a href='" + resetLink + "'>" + resetLink + "</a>"
+                    + "<h2 style='color:#4CAF50;'>[Ollana] 임시 비밀번호 안내</h2>"
+                    + "<p style='font-size: 16px;'>요청하신 임시 비밀번호는 아래와 같습니다:</p>"
+                    + "<div style='font-size: 22px; font-weight: bold; color: black; margin: 20px 0;'>"
+                    + tempPassword
                     + "</div>"
-                    + "<p style='font-size: 12px; color: gray;'>이 링크는 10분 동안 유효합니다.</p>"
-                    + "<p style='font-size: 12px; color: gray;'>만약 본인이 요청하지 않은 경우, 이 메일을 무시하셔도 됩니다.</p>"
+                    + "<p style='font-size: 14px;'>앱에 로그인하신 후 반드시 비밀번호를 변경해 주세요.</p>"
+                    + "<p style='font-size: 12px; color: gray;'>이 메일은 요청에 따라 자동 발송되었습니다.</p>"
                     + "</div>";
 
             message.setText(body, "utf-8", "html");
         } catch (MessagingException e) {
-            log.error("메일 전송 중 오류 발생", e);
-            throw new MailSendException();
+            log.error("임시 비밀번호 메일 생성 중 오류 발생", e);
+            throw new IllegalStateException("메일 생성 실패", e);
         }
 
         return message;
