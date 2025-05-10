@@ -48,7 +48,9 @@ public class MountainServiceImpl implements MountainService {
                         mountain.getMountainName(),
                         mountain.getMountainLatitude(),
                         mountain.getMountainLongitude(),
-                        mountain.getLevel().name()
+                        mountain.getMountainHeight(),
+                        mountain.getLevel().name(),
+                        mountain.getMountainDescription()
                 ))
                 .toList();
 
