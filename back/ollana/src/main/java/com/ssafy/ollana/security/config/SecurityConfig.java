@@ -62,7 +62,7 @@ public class SecurityConfig {
                                 "/auth/password/reset",
                                 "/tracking/import/mtn",
                                 "/tracking/import/path",
-                                "/mountain/save-image")
+                                "/mountain/**")
                         .permitAll()
                         .anyRequest().authenticated() // 나머지는 인증 필요
                 );
