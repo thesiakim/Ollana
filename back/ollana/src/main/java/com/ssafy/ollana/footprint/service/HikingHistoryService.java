@@ -14,6 +14,7 @@ import com.ssafy.ollana.mountain.web.dto.response.PathResponseDto;
 import com.ssafy.ollana.footprint.web.dto.response.TodayHikingResultResponseDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,21 +38,24 @@ public class HikingHistoryService {
     @Transactional(readOnly = true)
     public HikingHistoryResponseDto getHikingHistory(Integer userId, Integer footprintId, Pageable pageable) {
         Footprint footprint = footprintService.getFootprint(footprintId);
-
         if (!footprint.getUser().getId().equals(userId)) {
             throw new AccessDeniedException();
         }
+
         Mountain mountain = footprint.getMountain();
 
-        // 조회한 산의 등산기록 조회
-        List<HikingHistory> histories = hikingHistoryRepository.findAllByFootprintIdOrderByCreatedAtAsc(footprintId);
-
-        // 각 등산로 데이터 그룹화
-        Map<Path, List<HikingHistory>> pathGroupMap = histories.stream()
+        // 전체 기록 조회 및 path 기준 그룹화
+        List<HikingHistory> allHistories = hikingHistoryRepository.findAllByFootprintIdOrderByCreatedAtAsc(footprintId);
+        Map<Path, List<HikingHistory>> grouped = allHistories.stream()
                 .collect(Collectors.groupingBy(HikingHistory::getPath, LinkedHashMap::new, Collectors.toList()));
 
-        // 가장 최근 두 개의 데이터 비교 (한 번만 등산한 경우 null)
-        List<HikingHistoryWithPathResponseDto> allPathDtos = pathGroupMap.entrySet().stream()
+        // path 단위로 페이징
+        List<Map.Entry<Path, List<HikingHistory>>> groupedList = new ArrayList<>(grouped.entrySet());
+        int total = groupedList.size();
+        int start = Math.min(pageable.getPageNumber() * pageable.getPageSize(), total);
+        int end = Math.min(start + pageable.getPageSize(), total);
+
+        List<HikingHistoryWithPathResponseDto> dtoList = groupedList.subList(start, end).stream()
                 .map(entry -> {
                     Path path = entry.getKey();
                     List<HikingHistory> records = entry.getValue();
@@ -61,22 +65,23 @@ public class HikingHistoryService {
                         HikingHistory secondLatest = records.get(records.size() - 2);
                         HikingHistory latest = records.get(records.size() - 1);
                         int timeDiff = latest.getHikingTime() - secondLatest.getHikingTime();
-                        int hrDiff = latest.getMaxHeartRate() - secondLatest.getMaxHeartRate();
+                        int maxHrDiff = latest.getMaxHeartRate() - secondLatest.getMaxHeartRate();
+                        int avgHrDiff = (int) (latest.getAverageHeartRate() - secondLatest.getAverageHeartRate());
 
                         result = DiffResponseDto.builder()
                                 .growthStatus(HikingHistoryUtils.determineStatus(timeDiff))
-                                .heartRateDiff(hrDiff)
+                                .maxHeartRateDiff(maxHrDiff)
+                                .avgHeartRateDiff(avgHrDiff)
                                 .timeDiff(timeDiff)
                                 .build();
                     }
 
-                    // 그래프화를 위해 가장 최근 5개의 데이터 조회
                     List<TodayHikingResultResponseDto> recordDtos = records.stream()
                             .sorted(Comparator.comparing(HikingHistory::getCreatedAt).reversed()) // 최신순 정렬
-                            .limit(5)       // 그래프 가독성을 위해 최근 5개의 데이터만 반환
+                            .limit(5)
                             .map(TodayHikingResultResponseDto::from)
-                            .sorted(Comparator.comparing(TodayHikingResultResponseDto::getDate))  // 다시 날짜순 정렬 (그래프용)
-                            .collect(Collectors.toList());
+                            .sorted(Comparator.comparing(TodayHikingResultResponseDto::getDate)) // 날짜순
+                            .toList();
 
                     return HikingHistoryWithPathResponseDto.builder()
                             .path(PathResponseDto.from(path))
@@ -86,11 +91,10 @@ public class HikingHistoryService {
                 })
                 .toList();
 
-        Page<HikingHistoryWithPathResponseDto> paginated = PaginateUtil.paginate(
-                allPathDtos, pageable.getPageNumber(), pageable.getPageSize());
-
-        return new HikingHistoryResponseDto(MountainResponseDto.from(mountain), paginated);
+        Page<HikingHistoryWithPathResponseDto> page = new PageImpl<>(dtoList, pageable, total);
+        return new HikingHistoryResponseDto(MountainResponseDto.from(mountain), page);
     }
+
 
     /*
      * 나 vs 나 이전 기록 조회 (그래프)
@@ -163,11 +167,13 @@ public class HikingHistoryService {
             TodayHikingResultResponseDto d2 = recordDtos.get(1);
 
             int timeDiff = d2.getTime() - d1.getTime();
-            int hrDiff = d2.getMaxHeartRate() - d1.getMaxHeartRate();
+            int maxHrDiff = d2.getMaxHeartRate() - d1.getMaxHeartRate();
+            int avgHrDiff = (int) (d2.getAverageHeartRate() - d1.getAverageHeartRate());
 
             result = DiffResponseDto.builder()
                                     .growthStatus(HikingHistoryUtils.determineStatus(timeDiff))
-                                    .heartRateDiff(hrDiff)
+                                    .maxHeartRateDiff(maxHrDiff)
+                                    .avgHeartRateDiff(avgHrDiff)
                                     .timeDiff(timeDiff)
                                     .build();
         }

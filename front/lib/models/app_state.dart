@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart'; // 🔥 secure storage
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import '../models/hiking_route.dart';
+import '../services/mode_service.dart';
 
 enum TrackingStage { search, routeSelect, modeSelect, tracking }
 
@@ -16,6 +17,8 @@ class AppState extends ChangeNotifier {
   // 로그인 상태 및 토큰
   bool _isLoggedIn = false;
   String? _accessToken;
+  String? _profileImageUrl;
+  String? _nickname; 
 
   // 페이지 인덱스
   int _currentPageIndex = 0;
@@ -55,6 +58,8 @@ class AppState extends ChangeNotifier {
   String? get selectedMountain => _selectedMountain;
   HikingRoute? get selectedRoute => _selectedRoute;
   String? get selectedMode => _selectedMode;
+  String? get profileImageUrl => _profileImageUrl;
+  String? get nickname => _nickname;
 
   List<NLatLng> get routeCoordinates => _routeCoordinates;
   List<NLatLng> get userPath => _userPath;
@@ -73,10 +78,16 @@ class AppState extends ChangeNotifier {
   Future<void> _initAuth() async {
     try {
       final token = await _storage.read(key: 'accessToken');
+      final profileImage = await _storage.read(key: 'profileImageUrl');
+      final nickname = await _storage.read(key: 'nickname');
       if (token != null && token.isNotEmpty) {
         _accessToken = token;
+        _profileImageUrl = profileImage;
+        _nickname = nickname;
         _isLoggedIn = true;
         debugPrint('SecureStorage에서 토큰 복원: $_accessToken');
+        debugPrint('SecureStorage에서 프로필 이미지 복원: $_profileImageUrl');
+        debugPrint('SecureStorage에서 닉네임 복원: $_nickname');
         notifyListeners();
       }
     } catch (e) {
@@ -92,12 +103,18 @@ class AppState extends ChangeNotifier {
   }
 
   // 🔥 토큰 설정 및 SecureStorage에 저장
-  Future<void> setToken(String token) async {
+  Future<void> setToken(String token, {String? profileImageUrl, String? nickname}) async {
     _accessToken = token;
     _isLoggedIn = true;
+    _profileImageUrl = profileImageUrl;
+    _nickname = nickname;
     debugPrint('토큰 저장: $_accessToken');
+    debugPrint('프로필 이미지 저장: $_profileImageUrl');
+    debugPrint('닉네임 저장 : $_nickname');
     try {
       await _storage.write(key: 'accessToken', value: token);
+      await _storage.write(key: 'profileImageUrl', value: profileImageUrl);
+      await _storage.write(key: 'nickname', value: nickname);
       debugPrint('SecureStorage에 토큰 저장 완료');
     } catch (e) {
       debugPrint('SecureStorage 저장 오류: $e');
@@ -108,10 +125,14 @@ class AppState extends ChangeNotifier {
   // 🔥 로그아웃: 메모리와 SecureStorage에서 토큰 삭제
   Future<void> clearAuth() async {
     _accessToken = null;
+    _profileImageUrl = null;
+    _nickname = null;
     _isLoggedIn = false;
     debugPrint('클라이언트 인증 정보 초기화');
     try {
       await _storage.delete(key: 'accessToken');
+      await _storage.delete(key: 'profileImageUrl');
+      await _storage.delete(key: 'nickname'); 
       debugPrint('SecureStorage에서 토큰 삭제 완료');
     } catch (e) {
       debugPrint('SecureStorage 삭제 오류: $e');
@@ -134,6 +155,8 @@ class AppState extends ChangeNotifier {
 
   // 등산로 선택 및 단계 전환
   void selectRoute(HikingRoute route) {
+    debugPrint(
+        'AppState.selectRoute - 등산로 설정: id=${route.id}, mountainId=${route.mountainId}, name=${route.name}');
     _selectedRoute = route;
     _trackingStage = TrackingStage.modeSelect;
     notifyListeners();
@@ -147,24 +170,110 @@ class AppState extends ChangeNotifier {
   }
 
   // 모드 선택 및 트래킹 시작
-  void startTracking(String mode) {
+  Future<void> startTracking(String mode,
+      {int? opponentId, int? recordId}) async {
     _selectedMode = mode;
-    _isTracking = true;
-    _trackingStage = TrackingStage.tracking;
-    if (_elapsedSeconds == 0 && _elapsedMinutes == 0) {
-      _resetTrackingData();
-      if (_selectedRoute != null && _selectedRoute!.path.isNotEmpty) {
-        final pathPoints = _selectedRoute!.path
-            .map((coord) =>
-                NLatLng(coord['latitude'] ?? 0.0, coord['longitude'] ?? 0.0))
-            .toList();
-        if (pathPoints.isNotEmpty) {
-          _routeCoordinates = pathPoints;
-          debugPrint('경로 좌표 설정 완료 (${pathPoints.length} 포인트)');
+
+    try {
+      // 현재 위치, 산, 경로 데이터 확인
+      if (_selectedRoute == null) {
+        debugPrint('선택된 경로 없음');
+        return;
+      }
+
+      // 모드 서비스 인스턴스 생성
+      final modeService = ModeService();
+
+      // 모드에 따른 파라미터 설정
+      int modeRecordId = 0;
+      if (mode == '나 vs 나' && recordId != null) {
+        // 나 vs 나 모드에서는 비교할 이전 기록의 ID가 필요
+        modeRecordId = recordId;
+      }
+
+      // 모드 문자열을 서버에서 요구하는 값으로 변환
+      String serverMode;
+      switch (mode) {
+        case '나 vs 나':
+          serverMode = 'ME';
+          break;
+        case '나 vs 친구':
+          serverMode = 'FRIEND';
+          break;
+        case '일반 등산':
+          serverMode = 'GENERAL';
+          break;
+        default:
+          serverMode = 'GENERAL'; // 기본값 설정
+          break;
+      }
+
+      debugPrint('모드 변환: $mode -> $serverMode');
+
+      // opponentId 설정
+      int? modeOpponentId;
+      if (mode == '나 vs 나') {
+        // 나 vs 나 모드에서는 자신의 ID를 opponentId로 설정
+        // 실제 ID는 서버에서 토큰을 통해 가져오므로 null 전달
+        modeOpponentId = null;
+      } else if (mode == '나 vs 친구') {
+        // 나 vs 친구 모드에서는 선택한 친구의 ID를 사용
+        modeOpponentId = opponentId;
+      } else {
+        // 일반 모드에서는 null 설정
+        modeOpponentId = null;
+      }
+
+      debugPrint('opponentId 설정: $modeOpponentId');
+
+      // 서버에 등산 시작 요청
+      final result = await modeService.startTracking(
+        mountainId: _selectedRoute!.mountainId.toInt(),
+        pathId: _selectedRoute!.id.toInt(),
+        mode: serverMode, // 변환된 모드값 사용
+        opponentId: modeOpponentId, // 모드에 따라 다르게 설정
+        recordId: modeRecordId,
+        latitude: _currentLat,
+        longitude: _currentLng,
+        token: _accessToken ?? '',
+      );
+
+      // 트래킹 시작 상태로 변경
+      _isTracking = true;
+      _trackingStage = TrackingStage.tracking;
+
+      // 트래킹 관련 데이터 초기화
+      if (_elapsedSeconds == 0 && _elapsedMinutes == 0) {
+        _resetTrackingData();
+
+        // 서버에서 받은 경로 데이터가 있으면 사용, 없으면 기존 경로 사용
+        if (result.path.path.isNotEmpty) {
+          final pathPoints = result.path.path
+              .map((coord) =>
+                  NLatLng(coord['latitude'] ?? 0.0, coord['longitude'] ?? 0.0))
+              .toList();
+          if (pathPoints.isNotEmpty) {
+            _routeCoordinates = pathPoints;
+            debugPrint('경로 좌표 설정 완료 (${pathPoints.length} 포인트)');
+          }
+        } else if (_selectedRoute!.path.isNotEmpty) {
+          final pathPoints = _selectedRoute!.path
+              .map((coord) =>
+                  NLatLng(coord['latitude'] ?? 0.0, coord['longitude'] ?? 0.0))
+              .toList();
+          if (pathPoints.isNotEmpty) {
+            _routeCoordinates = pathPoints;
+            debugPrint('경로 좌표 설정 완료 (${pathPoints.length} 포인트)');
+          }
         }
       }
+
+      notifyListeners();
+      debugPrint('트래킹 시작: $mode');
+    } catch (e) {
+      debugPrint('트래킹 시작 오류: $e');
+      // 오류 발생 시 처리
     }
-    notifyListeners();
   }
 
   // 트래킹 데이터 초기화

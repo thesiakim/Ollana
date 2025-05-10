@@ -258,6 +258,21 @@ public class TrackingService {
         }
 
         redisTemplate.delete(getTrackingStatusKey(userId));
+
+        // 대결 결과 저장
+        if (request.getRecordId() != null && request.getOpponentId() != null) {
+            eventPublisher.publishEvent(
+                    new BattleResultEvent(
+                            userId,
+                            request.getOpponentId(),
+                            request.getMountainId(),
+                            request.getPathId(),
+                            request.getRecordId(),
+                            request.getFinalTime()
+                    )
+            );
+        }
+
         return "등산을 완료했습니다";
     }
 

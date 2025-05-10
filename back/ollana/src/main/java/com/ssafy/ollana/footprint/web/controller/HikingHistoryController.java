@@ -74,10 +74,9 @@ public class HikingHistoryController {
     @GetMapping("/battle")
     public ResponseEntity<Response<PageResponse<UserVersusOtherResponseDto>>> getHikingBattleRecords(
                                                 @AuthenticationPrincipal CustomUserDetails userDetails,
-                                                @RequestParam BattleType type,
                                                 @PageableDefault(size = 9) Pageable pageable) {
 
-        PageResponse<UserVersusOtherResponseDto> response = battleHistoryService.getHikingBattleRecords(userDetails.getUser().getId(), type, pageable);
+        PageResponse<UserVersusOtherResponseDto> response = battleHistoryService.getHikingBattleRecords(userDetails.getUser().getId(), pageable);
         return ResponseEntity.ok(Response.success(response));
     }
 
