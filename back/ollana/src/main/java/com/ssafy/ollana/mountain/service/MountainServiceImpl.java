@@ -24,9 +24,7 @@ import java.io.StringReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -49,10 +47,13 @@ public class MountainServiceImpl implements MountainService {
                         mountain.getMountainName(),
                         mountain.getMountainLatitude(),
                         mountain.getMountainLongitude(),
+                        mountain.getMountainHeight(),
+                        mountain.getLevel().name(),
                         mountain.getMountainLoc(),
                         mountain.getMountainDescription(),
-                        mountain.getMountainHeight(),
-                        mountain.getLevel().name()
+                        mountain.getMountainImgs().stream()
+                                .map(MountainImg::getImage)
+                                .toList()
                 ))
                 .toList();
 
