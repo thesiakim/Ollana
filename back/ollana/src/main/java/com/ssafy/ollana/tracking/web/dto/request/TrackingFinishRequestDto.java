@@ -11,6 +11,8 @@ import java.util.List;
 public class TrackingFinishRequestDto {
     private Integer mountainId;
     private Integer pathId;
+    private Integer opponentId;
+    private Integer recordId;
     private boolean isSave;
     private Integer opponentDataId;
     private Double finalLatitude;
