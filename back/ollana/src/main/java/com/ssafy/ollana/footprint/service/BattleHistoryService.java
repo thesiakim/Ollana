@@ -27,20 +27,14 @@ public class BattleHistoryService {
     public PageResponse<UserVersusOtherResponseDto> getHikingBattleRecords(Integer userId, BattleType type, Pageable pageable) {
         Page<BattleHistory> page;
 
-        // type에 따라 다르게 조회
         switch (type) {
             case FRIEND -> page = battleHistoryRepository.findByUserIdAndBattleType(userId, BattleType.FRIEND, pageable);
             case AI -> page = battleHistoryRepository.findByUserIdAndBattleType(userId, BattleType.AI, pageable);
             default -> page = battleHistoryRepository.findByUserId(userId, pageable);
         }
 
-        List<UserVersusOtherResponseDto> list = page.getContent().stream()
-                                                                 .map(UserVersusOtherResponseDto::from)
-                                                                 .toList();
-
-        Page<UserVersusOtherResponseDto> paginateResult = PaginateUtil.paginate(
-                list, pageable.getPageNumber(), pageable.getPageSize());
-
-        return new PageResponse<>("list", paginateResult);
+        Page<UserVersusOtherResponseDto> dtoPage = page.map(UserVersusOtherResponseDto::from);
+        return new PageResponse<>("list", dtoPage);
     }
+
 }
