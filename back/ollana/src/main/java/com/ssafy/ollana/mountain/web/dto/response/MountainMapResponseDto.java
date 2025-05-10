@@ -10,5 +10,7 @@ public class MountainMapResponseDto {
     private String name;
     private double latitude;
     private double longitude;
+    private double altitude;
     private String level;
+    private String description;
 }
