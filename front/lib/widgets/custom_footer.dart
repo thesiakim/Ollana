@@ -217,9 +217,7 @@ class CustomFooter extends StatelessWidget {
       // 오류 발생 시 처리 - mounted 체크 추가
       if (!context.mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('산 데이터를 불러오는데 실패했습니다: $e')),
-      );
+      debugPrint('[loadMountainDataInBackground] Exception: $e');
     }
   }
 }

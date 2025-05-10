@@ -45,9 +45,22 @@ Future<MountainWithRoutes> _parseNearby(String body) async {
   final mountain = Mountain.fromJson(mountainData);
 
   final List paths = data['paths'] as List<dynamic>;
-  final routes = paths
-      .map((e) => HikingRoute.fromJson(e as Map<String, dynamic>))
-      .toList();
+
+  // 등산로 데이터 변환 시 mountainId 명시적 설정
+  final routes = paths.map((e) {
+    // 원본 데이터 보존
+    final Map<String, dynamic> pathData =
+        Map<String, dynamic>.from(e as Map<String, dynamic>);
+
+    // mountainId 명시적 추가
+    if (!pathData.containsKey('mountainId') || pathData['mountainId'] == null) {
+      pathData['mountainId'] = mountain.id;
+      debugPrint('_parseNearby: mountainId(${mountain.id})를 등산로 데이터에 추가');
+    }
+
+    return HikingRoute.fromJson(pathData);
+  }).toList();
+
   return MountainWithRoutes(mountain: mountain, routes: routes, location: '');
 }
 
@@ -75,9 +88,22 @@ Future<MountainWithRoutes> _parseAll(String body) async {
   final mountain = Mountain.fromJson(mountainData);
 
   final List paths = data['paths'] as List<dynamic>;
-  final routes = paths
-      .map((e) => HikingRoute.fromJson(e as Map<String, dynamic>))
-      .toList();
+
+  // 등산로 데이터 변환 시 mountainId 명시적 설정
+  final routes = paths.map((e) {
+    // 원본 데이터 보존
+    final Map<String, dynamic> pathData =
+        Map<String, dynamic>.from(e as Map<String, dynamic>);
+
+    // mountainId 명시적 추가
+    if (!pathData.containsKey('mountainId') || pathData['mountainId'] == null) {
+      pathData['mountainId'] = mountain.id;
+      debugPrint('_parseAll: mountainId(${mountain.id})를 등산로 데이터에 추가');
+    }
+
+    return HikingRoute.fromJson(pathData);
+  }).toList();
+
   return MountainWithRoutes(
       mountain: mountain, routes: routes, location: mountain.location);
 }
@@ -90,13 +116,21 @@ class MountainService {
 
   /// 주변 산 및 등산로 조회
   Future<MountainWithRoutes> getNearbyMountains(
-      double latitude, double longitude) async {
+      double latitude, double longitude,
+      [String? token]) async {
     final uri = Uri.parse(
         '$_baseUrl/tracking/mountains/nearby?lat=$latitude&lng=$longitude');
     try {
-      final response = await _client.get(uri, headers: {
+      final headers = {
         'Accept': 'application/json',
-      });
+      };
+
+      // 토큰이 있으면 인증 헤더 추가
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      final response = await _client.get(uri, headers: headers);
 
       if (response.statusCode == 200) {
         final body = utf8.decode(response.bodyBytes);
@@ -114,12 +148,19 @@ class MountainService {
   }
 
   /// 전체 산 및 등산로 조회
-  Future<MountainWithRoutes> getMountainRoutes() async {
+  Future<MountainWithRoutes> getMountainRoutes([String? token]) async {
     final uri = Uri.parse('$_baseUrl/tracking/mountains');
     try {
-      final response = await _client.get(uri, headers: {
+      final headers = {
         'Accept': 'application/json',
-      });
+      };
+
+      // 토큰이 있으면 인증 헤더 추가
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      final response = await _client.get(uri, headers: headers);
 
       if (response.statusCode == 200) {
         final body = utf8.decode(response.bodyBytes);
@@ -136,23 +177,23 @@ class MountainService {
     }
   }
 
-  /// 산 이름으로 검색 (★토큰을 인자로 받도록 수정된 부분)
+  /// 산 이름으로 검색 (토큰을 인자로 받도록 수정된 부분)
   Future<List<Mountain>> searchMountains(String query, String token) async {
-    // ★시그니처에 token 추가
+    // 시그니처에 token 추가
     if (query.isEmpty) {
       return [];
     }
 
     final uri = Uri.parse('$_baseUrl/tracking/search?mtn=$query');
-    debugPrint('★ [searchMountains] URI: $uri'); // ★디버그 로그
-    debugPrint('★ [searchMountains] Token: $token'); // ★디버그 로그
+    debugPrint('[searchMountains] URI: $uri');
+    debugPrint('[searchMountains] Token: $token');
 
     try {
       final response = await _client.get(
         uri,
         headers: {
           'Accept': 'application/json',
-          'Authorization': 'Bearer $token', // ★헤더에 토큰 사용
+          'Authorization': 'Bearer $token', // 헤더에 토큰 사용
         },
       );
 
@@ -223,7 +264,7 @@ class MountainService {
       }
       return [];
     } catch (e) {
-      debugPrint('★ [searchMountains] Exception: $e'); // ★
+      debugPrint('[searchMountains] Exception: $e');
       return [];
     }
   }
@@ -234,7 +275,8 @@ class MountainService {
   }
 
   /// 선택한 산의 상세 정보 및 등산로 조회 (기존 로직 유지)
-  Future<MountainWithRoutes> getMountainByName(String mountainName) async {
+  Future<MountainWithRoutes> getMountainByName(String mountainName,
+      [String? token]) async {
     if (mountainName.isEmpty) {
       throw Exception('산 이름이 비어있습니다');
     }
@@ -242,9 +284,16 @@ class MountainService {
     final uri =
         Uri.parse('$_baseUrl/tracking/search/results?mtn=$mountainName');
     try {
-      final response = await _client.get(uri, headers: {
+      final headers = {
         'Accept': 'application/json',
-      });
+      };
+
+      // 토큰이 있으면 인증 헤더 추가
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      final response = await _client.get(uri, headers: headers);
 
       if (response.statusCode == 200) {
         final body = utf8.decode(response.bodyBytes);
@@ -359,12 +408,20 @@ class MountainService {
   }
 
   /// 산 ID로 상세 정보 및 등산로 조회
-  Future<MountainWithRoutes> getMountainById(num mountainId) async {
+  Future<MountainWithRoutes> getMountainById(num mountainId,
+      [String? token]) async {
     final uri = Uri.parse('$_baseUrl/tracking/search/mountain/$mountainId');
     try {
-      final response = await _client.get(uri, headers: {
+      final headers = {
         'Accept': 'application/json',
-      });
+      };
+
+      // 토큰이 있으면 인증 헤더 추가
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      final response = await _client.get(uri, headers: headers);
 
       if (response.statusCode == 200) {
         final body = utf8.decode(response.bodyBytes);
@@ -392,7 +449,7 @@ class MountainService {
         if (data['mountain'] == null) {
           debugPrint('mountain 데이터가 null입니다');
           mountain = Mountain(
-            id: mountainId,
+            id: mountainId, // mountainId를 그대로 사용
             name: '알 수 없는 산',
             location: '',
             height: 0.0,
@@ -402,7 +459,8 @@ class MountainService {
             // 새 데이터 구조에 맞게 Mountain 객체 생성
             final mountainData = data['mountain'];
             mountain = Mountain(
-              id: mountainData['mountainId'],
+              id: mountainData['mountainId'] ??
+                  mountainId, // API에서 제공하지 않으면 파라미터 값 사용
               name: mountainData['mountainName'] ?? '',
               location: mountainData['location'] ?? '',
               height: 0.0, // API에서 height가 제공되지 않는 경우
@@ -410,7 +468,7 @@ class MountainService {
           } catch (e) {
             debugPrint('Mountain 객체 생성 오류: $e');
             mountain = Mountain(
-              id: mountainId,
+              id: mountainId, // mountainId를 그대로 사용
               name: '알 수 없는 산',
               location: '',
               height: 0.0,
@@ -440,9 +498,17 @@ class MountainService {
                     }
                   }
 
+                  // mountainId 디버그 출력
+                  debugPrint(
+                      '등산로 생성 - 산 ID: ${mountain.id}, 산 이름: ${mountain.name}');
+
+                  // 등산로 내의 mountainId 설정
+                  final routeMountainId = pathData['mountainId'] ?? mountain.id;
+
                   final route = HikingRoute(
                     id: pathData['pathId'] ?? 0,
-                    mountainId: mountain.id,
+                    mountainId:
+                        routeMountainId, // API에서 제공하지 않으면 mountain 객체의 ID 사용
                     name: pathData['pathName'] ?? '',
                     distance:
                         (pathData['pathLength'] as num?)?.toDouble() ?? 0.0,
@@ -451,6 +517,11 @@ class MountainService {
                     difficulty: '중', // API에서 난이도가 제공되지 않는 경우 기본값
                     path: pathCoordinates,
                   );
+
+                  // 생성된 등산로 객체 정보 출력
+                  debugPrint(
+                      '등산로 생성 완료 - ${route.name}, mountainId: ${route.mountainId}, pathId: ${route.id}');
+
                   routes.add(route);
                 } catch (routeError) {
                   debugPrint('등산로 변환 오류: $routeError');
@@ -478,7 +549,7 @@ class MountainService {
       // 오류 발생 시 기본 객체 반환
       return MountainWithRoutes(
         mountain: Mountain(
-          id: 0, // 임시 ID
+          id: mountainId, // mountainId를 그대로 사용
           name: '알 수 없는 산',
           location: '',
           height: 0.0,
@@ -491,7 +562,7 @@ class MountainService {
       // 오류 발생 시 기본 객체 반환
       return MountainWithRoutes(
         mountain: Mountain(
-          id: 0, // 임시 ID
+          id: mountainId, // mountainId를 그대로 사용
           name: '알 수 없는 산',
           location: '',
           height: 0.0,

@@ -31,18 +31,13 @@ public class FootprintService {
     public PageResponse<FootprintResponseDto> getFootprintList(Integer userId, Pageable pageable) {
         Page<Footprint> page = footprintRepository.findByUserId(userId, pageable);
 
-        List<FootprintResponseDto> mountainDtos = page.getContent().stream()
-                         .map(footprint -> FootprintResponseDto.builder()
-                                                    .footprintId(footprint.getId())
-                                                    .mountainName(footprint.getMountain().getMountainName())
-                                                    .imgUrl(footprint.getMountain().getMountainBadge())
-                                                    .build())
-                        .toList();
+        Page<FootprintResponseDto> dtoPage = page.map(footprint -> FootprintResponseDto.builder()
+                                                                    .footprintId(footprint.getId())
+                                                                    .mountainName(footprint.getMountain().getMountainName())
+                                                                    .imgUrl(footprint.getMountain().getMountainBadge())
+                                                                    .build());
 
-        Page<FootprintResponseDto> paginateResult = PaginateUtil.paginate(
-                mountainDtos, pageable.getPageNumber(), pageable.getPageSize());
-
-        return new PageResponse<>("mountains", paginateResult);
+        return new PageResponse<>("mountains", dtoPage);
     }
 
     /*

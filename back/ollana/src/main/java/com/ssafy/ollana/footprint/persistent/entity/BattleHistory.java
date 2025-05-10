@@ -16,12 +16,10 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Getter
+@Builder
 @Entity
 @AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -47,10 +45,6 @@ public class BattleHistory extends BaseEntity {
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "opponent_id")
 	private User opponent;
-
-	@Enumerated(EnumType.STRING)
-	@Column(nullable = false)
-	private BattleType battleType;
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false)

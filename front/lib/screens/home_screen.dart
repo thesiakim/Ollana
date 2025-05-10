@@ -10,6 +10,7 @@ import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_footer.dart';
 import '../widgets/home_body.dart';
 import './tracking/tracking_screen.dart';
+import './footprint/my_footprint_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -32,7 +33,7 @@ class HomeScreen extends StatelessWidget {
                   case 2:
                     return const Center(child: Text('산 정보 페이지'));
                   case 3:
-                    return const Center(child: Text('나의 발자취 페이지'));
+                    return const MyFootprintScreen(); 
                   case 4:
                     return const Center(child: Text('마이페이지'));
                   default:

@@ -1,46 +1,50 @@
 package com.ssafy.ollana.tracking.service;
 
+import com.ssafy.ollana.footprint.persistent.entity.Footprint;
 import com.ssafy.ollana.footprint.persistent.entity.HikingHistory;
+import com.ssafy.ollana.footprint.persistent.repository.FootprintRepository;
 import com.ssafy.ollana.footprint.persistent.repository.HikingHistoryRepository;
 import com.ssafy.ollana.footprint.service.exception.NotFoundException;
 import com.ssafy.ollana.footprint.web.dto.response.TodayHikingResultResponseDto;
-import com.ssafy.ollana.mountain.persistent.entity.Level;
 import com.ssafy.ollana.mountain.persistent.entity.Mountain;
 import com.ssafy.ollana.mountain.persistent.entity.Path;
 import com.ssafy.ollana.mountain.persistent.repository.MountainRepository;
 import com.ssafy.ollana.mountain.persistent.repository.PathRepository;
 import com.ssafy.ollana.mountain.web.dto.response.MountainResponseDto;
-import com.ssafy.ollana.tracking.persistent.HikingLiveRecordsRepository;
+import com.ssafy.ollana.tracking.persistent.repository.HikingLiveRecordsRepository;
 import com.ssafy.ollana.tracking.persistent.entity.HikingLiveRecords;
+import com.ssafy.ollana.tracking.service.exception.AlreadyTrackingException;
+import com.ssafy.ollana.tracking.service.exception.InvalidTrackingException;
 import com.ssafy.ollana.tracking.service.exception.NoNearbyMountainException;
+import com.ssafy.ollana.tracking.web.dto.request.TrackingFinishRequestDto;
 import com.ssafy.ollana.tracking.web.dto.request.TrackingStartRequestDto;
 import com.ssafy.ollana.tracking.web.dto.response.*;
 import com.ssafy.ollana.user.entity.User;
 import com.ssafy.ollana.user.repository.UserRepository;
-import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.locationtech.jts.geom.*;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
+import org.locationtech.jts.geom.Coordinate;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class TrackingService {
     private final MountainRepository mountainRepository;
+    private final FootprintRepository footprintRepository;
     private final PathRepository pathRepository;
     private final UserRepository userRepository;
     private final HikingHistoryRepository hikingHistoryRepository;
     private final HikingLiveRecordsRepository hikingLiveRecordsRepository;
-    private final EntityManager entityManager;
-
+    private final ApplicationEventPublisher eventPublisher;
+    private final RedisTemplate<String, String> redisTemplate;
+    private static final String TRACKING_STATUS_KEY_PREFIX = "tracking:";
 
 
     /*
@@ -130,49 +134,150 @@ public class TrackingService {
         List<FriendInfoResponseDto> friends = userRepository.searchFriends(nickname, mountainId, pathId);
 
         return FriendListResponseDto.builder()
-                .users(friends)
-                .build();
+                                    .users(friends)
+                                    .build();
+    }
+
+    /*
+     * 대결 상대의 등산 기록 조회
+     */
+    @Transactional(readOnly = true)
+    public OpponentRecordListDto findOpponentRecords(Integer userId, Integer mountainId, Integer pathId, Integer opponentId) {
+        Integer targetId = (opponentId != null) ? opponentId : userId;
+
+        List<HikingHistory> histories = hikingHistoryRepository
+                .findOpponentHistories(targetId, mountainId, pathId);
+
+        return OpponentRecordListDto.from(histories);
     }
 
     /*
      * 트래킹 시작 요청
      */
     @Transactional(readOnly = true)
-    public TrackingStartResponseDto getTrackingStartInfo(TrackingStartRequestDto request) {
+    public TrackingStartResponseDto getTrackingStartInfo(Integer userId, TrackingStartRequestDto request) {
+
+        // 등산 중인지 검증
+        String redisKey = getTrackingStatusKey(userId);
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(redisKey))) {
+            throw new AlreadyTrackingException();
+        }
+
         Mountain mountain = mountainRepository.findById(request.getMountainId())
                 .orElseThrow(NotFoundException::new);
 
         Path path = pathRepository.findById(request.getPathId())
                 .orElseThrow(NotFoundException::new);
 
-        // 선택한 산이 사용자 현 위치를 기준으로 반경 10km 이내에 존재하는지 검증
+        // 선택한 산이 사용자 현 위치를 기준으로 반경 15km 이내에 존재하는지 검증
         boolean isNearby = mountainRepository.isMountainWithin10km(
                 request.getMountainId(),
                 request.getLatitude(),
-                request.getLongtitude()
+                request.getLongitude()
         );
 
+        User opponent = null;
         OpponentResponseDto opponentDto = null;
 
-        // 일반 모드일 때는 대결 상대 데이터를 조회하지 않음
-        if (!"GENERAL".equals(request.getMode()) && request.getOpponentId() != null) {
-            User opponent = userRepository.findById(request.getOpponentId())
-                    .orElseThrow(NotFoundException::new);
+        // mode가 ME이면 userId로 조회
+        if ("ME".equals(request.getMode())) {
+            opponent = userRepository.findById(userId)
+                                     .orElseThrow(NotFoundException::new);
+        }
+        // mode가 FRIEND이면 opponentId로 조회
+        else if ("FRIEND".equals(request.getMode()) && request.getOpponentId() != null) {
+            opponent = userRepository.findById(request.getOpponentId())
+                                     .orElseThrow(NotFoundException::new);
+        }
+        List<HikingLiveRecords> records = hikingLiveRecordsRepository.findByHikingHistoryId(request.getRecordId());
 
-            List<HikingLiveRecords> records = hikingLiveRecordsRepository
-                    .findByUserIdAndMountainIdAndPathIdOrderByTotalTimeAsc(
-                            request.getOpponentId(),
-                            request.getMountainId(),
-                            request.getPathId()
-                    );
+        if (opponent != null) {
             opponentDto = OpponentResponseDto.from(opponent, records);
         }
 
-        return TrackingStartResponseDto.builder()
-                .isNearby(isNearby)
-                .mountain(MountainLocationResponseDto.from(mountain))
-                .path(PathForTrackingResponseDto.from(path))
-                .opponent(opponentDto)
-                .build();
+        // redis에 등산 상태 저장
+        String redisValue = request.getMountainId() + ":" + request.getPathId();
+        redisTemplate.opsForValue().set(redisKey, redisValue, Duration.ofHours(24));
+
+        return TrackingStartResponseDto.from(isNearby, mountain, path, opponentDto);
     }
+
+    /*
+     * 트래킹 종료 요청
+     */
+    @Transactional
+    public String manageTrackingFinish(Integer userId, TrackingFinishRequestDto request) {
+
+        // 등산 중인지 + 그 산의 등산로를 등산 중인지 검증
+        String redisKey = getTrackingStatusKey(userId);
+        String redisValue = (String) redisTemplate.opsForValue().get(redisKey);
+
+        String expectedValue = request.getMountainId() + ":" + request.getPathId();
+        if (redisValue == null || !redisValue.equals(expectedValue)) {
+            throw new InvalidTrackingException();
+        }
+
+        User user = userRepository.findById(userId)
+                                  .orElseThrow(NotFoundException::new);
+        Path path = pathRepository.findById(request.getPathId())
+                                  .orElseThrow(NotFoundException::new);
+        Mountain mountain = mountainRepository.findById(request.getMountainId())
+                                              .orElseThrow(NotFoundException::new);
+
+        // 거리 측정
+        Coordinate end = path.getRoute().getEndPoint().getCoordinate();
+        double endLat = end.y;
+        double endLng = end.x;
+        double userLat = request.getFinalLatitude();
+        double userLng = request.getFinalLongitude();
+        double distance = TrackingUtils.calculateDistance(endLat, endLng, userLat, userLng);
+
+        if (distance > 300) {
+            return "등반하시는 코스의 마지막 지점까지 도착하지 않았습니다";
+        }
+
+        // 실시간 등산 기록 저장
+        if (request.isSave()) {
+            Footprint footprint = footprintRepository.findByUserAndMountain(user, mountain)
+                                                     .orElseGet(() -> footprintRepository.save(Footprint.of(user, mountain)));
+
+            // HikingHistory 저장
+            List<Integer> heartRates = request.getRecords().stream()
+                                                           .map(BattleRecordsForTrackingResponseDto::getHeartRate)
+                                                           .filter(Objects::nonNull)
+                                                           .toList();
+
+            HikingHistory history = HikingHistory.of(footprint, path, request.getFinalTime(), heartRates);
+            hikingHistoryRepository.save(history);
+
+            // HikingLiveRecords 저장
+            List<HikingLiveRecords> entityList = TrackingUtils.toEntities(
+                                            request.getRecords(), user, mountain, path, history);
+            hikingLiveRecordsRepository.saveAll(entityList);
+            log.info("등산 기록 저장 완료");
+        }
+
+        redisTemplate.delete(getTrackingStatusKey(userId));
+
+        // 대결 결과 저장
+        if (request.getRecordId() != null && request.getOpponentId() != null) {
+            eventPublisher.publishEvent(
+                    new BattleResultEvent(
+                            userId,
+                            request.getOpponentId(),
+                            request.getMountainId(),
+                            request.getPathId(),
+                            request.getRecordId(),
+                            request.getFinalTime()
+                    )
+            );
+        }
+
+        return "등산을 완료했습니다";
+    }
+
+    private String getTrackingStatusKey(Integer userId) {
+        return TRACKING_STATUS_KEY_PREFIX + userId;
+    }
+
 }

@@ -5,13 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../models/app_state.dart';
+import 'package:http_parser/http_parser.dart';
 
 class SignUpScreen extends StatefulWidget {
-  const SignUpScreen({Key? key}) : super(key: key);
+  const SignUpScreen({super.key});
 
   @override
   State<SignUpScreen> createState() => _SignUpScreenState();
@@ -24,10 +24,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _confirmCtrl = TextEditingController();
   final _nickCtrl = TextEditingController();
   final _birthCtrl = TextEditingController();
+  final _codeCtrl = TextEditingController();
   String _gender = 'M';
   File? _profileImage;
   bool _isLoading = false;
+  bool _isSending = false;
+  bool _isVerifying = false;
+  bool _emailSent = false;
+  bool _emailVerified = false;
   String? _errorMsg;
+  String? _verifyError;
   final _picker = ImagePicker();
 
   bool get _passwordsMatch =>
@@ -42,6 +48,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     _confirmCtrl.dispose();
     _nickCtrl.dispose();
     _birthCtrl.dispose();
+    _codeCtrl.dispose();
     super.dispose();
   }
 
@@ -52,20 +59,95 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 
-  Future<void> _handleSignUp() async {
-    // 키보드 내리기
-    FocusScope.of(context).unfocus();
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _sendVerificationCode() async {
+    final email = _emailCtrl.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      setState(() => _errorMsg = '유효한 이메일을 입력해 주세요.');
+      return;
+    }
+    setState(() {
+      _isSending = true;
+      _errorMsg = null;
+    });
+    final uri = Uri.parse('${dotenv.get('BASE_URL')}/auth/email/send');
+    try {
+      final res = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email}),
+      );
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data['status'] == true) {
+          setState(() {
+            _emailSent = true;
+            _verifyError = null;
+          });
+        } else {
+          setState(() => _errorMsg = data['message'] ?? '인증 코드 전송 실패');
+        }
+      } else {
+        setState(() => _errorMsg = '서버 오류: ${res.statusCode}');
+      }
+    } catch (e) {
+      setState(() => _errorMsg = '네트워크 오류 발생');
+    } finally {
+      if (mounted) setState(() => _isSending = false);
+    }
+  }
 
+  Future<void> _verifyCode() async {
+    final email = _emailCtrl.text.trim();
+    final code = _codeCtrl.text.trim();
+    if (code.isEmpty) {
+      setState(() => _verifyError = '인증 코드를 입력해 주세요.');
+      return;
+    }
+    setState(() {
+      _isVerifying = true;
+      _verifyError = null;
+    });
+    final uri = Uri.parse('${dotenv.get('BASE_URL')}/auth/email/verify');
+    try {
+      final res = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email, 'code': code}),
+      );
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data['status'] == true) {
+          setState(() {
+            _emailVerified = true;
+          });
+        } else {
+          setState(() => _verifyError = data['message'] ?? '인증 코드 확인 실패');
+        }
+      } else {
+        setState(() => _verifyError = '서버 오류: ${res.statusCode}');
+      }
+    } catch (e) {
+      setState(() => _verifyError = '네트워크 오류 발생');
+    } finally {
+      if (mounted) setState(() => _isVerifying = false);
+    }
+  }
+
+  Future<void> _handleSignUp() async {
+    FocusScope.of(context).unfocus();
+    if (!_formKey.currentState!.validate() || !_emailVerified) {
+      if (!_emailVerified) {
+        setState(() => _errorMsg = '이메일 인증을 완료해 주세요.');
+      }
+      return;
+    }
     setState(() {
       _isLoading = true;
       _errorMsg = null;
     });
-
     final baseUrl = dotenv.get('BASE_URL');
     final uri = Uri.parse('$baseUrl/auth/signup');
     final req = http.MultipartRequest('POST', uri);
-// 1) userData JSON 파트를 files로 추가
     req.files.add(
       http.MultipartFile.fromString(
         'userData',
@@ -79,8 +161,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
         contentType: MediaType('application', 'json'),
       ),
     );
-
-// 2) 프로필 이미지(선택)가 있으면 파일 파트로 추가
     if (_profileImage != null) {
       req.files.add(
         await http.MultipartFile.fromPath(
@@ -90,27 +170,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ),
       );
     }
-
     try {
-      debugPrint('회원가입 실행');
       final streamed = await req.send();
-      debugPrint('회원가입 요청 전송 완료');
-      // 스트림에서 Response 객체 생성
       final resp = await http.Response.fromStream(streamed);
-      debugPrint('회원가입 응답 수신 완료: ${resp.statusCode}');
-
-      // 바이트를 utf8로 수동 디코딩
       final bodyString = utf8.decode(resp.bodyBytes);
-      debugPrint('디코딩된 응답 문자열 → $bodyString');
-
-      // JSON 파싱
       final data = jsonDecode(bodyString);
-      debugPrint('회원가입 응답 데이터: $data');
-
       if (!mounted) return;
-
       if (resp.statusCode == 200 && data['status'] == true) {
-        // 성공
         context.read<AppState>().toggleLogin();
         Navigator.of(context).pop();
       } else {
@@ -130,13 +196,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
         );
       }
     } catch (e) {
-      debugPrint('회원가입 오류: $e');
       if (!mounted) return;
       await showDialog(
         context: context,
         builder: (_) => AlertDialog(
           title: const Text('오류'),
-          content: Text('네트워크 오류가 발생했습니다.\n$e'),
+          content: Text('네트워크 오류가 발생했습니다.\n\$e'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -165,14 +230,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
         child: Form(
           key: _formKey,
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 에러 메시지 표시
               if (_errorMsg != null) ...[
                 Text(_errorMsg!, style: const TextStyle(color: Colors.red)),
                 const SizedBox(height: 12),
               ],
 
-              // Email
+              // Email + Send Code
+              // Email 입력
               TextFormField(
                 controller: _emailCtrl,
                 decoration: InputDecoration(
@@ -183,12 +249,67 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       borderSide: BorderSide(color: borderColor)),
                   focusedBorder: OutlineInputBorder(
                       borderSide: BorderSide(color: primary)),
+                  filled: _emailVerified, // 인증 완료 시 회색 배경
+                  fillColor: _emailVerified ? Colors.grey.shade200 : null,
+                  suffixIcon: _emailVerified
+                      ? const Icon(Icons.check_circle, color: Colors.green)
+                      : null,
                 ),
                 keyboardType: TextInputType.emailAddress,
+                enabled: !_emailVerified,
                 validator: (v) =>
-                    (v != null && v.contains('@')) ? null : '유효한 이메일을 입력해 주세요.',
+                    v != null && v.contains('@') ? null : '유효한 이메일을 입력해 주세요.',
+              ),
+              const SizedBox(height: 8),
+              // 인증 코드 전송 버튼 (이메일 아래)
+              ElevatedButton(
+                onPressed: (_isSending || _emailSent || _emailVerified)
+                    ? null
+                    : _sendVerificationCode,
+                child: _isSending
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('인증 코드 전송'),
               ),
               const SizedBox(height: 16),
+              // 인증 코드 입력 및 확인
+              if (_emailSent && !_emailVerified) ...[
+                TextFormField(
+                  controller: _codeCtrl,
+                  decoration: InputDecoration(
+                    labelText: '인증 코드',
+                    border: OutlineInputBorder(
+                        borderSide: BorderSide(color: borderColor)),
+                    enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: borderColor)),
+                    focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: primary)),
+                  ),
+                ),
+                if (_verifyError != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      _verifyError!,
+                      style: const TextStyle(color: Colors.red, fontSize: 12),
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                ElevatedButton(
+                  onPressed: _isVerifying ? null : _verifyCode,
+                  child: _isVerifying
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('인증 확인'),
+                ),
+                const SizedBox(height: 16),
+              ],
 
               // Password
               TextFormField(
@@ -203,7 +324,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       borderSide: BorderSide(color: primary)),
                 ),
                 obscureText: true,
-                onChanged: (_) => setState(() {}), // 매칭 상태 갱신
+                onChanged: (_) => setState(() {}),
                 validator: (v) => (v != null &&
                         v.length >= 8 &&
                         RegExp(r'[^A-Za-z0-9]').hasMatch(v))
@@ -227,16 +348,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 obscureText: true,
                 onChanged: (_) => setState(() {}),
                 validator: (v) {
-                  if (v == null || v.isEmpty) {
-                    return '비밀번호 확인을 입력해 주세요.';
-                  }
-                  if (v != _passwordCtrl.text) {
-                    return '비밀번호가 일치하지 않습니다.';
-                  }
+                  if (v == null || v.isEmpty) return '비밀번호 확인을 입력해 주세요.';
+                  if (v != _passwordCtrl.text) return '비밀번호가 일치하지 않습니다.';
                   return null;
                 },
               ),
-              // 일치/불일치 메시지
               if (_confirmCtrl.text.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
@@ -250,7 +366,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
               const SizedBox(height: 16),
 
-              // Nickname (한글/영문/숫자 허용)
+              // Nickname
               TextFormField(
                 controller: _nickCtrl,
                 decoration: InputDecoration(
@@ -263,7 +379,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       borderSide: BorderSide(color: primary)),
                 ),
                 inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[가-힣a-zA-Z0-9]')),
+                  FilteringTextInputFormatter.allow(RegExp(r'[가-힣a-zA-Z0-9]'))
                 ],
                 validator: (v) =>
                     (v != null && v.trim().isNotEmpty) ? null : '닉네임을 입력해 주세요.',
@@ -283,7 +399,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       borderSide: BorderSide(color: primary)),
                 ),
                 keyboardType: TextInputType.number,
-                validator: (v) => (v != null && RegExp(r'^\d{8}$').hasMatch(v))
+                validator: (v) => v != null && RegExp(r'^\d{8}$').hasMatch(v)
                     ? null
                     : '생년월일 8자리 숫자로 입력해 주세요.',
               ),

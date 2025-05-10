@@ -2,9 +2,9 @@ package com.ssafy.ollana.tracking.web.controller;
 
 import com.ssafy.ollana.common.util.Response;
 import com.ssafy.ollana.footprint.web.dto.response.TodayHikingResultResponseDto;
-import com.ssafy.ollana.mountain.web.dto.response.PathResponseDto;
 import com.ssafy.ollana.security.CustomUserDetails;
 import com.ssafy.ollana.tracking.service.TrackingService;
+import com.ssafy.ollana.tracking.web.dto.request.TrackingFinishRequestDto;
 import com.ssafy.ollana.tracking.web.dto.request.TrackingStartRequestDto;
 import com.ssafy.ollana.tracking.web.dto.response.*;
 import lombok.RequiredArgsConstructor;
@@ -83,11 +83,37 @@ public class TrackingController {
     }
 
     /*
+     * 대결 상대의 등산 기록 조회
+     */
+    @GetMapping("/options")
+    public ResponseEntity<Response<OpponentRecordListDto>> getOpponentRecords(
+                                                        @AuthenticationPrincipal CustomUserDetails userDetails,
+                                                        @RequestParam Integer mountainId,
+                                                        @RequestParam Integer pathId,
+                                                        @RequestParam(required = false) Integer opponentId
+    ) {
+        OpponentRecordListDto response = trackingService.findOpponentRecords(userDetails.getUser().getId(), mountainId, pathId, opponentId);
+        return ResponseEntity.ok(Response.success(response));
+    }
+
+
+    /*
      * 트래킹 시작 요청
      */
     @GetMapping("/start")
-    public ResponseEntity<Response<TrackingStartResponseDto>> getTrackingStartInfo(@RequestBody TrackingStartRequestDto request) {
-        TrackingStartResponseDto response = trackingService.getTrackingStartInfo(request);
+    public ResponseEntity<Response<TrackingStartResponseDto>> getTrackingStartInfo(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                                                                   @RequestBody TrackingStartRequestDto request) {
+        TrackingStartResponseDto response = trackingService.getTrackingStartInfo(userDetails.getUser().getId(), request);
         return ResponseEntity.ok(Response.success(response));
+    }
+
+    /*
+     * 트래킹 종료 요청
+     */
+    @PostMapping("/finish")
+    public ResponseEntity<Response<String>> manageTrackingFinish(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                                                 @RequestBody TrackingFinishRequestDto request) {
+        String message = trackingService.manageTrackingFinish(userDetails.getUser().getId(), request);
+        return ResponseEntity.ok(Response.success(message));
     }
 }

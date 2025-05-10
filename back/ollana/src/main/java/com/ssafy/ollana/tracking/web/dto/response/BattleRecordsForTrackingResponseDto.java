@@ -11,7 +11,7 @@ public class BattleRecordsForTrackingResponseDto {
     private double distance;
     private int heartRate;
     private Double latitude;
-    private Double longtitude;
+    private Double longitude;
 
     public static BattleRecordsForTrackingResponseDto from(HikingLiveRecords records) {
         return BattleRecordsForTrackingResponseDto.builder()
@@ -19,7 +19,7 @@ public class BattleRecordsForTrackingResponseDto {
                                                   .distance(records.getTotalDistance())
                                                   .heartRate(records.getHeartRate())
                                                   .latitude(records.getLatitude())
-                                                  .longtitude(records.getLongtitude())
+                                                  .longitude(records.getLongitude())
                                                   .build();
     }
 

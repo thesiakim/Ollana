@@ -1,5 +1,6 @@
 package com.ssafy.ollana.auth.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -9,5 +10,6 @@ public class TempUserDto {
     private String email;
     private String nickname;
     private String profileImage;
-    private boolean isSocial;
+    @JsonProperty("isSocial")
+    private boolean socialLogin;
 }

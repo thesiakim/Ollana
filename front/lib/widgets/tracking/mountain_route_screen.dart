@@ -33,7 +33,6 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
   final LayerLink _layerLink = LayerLink();
   OverlayEntry? _overlayEntry;
 
-  List<Mountain> _allMountains = [];
   List<Mountain> _filteredMountains = [];
   List<HikingRoute> _routes = [];
 
@@ -179,6 +178,9 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
     setState(() => _isLoading = true);
 
     try {
+      // AppState에서 토큰 꺼내기
+      final token = context.read<AppState>().accessToken ?? '';
+
       // 현재 위치 가져오기
       Position? position = await _getCurrentPosition();
 
@@ -188,7 +190,7 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
 
       // 현재 위치 기반으로 주변 산 정보 가져오기
       final data =
-          await _mountainService.getNearbyMountains(latitude, longitude);
+          await _mountainService.getNearbyMountains(latitude, longitude, token);
       if (!mounted) return;
 
       // 하나의 산과 해당 산의 등산로만 표시
@@ -200,7 +202,6 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
       // 데이터가 로드되면 로딩 상태 종료
       setState(() {
         // 단일 산만 처리하도록 변경
-        _allMountains = [mountain];
         _filteredMountains = [mountain];
         _isLoading = false;
         _selectedMountain = mountain;
@@ -217,10 +218,7 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
     } catch (e) {
       if (!mounted) return;
 
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('산 데이터를 불러오는데 실패했습니다: $e')),
-      );
+      debugPrint('[loadInitialData] 오류: $e');
     }
   }
 
@@ -281,11 +279,12 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
       });
     } catch (e) {
       debugPrint('산 검색 오류: $e');
-      if (mounted)
+      if (mounted) {
         setState(() {
           _filteredMountains = [];
           _isLoading = false;
         });
+      }
     }
   }
 
@@ -393,12 +392,6 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
     Overlay.of(context).insert(_overlayEntry!);
   }
 
-  // 오버레이 업데이트
-  void _updateOverlay() {
-    _removeOverlay();
-    _showSearchResults();
-  }
-
   // 오버레이 제거
   void _removeOverlay() {
     _overlayEntry?.remove();
@@ -421,6 +414,9 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
     // 지도를 다시 생성하기 위한 설정
     _shouldRebuildMap = true;
 
+    // AppState에서 토큰 꺼내기
+    final token = context.read<AppState>().accessToken ?? '';
+
     // 로딩 상태 설정
     setState(() {
       _isLoadingRoutes = true;
@@ -430,7 +426,7 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
 
     try {
       // 선택한 산의 상세 정보를 새 API로 가져오기
-      final data = await _mountainService.getMountainById(mountainId);
+      final data = await _mountainService.getMountainById(mountainId, token);
       debugPrint(
           '산 데이터 수신 성공: ${data.mountain.name}, 등산로 수: ${data.routes.length}');
 
@@ -507,6 +503,9 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
 
   // 산의 등산로 데이터 비동기 로드 (분리된 비동기 함수)
   Future<void> _fetchRoutesForMountain(Mountain mountain) async {
+    // AppState에서 토큰 꺼내기
+    final token = context.read<AppState>().accessToken ?? '';
+
     setState(() {
       _isLoadingRoutes = true;
     });
@@ -523,7 +522,7 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
 
       // 현재 위치 기반으로 주변 산 정보 가져오기
       final result =
-          await _mountainService.getNearbyMountains(latitude, longitude);
+          await _mountainService.getNearbyMountains(latitude, longitude, token);
       if (!mounted) return;
 
       // 모든 등산로 정보를 미리 처리
@@ -661,53 +660,9 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
       body: _isLoading || (_selectedMountain == null && !_isSearching)
           ? const Center(child: CircularProgressIndicator())
           : _isSearching && _selectedMountain == null
-              ? _buildMountainList()
+              ? const Center(child: Text('검색 결과가 없습니다.'))
               : _buildRouteContent(),
     );
-  }
-
-  // 산 목록 화면
-  Widget _buildMountainList() {
-    return _isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : _filteredMountains.isEmpty
-            ? const Center(child: Text('검색 결과가 없습니다.'))
-            : ListView.builder(
-                itemCount: _filteredMountains.length,
-                itemBuilder: (context, index) {
-                  final mountain = _filteredMountains[index];
-                  final isSelected = _selectedMountain?.id == mountain.id;
-
-                  return Card(
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 12.0,
-                      vertical: 4.0,
-                    ),
-                    child: ListTile(
-                      title: Text(
-                        mountain.name,
-                        style: TextStyle(
-                          fontWeight:
-                              isSelected ? FontWeight.bold : FontWeight.normal,
-                        ),
-                      ),
-                      subtitle: Text(mountain.location),
-                      trailing: Text(
-                        '${mountain.height}m',
-                        style: TextStyle(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      selected: isSelected,
-                      selectedTileColor: AppColors.primary.withAlpha(20),
-                      onTap: () {
-                        _loadRouteData(mountain);
-                      },
-                    ),
-                  );
-                },
-              );
   }
 
   // 등산로 목록 및 시각화 화면
@@ -823,7 +778,7 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
                                         ),
                                         const SizedBox(height: 4),
                                         Text(
-                                          '거리: ${route.distance}km • 예상 소요시간: ${route.estimatedTime}분',
+                                          '거리: ${(route.distance / 1000).toStringAsFixed(1)}km • 예상 소요시간: ${route.estimatedTime >= 60 ? "${route.estimatedTime ~/ 60}시간 ${route.estimatedTime % 60}분" : "${route.estimatedTime}분"}',
                                           style: const TextStyle(
                                             fontSize: 12,
                                             color: Colors.grey,

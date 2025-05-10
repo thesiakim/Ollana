@@ -10,6 +10,7 @@ public class TrackingStartRequestDto {
     private Integer pathId;
     private String mode;
     private Integer opponentId;
+    private Integer recordId;
     private Double latitude;
-    private Double longtitude;
+    private Double longitude;
 }

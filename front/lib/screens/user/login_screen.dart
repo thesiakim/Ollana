@@ -7,6 +7,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:jwt_decode/jwt_decode.dart'; // 🔥 JWT 디코딩 패키지
 import '../../models/app_state.dart';
 import './sign_up_screen.dart';
+import './password_reset_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -39,14 +40,10 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = true;
       _errorMsg = null;
     });
-    debugPrint('⏳ [Login] 네트워크 요청 중...');
 
     try {
       final baseUrl = dotenv.get('BASE_URL');
       final uri = Uri.parse('$baseUrl/auth/login');
-      debugPrint('🛠️ [Login] 요청 URL: $uri');
-      debugPrint('✉️ [Login] 전달 데이터: email=${_emailController.text.trim()}');
-
       final response = await http.post(
         uri,
         headers: {'Content-Type': 'application/json'},
@@ -55,50 +52,23 @@ class _LoginScreenState extends State<LoginScreen> {
           'password': _passwordController.text.trim(),
         }),
       );
-      debugPrint('✅ [Login] 요청 전송 완료');
-      debugPrint('🔎 [Login] 응답 코드: ${response.statusCode}');
-
-      // UTF-8로 정확히 디코딩
       final bodyString = utf8.decode(response.bodyBytes);
-      debugPrint('📦 [Login] 응답 바디 문자열: $bodyString');
       final data = jsonDecode(bodyString);
-      debugPrint('💾 [Login] 파싱된 데이터: $data');
 
       if (response.statusCode == 200 && data['status'] == true) {
         final accessToken = data['data']['accessToken'];
-        debugPrint('🔑 [Login] accessToken: $accessToken');
-
-        // 🔥 refreshToken 관련 코드 제거 (백엔드 미제공)
-
-        // 🔥 JWT에서 만료 시간(exp) 디코딩 (accessToken만)
         final payloadA = Jwt.parseJwt(accessToken);
         final expA = payloadA['exp'] as int;
         final expiryA = DateTime.fromMillisecondsSinceEpoch(expA * 1000);
-        debugPrint('⏳ [Login] accessToken 만료 시각: $expiryA');
-
-        // 🔥 토큰 저장 및 로그인 상태 설정
         await context.read<AppState>().setToken(accessToken);
-        debugPrint('🗝️ [Login] 토큰 저장 및 로그인 완료');
-
         Navigator.of(context).pop();
-        debugPrint('↩️ [Login] 화면 닫기');
       } else {
-        final message = data['message'] ?? '로그인에 실패했습니다.';
-        debugPrint('⚠️ [Login] 로그인 실패 메시지: $message');
-        setState(() {
-          _errorMsg = message;
-        });
+        setState(() => _errorMsg = data['message'] ?? '로그인에 실패했습니다.');
       }
     } catch (e) {
-      debugPrint('🚨 [Login] 예외 발생: $e');
-      setState(() {
-        _errorMsg = '네트워크 오류가 발생했습니다.';
-      });
+      setState(() => _errorMsg = '네트워크 오류가 발생했습니다.');
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        debugPrint('🔚 [Login] 완료');
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -136,6 +106,7 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Form(
           key: _formKey,
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (_errorMsg != null) ...[
                 Text(_errorMsg!, style: const TextStyle(color: Colors.red)),
@@ -157,34 +128,67 @@ class _LoginScreenState extends State<LoginScreen> {
                     ? null
                     : '6자 이상 비밀번호를 입력해 주세요.',
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 8),
+
+              // 회원가입과 비밀번호 찾기를 가깝게 배치
+              Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const SignUpScreen()),
+                      );
+                    },
+                    child: const Text('회원가입', style: TextStyle(fontSize: 12)),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) => const PasswordResetScreen()),
+                      );
+                    },
+                    child:
+                        const Text('비밀번호 찾기', style: TextStyle(fontSize: 12)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // 로그인 버튼 (전체 너비)
               SizedBox(
-                width: double.infinity,
                 height: 48,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _handleLogin,
                   child: _isLoading
                       ? const CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation(Colors.white),
-                        )
+                          valueColor: AlwaysStoppedAnimation(Colors.white))
                       : const Text('로그인'),
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size.fromWidth(double.infinity),
+                  ),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
+
+              // 카카오톡 시작하기 버튼
               SizedBox(
-                width: double.infinity,
                 height: 48,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryColor,
-                    foregroundColor: Colors.white,
-                  ),
+                child: ElevatedButton.icon(
                   onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const SignUpScreen()),
-                    );
+                    // TODO: 카카오톡 로그인 기능 구현
                   },
-                  child: const Text('회원가입'),
+                  icon: const Icon(Icons.chat),
+                  label: const Text('카카오톡으로 시작하기'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFEE500),
+                    foregroundColor: Colors.black,
+                    minimumSize: const Size.fromWidth(double.infinity),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4)),
+                  ),
                 ),
               ),
             ],

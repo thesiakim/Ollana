@@ -10,14 +10,14 @@ public class MountainLocationResponseDto {
     private Integer mountainId;
     private String mountainName;
     private double latitude;
-    private double longtitude;
+    private double longitude;
 
     public static MountainLocationResponseDto from(Mountain mountain) {
         return MountainLocationResponseDto.builder()
                 .mountainId(mountain.getId())
                 .mountainName(mountain.getMountainName())
                 .latitude(mountain.getMountainLatitude())
-                .longtitude(mountain.getMountainLongitude())
+                .longitude(mountain.getMountainLongitude())
                 .build();
     }
 

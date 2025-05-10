@@ -66,8 +66,6 @@ public class JwtUtil {
             return true;
         } catch (SecurityException | MalformedJwtException | SignatureException e) {
             log.error("Invalid JWT signature, 유효하지 않는 JWT 서명 입니다.");
-        } catch (ExpiredJwtException e) {
-            log.error("Expired JWT token, 만료된 JWT 토큰 입니다.");
         } catch (UnsupportedJwtException e) {
             log.error("Unsupported JWT token, 지원되지 않는 JWT 토큰 입니다.");
         } catch (IllegalArgumentException e) {
@@ -85,6 +83,13 @@ public class JwtUtil {
         }
     }
 
+    // 토큰 남은 시간 계산
+    public long getTokenRemainingTime(String token) {
+        Claims claims = getClaims(token);
+        Date expiration = claims.getExpiration();
+        return expiration.getTime() - System.currentTimeMillis();
+    }
+
     // 클레임 추출
     public Claims getClaims(String token) {
         return Jwts.parserBuilder()
@@ -97,33 +102,5 @@ public class JwtUtil {
     // 사용자 이메일 가져오기
     public String getUserEmailFromToken(String token) {
         return getClaims(token).getSubject();
-    }
-
-
-    // password reset token 생성
-    public String createPasswordResetToken(String userId) {
-        Date now = new Date();
-        Date expiration = new Date(now.getTime() + passwordResetTokenExpiration);
-
-        return Jwts.builder()
-                .setSubject(userId)
-                .claim("purpose", "password_reset")
-                .setIssuedAt(now)
-                .setExpiration(expiration)
-                .signWith(key, SignatureAlgorithm.HS256)
-                .compact();
-    }
-
-    // password reset token 검증
-    public boolean validatePasswordResetToken(String token) {
-        try {
-            Claims claims = getClaims(token);
-
-            // 토큰 용도 검증
-            return "password_reset".equals(claims.get("purpose"));
-        } catch (Exception e) {
-            log.error("비밀번호 재설정 토큰 검증 실패", e);
-            return false;
-        }
     }
 }

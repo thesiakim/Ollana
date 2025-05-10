@@ -117,6 +117,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
 
   // 디바이스 방향 (나침반 방향)
   double _deviceHeading = 0.0;
+  double _lastAppliedHeading = 0.0; // 마지막으로 적용된 방향
+  static const double _minHeadingChangeForUpdate = 10.0; // 업데이트를 위한 최소 방향 변화 (도)
 
   // 최고/평균 심박수
   int _maxHeartRate = 120;
@@ -161,6 +163,9 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   // 위치 버튼 클릭 처리를 위한 변수
   bool _isLocationButtonProcessing = false;
   int _pendingLocationClicks = 0; // 대기 중인 위치 버튼 클릭 수
+
+  // 카메라 이동 중인지 확인하는 플래그
+  bool _isMovingToCurrentLocation = false;
 
   @override
   void initState() {
@@ -283,7 +288,15 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   // 포맷팅된 시간 문자열
   String get _formattedTime {
     final minutes = _elapsedMinutes;
-    return '$minutes분';
+
+    // 60분 이상일 경우 시간과 분으로 표시
+    if (minutes >= 60) {
+      final hours = minutes ~/ 60;
+      final mins = minutes % 60;
+      return '$hours시간 $mins분';
+    } else {
+      return '$minutes분';
+    }
   }
 
   // 지도에 등산로 경로 표시
@@ -330,11 +343,31 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
 
       // 내 위치 오버레이는 별도로 유지
       final locOverlay = _mapController!.getLocationOverlay();
-      locOverlay.setIconSize(const Size.square(24));
-      locOverlay.setCircleRadius(0);
-      locOverlay.setIsVisible(true);
+      locOverlay.setIconSize(const Size(64, 64)); // 크기를 더 크게 설정
+      locOverlay.setCircleRadius(10); // 원 반경 설정
 
-      debugPrint('기존 경로 오버레이 삭제됨');
+      // 3) 커스텀 위치 오버레이 아이콘 설정 - 화살표 모양 마커 사용
+      try {
+        // 화살표 모양의 위치 아이콘 설정 (기본적으로 북쪽을 향하는 화살표)
+        final NOverlayImage arrowIcon =
+            NOverlayImage.fromAssetImage('lib/assets/images/up-arrow.png');
+        locOverlay.setIcon(arrowIcon);
+
+        // 베어링 값 직접 설정 (현재 방향으로)
+        locOverlay.setBearing(_deviceHeading);
+
+        // 내 위치 오버레이 색상 설정
+        locOverlay.setCircleColor(AppColors.primary.withAlpha(51));
+        locOverlay.setCircleOutlineColor(AppColors.primary);
+
+        // 위치 추적 모드 설정 (face 모드로 설정)
+        _mapController!.setLocationTrackingMode(NLocationTrackingMode.face);
+      } catch (e) {
+        debugPrint('위치 오버레이 아이콘 설정 오류: $e');
+      }
+
+      // 위치 오버레이를 보이게 설정하고 주기적으로 확인
+      locOverlay.setIsVisible(true);
 
       // (2) 경로 오버레이·마커 그리기
       _mapController!.addOverlay(
@@ -585,26 +618,16 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
 
           // 경로 업데이트와 베어링은 UI 상태 변경 후에 수행
 
-          // 네비게이션 모드일 경우 카메라 위치 업데이트
-          if (_mapController != null) {
-            // 네비게이션 모드에서만 방향과 틸트를 적용
-            if (_isNavigationMode) {
-              _mapController!.updateCamera(
-                NCameraUpdate.withParams(
-                  target: NLatLng(_currentLat, _currentLng),
-                  zoom: 17,
-                  tilt: 50,
-                ),
-              );
-            } else {
-              // 일반 모드에서는 위치만 업데이트 (방향과 틸트 없음)
-              _mapController!.updateCamera(
-                NCameraUpdate.withParams(
-                  target: NLatLng(_currentLat, _currentLng),
-                  zoom: 15,
-                ),
-              );
-            }
+          // 네비게이션 모드일 경우에만 카메라 위치 업데이트
+          // 전체 맵 보기 모드에서는 카메라를 자동으로 이동시키지 않음
+          if (_mapController != null && _isNavigationMode) {
+            _mapController!.updateCamera(
+              NCameraUpdate.withParams(
+                target: NLatLng(_currentLat, _currentLng),
+                zoom: 17,
+                tilt: 50,
+              ),
+            );
           }
 
           // AppState 업데이트
@@ -634,7 +657,16 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
     if (_mapController == null) return;
 
     try {
-      debugPrint('위치 추적 모드가 활성화되었습니다.');
+      // 모드에 따라 다른 추적 모드 설정
+      if (_isNavigationMode) {
+        // 네비게이션 모드는 face 모드로 설정 (방향에 따라 회전)
+        _mapController!.setLocationTrackingMode(NLocationTrackingMode.face);
+        debugPrint('위치 추적 모드가 활성화되었습니다 (Face 모드)');
+      } else {
+        // 전체 맵 보기 모드는 NoFollow로 설정 (현재 위치는 표시하되 카메라는 이동하지 않음)
+        _mapController!.setLocationTrackingMode(NLocationTrackingMode.noFollow);
+        debugPrint('위치 추적 모드가 활성화되었습니다 (NoFollow 모드)');
+      }
     } catch (e) {
       debugPrint('위치 추적 모드 설정 중 오류 발생: $e');
     }
@@ -674,14 +706,69 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                 _mapController = controller;
 
                 // 1) 위치 추적 모드 활성화
-                await controller
-                    .setLocationTrackingMode(NLocationTrackingMode.follow);
+                await controller.setLocationTrackingMode(
+                    NLocationTrackingMode.face); // face 모드로 변경
 
                 // 2) 내 위치 오버레이 보이게 설정
                 final locOverlay = controller.getLocationOverlay();
-                locOverlay.setIconSize(const Size.square(24));
-                locOverlay.setCircleRadius(0);
+
+                // 내 위치 오버레이 아이콘 설정
+                try {
+                  debugPrint('위치 마커 설정 시작 (onMapReady)...');
+
+                  // 아이콘 크기를 더 크게 설정 (64픽셀로 증가)
+                  locOverlay.setIconSize(const Size(64, 64));
+
+                  // 원의 반경을 설정 (완전히 사라지지 않게 약간의 크기 유지)
+                  locOverlay.setCircleRadius(10);
+
+                  // 화살표 모양의 위치 아이콘 설정 (기본적으로 북쪽을 향하는 화살표)
+                  final NOverlayImage arrowIcon = NOverlayImage.fromAssetImage(
+                      'lib/assets/images/up-arrow.png');
+                  locOverlay.setIcon(arrowIcon);
+
+                  // 베어링 값을 현재 디바이스 방향으로 설정
+                  locOverlay.setBearing(_deviceHeading);
+
+                  // 내 위치 오버레이 색상 설정
+                  locOverlay.setCircleColor(AppColors.primary.withAlpha(51));
+                  locOverlay.setCircleOutlineColor(AppColors.primary);
+
+                  // 위치 추적 모드를 face로 설정 (아이콘이 항상 방향에 따라 회전하도록)
+                  controller
+                      .setLocationTrackingMode(NLocationTrackingMode.face);
+
+                  debugPrint('위치 마커 설정 완료 (onMapReady)!');
+                } catch (e) {
+                  debugPrint('위치 오버레이 아이콘 설정 오류: $e');
+                }
+
+                // 위치 오버레이를 보이게 설정
                 locOverlay.setIsVisible(true);
+                debugPrint(
+                    '위치 오버레이 표시 설정 (onMapReady): ${locOverlay.isVisible}');
+
+                // 위치 오버레이 항상 보이게 하기 위한 타이머 설정
+                _locationOverlayTimer =
+                    Timer.periodic(const Duration(seconds: 1), (_) {
+                  if (_mapController == null) return;
+
+                  try {
+                    // 정기적으로 위치 오버레이가 보이는지 확인하고 필요하면 다시 표시
+                    final locOverlay = _mapController!.getLocationOverlay();
+                    if (!locOverlay.isVisible) {
+                      debugPrint('위치 오버레이가 보이지 않아 다시 표시합니다.');
+                      locOverlay.setIsVisible(true);
+                    }
+
+                    // 모드에 따라 추적 모드 확인 및 재설정 (비동기 처리를 위해 별도 함수 호출)
+                    if (!_isToggling) {
+                      _checkAndUpdateTrackingMode();
+                    }
+                  } catch (e) {
+                    debugPrint('위치 오버레이/추적 모드 확인 중 오류: $e');
+                  }
+                });
 
                 // 지도가 준비되면 경로 표시 (지연 시간 증가)
                 Future.delayed(const Duration(milliseconds: 1000), () async {
@@ -841,11 +928,21 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
 
   // 기본 정보 섹션 위젯
   Widget _buildBasicInfoSection() {
+    // 거리 변환: 미터를 km로 표시
+    String distanceText = '';
+    if (_distance < 1.0) {
+      // 1km 미만은 미터로 표시
+      distanceText = '${(_distance * 1000).toInt()}m';
+    } else {
+      // 1km 이상은 소수점 한 자리까지 km로 표시
+      distanceText = '${_distance.toStringAsFixed(1)}km';
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '남은 거리 : ${_distance.toStringAsFixed(1)}km',
+          '남은 거리 : $distanceText',
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.bold,
@@ -877,6 +974,17 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
 
   // 확장된 정보 섹션 위젯
   Widget _buildExpandedInfoSection() {
+    // 경쟁자의 남은 시간 포맷팅
+    String competitorTimeFormatted = '';
+    final compMinutes = _competitorData['time'] as int;
+    if (compMinutes >= 60) {
+      final hours = compMinutes ~/ 60;
+      final mins = compMinutes % 60;
+      competitorTimeFormatted = '$hours시간 $mins분';
+    } else {
+      competitorTimeFormatted = '$compMinutes분';
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -925,7 +1033,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
         ),
         SizedBox(height: 4),
         Text(
-          '예상 남은 시간 : ${_competitorData['time']}분',
+          '예상 남은 시간 : $competitorTimeFormatted',
           style: TextStyle(fontSize: 14),
         ),
         SizedBox(height: 4),
@@ -1112,6 +1220,14 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
       if (_mapController != null) {
         if (_isNavigationMode) {
           debugPrint('네비게이션 모드 활성화');
+
+          // 카메라 이동 중 플래그 설정 - 방향 회전 방지
+          _isMovingToCurrentLocation = true;
+
+          // 위치 추적 모드를 face로 설정 (방향에 맞춰 회전)
+          await _mapController!
+              .setLocationTrackingMode(NLocationTrackingMode.face);
+
           // 네비게이션 모드 활성화: 현재 위치 중심, 3D 기울기 적용
           // 현재 보고 있는 방향(디바이스 방향 또는 이동 방향) 적용
           await _mapController!.updateCamera(
@@ -1122,7 +1238,28 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
               tilt: 50.0,
             ),
           );
+
+          // 이동 완료 후 방향 기준점 재설정 및 이동 플래그 해제
+          _lastAppliedHeading = _deviceHeading;
+          _isMovingToCurrentLocation = false;
+
+          // 모드 변경 후 일정 시간 후 다시 한번 추적 모드 확인
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted && _mapController != null && _isNavigationMode) {
+              try {
+                _mapController!
+                    .setLocationTrackingMode(NLocationTrackingMode.face);
+                debugPrint('네비게이션 모드 추적 모드 재확인');
+              } catch (e) {
+                debugPrint('추적 모드 재설정 오류: $e');
+              }
+            }
+          });
         } else {
+          // 위치 추적 모드를 noFollow로 설정 (방향 회전 없음)
+          await _mapController!
+              .setLocationTrackingMode(NLocationTrackingMode.noFollow);
+
           // 네비게이션 모드 비활성화: 전체 경로 조망
           final bounds = await compute(
               _BackgroundTask.calculateRouteBounds, _routeCoordinates);
@@ -1143,10 +1280,25 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
             NCameraUpdate.withParams(tilt: 0, bearing: 0),
           );
           debugPrint('전체 지도 모드 카메라 설정 완료');
+
+          // 모드 변경 후 일정 시간 후 다시 한번 추적 모드 확인
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted && _mapController != null && !_isNavigationMode) {
+              try {
+                _mapController!
+                    .setLocationTrackingMode(NLocationTrackingMode.noFollow);
+                debugPrint('전체 맵 모드 추적 모드 재확인');
+              } catch (e) {
+                debugPrint('추적 모드 재설정 오류: $e');
+              }
+            }
+          });
         }
       }
     } catch (e) {
       debugPrint('네비게이션 모드 전환 오류: $e');
+      // 오류 발생 시 이동 플래그 초기화
+      _isMovingToCurrentLocation = false;
     } finally {
       // 토글 완료
       if (mounted) {
@@ -1189,7 +1341,53 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
 
     // 처리 시작
     _isLocationButtonProcessing = true;
+
+    // 위치 추적 모드를 다시 설정
+    _resetLocationTrackingMode();
+
     _moveToCurrentLocation();
+  }
+
+  // 위치 추적 모드 재설정
+  void _resetLocationTrackingMode() {
+    if (_mapController == null) return;
+
+    try {
+      // 현재 모드에 맞게 위치 추적 모드 설정
+      if (_isNavigationMode) {
+        _mapController!.setLocationTrackingMode(NLocationTrackingMode.face);
+      } else {
+        _mapController!.setLocationTrackingMode(NLocationTrackingMode.noFollow);
+      }
+
+      // 위치 오버레이 설정 재적용
+      final locOverlay = _mapController!.getLocationOverlay();
+
+      // 크기 및 스타일 설정
+      locOverlay.setIconSize(const Size(64, 64));
+      locOverlay.setCircleRadius(10);
+
+      try {
+        // 화살표 아이콘 설정
+        final NOverlayImage arrowIcon =
+            NOverlayImage.fromAssetImage('lib/assets/images/up-arrow.png');
+        locOverlay.setIcon(arrowIcon);
+
+        // 베어링 값 직접 설정 (현재 디바이스 방향)
+        locOverlay.setBearing(_deviceHeading);
+      } catch (e) {
+        debugPrint('아이콘 재설정 오류: $e');
+      }
+
+      // 색상 및 가시성 설정
+      locOverlay.setCircleColor(AppColors.primary.withAlpha(51));
+      locOverlay.setCircleOutlineColor(AppColors.primary);
+      locOverlay.setIsVisible(true);
+
+      debugPrint('위치 추적 모드 재설정 완료');
+    } catch (e) {
+      debugPrint('위치 추적 모드 재설정 오류: $e');
+    }
   }
 
   // 현재 위치로 카메라 이동
@@ -1200,6 +1398,9 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
     }
 
     try {
+      // 카메라 이동 중 플래그 설정
+      _isMovingToCurrentLocation = true;
+
       // debugPrint('카메라를 현재 위치로 이동합니다: $_currentLat, $_currentLng');
 
       // 카메라를 현재 위치로 이동
@@ -1208,7 +1409,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
         NCameraUpdate.withParams(
           target: NLatLng(_currentLat, _currentLng),
           zoom: 17,
-          // tilt: 50,
+          tilt: _isNavigationMode ? 50 : 0,
+          bearing: _isNavigationMode ? _deviceHeading : 0,
         ),
       )
           .then((_) {
@@ -1217,17 +1419,25 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
 
         // 모든 클릭 처리 완료
         _isLocationButtonProcessing = false;
+
+        // 이동이 완료되면 이동 중 플래그 해제
+        _isMovingToCurrentLocation = false;
+
+        // 이동 후에는 마지막 적용 방향을 현재 방향과 동기화 (움직이지 않는 효과)
+        _lastAppliedHeading = _deviceHeading;
       }).catchError((error) {
         debugPrint('카메라 업데이트 오류: $error');
         // 오류 발생 시 처리 완료
         _pendingLocationClicks = 0;
         _isLocationButtonProcessing = false;
+        _isMovingToCurrentLocation = false;
       });
     } catch (e) {
       debugPrint('위치 버튼 처리 중 오류: $e');
       // 오류 발생 시 처리 완료
       _pendingLocationClicks = 0;
       _isLocationButtonProcessing = false;
+      _isMovingToCurrentLocation = false;
     }
   }
 
@@ -1240,20 +1450,112 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
 
         // 유효한 방향 데이터가 있을 때만 업데이트
         if (event.heading != null) {
+          // 현재 방향 저장
+          final newHeading = event.heading!;
+
+          // 방향 변화량 계산 (절대값)
+          final double headingChange = (newHeading - _lastAppliedHeading).abs();
+          // 360도 근처에서의 방향 변화 특별 처리 (예: 355도 -> 5도)
+          final double circularHeadingChange =
+              math.min(headingChange, 360 - headingChange);
+
           setState(() {
-            _deviceHeading = event.heading!;
-            // debugPrint('디바이스 방향: $_deviceHeading°');
+            _deviceHeading = newHeading;
           });
 
-          // 네비게이션 모드이고 디바이스 방향을 따라가는 설정인 경우 카메라 회전
-          if (_isNavigationMode && _mapController != null) {
-            // 네비게이션 모드이고 디바이스 방향을 따라가는 설정인 경우 카메라 회전
+          // 위치 오버레이의 베어링을 직접 업데이트
+          if (_mapController != null) {
+            try {
+              final locOverlay = _mapController!.getLocationOverlay();
+              locOverlay.setBearing(newHeading);
+            } catch (e) {
+              debugPrint('위치 오버레이 베어링 업데이트 오류: $e');
+            }
+          }
+
+          // 네비게이션 모드이고 방향 변화가 충분할 때만 카메라 회전
+          // 그리고 현재 위치로 이동 중이 아닐 때만 방향 갱신
+          if (_isNavigationMode &&
+              _mapController != null &&
+              circularHeadingChange >= _minHeadingChangeForUpdate &&
+              !_isMovingToCurrentLocation) {
+            // 부드러운 카메라 회전을 위한 보간 적용
+            // 현재 방향과 목표 방향 사이의 중간 값을 계산하여 부드럽게 이동
+            final interpolatedHeading =
+                _interpolateHeading(_lastAppliedHeading, newHeading);
+
+            // 현재 위치에 초점을 맞추고 카메라를 디바이스 방향으로 회전
+            _mapController!
+                .updateCamera(
+              NCameraUpdate.withParams(
+                target: NLatLng(_currentLat, _currentLng),
+                bearing: interpolatedHeading,
+                tilt: 50,
+              ),
+            )
+                .then((_) {
+              // 성공적으로 적용된 경우 마지막 적용 방향 업데이트
+              _lastAppliedHeading = newHeading;
+            });
           }
         }
       });
       debugPrint('나침반 센서 구독 시작');
     } else {
       debugPrint('이 기기에서는 나침반 센서를 사용할 수 없습니다.');
+    }
+  }
+
+  // 방향 보간 계산 함수
+  double _interpolateHeading(double current, double target) {
+    // 두 방향 사이의 최단 회전 방향 계산
+    double diff = target - current;
+
+    // 180도를 넘는 회전은 반대 방향으로 처리 (최단 경로)
+    if (diff > 180) {
+      diff -= 360;
+    } else if (diff < -180) {
+      diff += 360;
+    }
+
+    // 부드러운 이동을 위한 보간 계수 (0.3 = 30% 이동)
+    final interpolationFactor = 0.3;
+
+    // 현재 방향에서 목표 방향으로 부분적으로 이동
+    double newHeading = current + (diff * interpolationFactor);
+
+    // 0-360 범위로 정규화
+    if (newHeading < 0) {
+      newHeading += 360;
+    } else if (newHeading >= 360) {
+      newHeading -= 360;
+    }
+
+    return newHeading;
+  }
+
+  // 위치 추적 모드를 확인하고 필요하면 업데이트하는 별도 함수
+  Future<void> _checkAndUpdateTrackingMode() async {
+    if (_mapController == null) return;
+
+    try {
+      final currentMode = await _mapController!.getLocationTrackingMode();
+      if (_isNavigationMode) {
+        // 네비게이션 모드인데 추적 모드가 face가 아니면 재설정
+        // if (currentMode != NLocationTrackingMode.face) {
+        //   _mapController!.setLocationTrackingMode(NLocationTrackingMode.face);
+        //   debugPrint('네비게이션 모드로 추적 모드 재설정 (Face)');
+        // }
+      } else {
+        // 전체 맵 모드인데 추적 모드가 noFollow가 아니면 재설정
+        if (currentMode != NLocationTrackingMode.noFollow) {
+          _mapController!
+              .setLocationTrackingMode(NLocationTrackingMode.noFollow);
+          debugPrint('전체 맵 모드로 추적 모드 재설정 (NoFollow)');
+        }
+      }
+    } catch (e) {
+      debugPrint('추적 모드 확인/재설정 중 비동기 오류: $e');
     }
   }
 }

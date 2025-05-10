@@ -6,12 +6,10 @@ import com.ssafy.ollana.auth.dto.TempUserDto;
 import com.ssafy.ollana.auth.dto.request.KakaoSignupRequestDto;
 import com.ssafy.ollana.auth.dto.request.LoginRequestDto;
 import com.ssafy.ollana.auth.dto.request.SignupRequestDto;
-import com.ssafy.ollana.auth.dto.response.AccessTokenResponseDto;
 import com.ssafy.ollana.auth.dto.response.LoginResponseDto;
 import com.ssafy.ollana.auth.exception.AdditionalInfoRequiredException;
 import com.ssafy.ollana.auth.exception.AuthenticationException;
 import com.ssafy.ollana.user.exception.NicknameAlreadyExistsException;
-import com.ssafy.ollana.auth.exception.RefreshTokenException;
 import com.ssafy.ollana.common.s3.service.S3Service;
 import com.ssafy.ollana.security.jwt.JwtUtil;
 import com.ssafy.ollana.user.entity.User;
@@ -112,14 +110,27 @@ public class AuthServiceImpl implements AuthService {
             return generateAuthTokensAndResponse(user, response);
         } else {
             // 가입 X -> 카카오 정보를 넣은 dto 생성 -> 추가 정보 입력 (프론트) -> 유저 생성(/auth/oauth/kakao/complete)
-            TempUserDto tempUser = TempUserDto.builder()
+            // 필수 동의 항목 (이메일, 닉네임)
+            TempUserDto.TempUserDtoBuilder builder = TempUserDto.builder()
                     .email(kakaoProfileDto.getKakaoAccount().getEmail())
                     .nickname(kakaoProfileDto.getKakaoAccount().getProfile().getNickname())
-                    .profileImage(kakaoProfileDto.getKakaoAccount().getProfile().isDefaultImage()
-                            ? s3Service.getDefaultProfileImageUrl()
-                            : kakaoProfileDto.getKakaoAccount().getProfile().getProfileImageUrl())
-                    .isSocial(true)
-                    .build();
+                    .socialLogin(true);
+
+            // 선택 동의 (프로필 이미지)
+            // 동의 O
+            if (!kakaoProfileDto.getKakaoAccount().isProfileImageNeedsAgreement()) {
+                // 기본 프로필 이미지 => ollana 기본 프로필 이미지 제공
+                if (kakaoProfileDto.getKakaoAccount().getProfile().isDefaultImage()) {
+                    builder.profileImage(s3Service.getDefaultProfileImageUrl());
+                } else {
+                    builder.profileImage(kakaoProfileDto.getKakaoAccount().getProfile().getProfileImageUrl());
+                }
+            } else {
+                // 동의 X => ollana 기본 프로필 이미지 제공
+                builder.profileImage(s3Service.getDefaultProfileImageUrl());
+            }
+
+            TempUserDto tempUser = builder.build();
 
             throw new AdditionalInfoRequiredException(tempUser);
         }
@@ -152,6 +163,18 @@ public class AuthServiceImpl implements AuthService {
             tokenService.deleteRefreshToken(userEmail);
         }
 
+        // 액세스 토큰 블랙리스트에 추가
+        String accessToken = extractAccessTokenFromHeader(request);
+        if (accessToken != null) {
+            // 토큰 남은 유효시간
+            long tokenRemainingTime = jwtUtil.getTokenRemainingTime(accessToken);
+
+            if (tokenRemainingTime > 0) {
+                // 남은 유효시간 만큼 저장
+                tokenService.blacklistAccessToken(accessToken, tokenRemainingTime);
+            }
+        }
+
         // 리프레시 토큰 쿠키 삭제
         Cookie cookie = new Cookie("refreshToken", "");
         cookie.setHttpOnly(true);
@@ -161,36 +184,7 @@ public class AuthServiceImpl implements AuthService {
         response.addCookie(cookie); // 삭제용 쿠키를 응답에 추가
     }
 
-    @Override
-    public AccessTokenResponseDto refreshToken(HttpServletRequest request) {
-        String refreshToken = extractRefreshTokenFromCookie(request);
 
-        if (refreshToken == null) {
-            throw RefreshTokenException.notFound();
-        }
-
-        // 토큰 유효성 검사
-        if (!jwtUtil.validateToken(refreshToken)) {
-            throw RefreshTokenException.invalid();
-        }
-
-        // 토큰에서 userEmail 추출
-        String userEmail = jwtUtil.getUserEmailFromToken(refreshToken);
-
-        // redis에 저장된 리프레시 토큰과 비교
-        if (!tokenService.validateRefreshToken(userEmail, refreshToken)) {
-            throw RefreshTokenException.mismatch();
-        }
-
-        // 새로운 액세스 토큰 발급
-        String newAccessToken = jwtUtil.createAccessToken(userEmail);
-
-        AccessTokenResponseDto response = AccessTokenResponseDto.builder()
-                .accessToken(newAccessToken)
-                .build();
-
-        return response;
-    }
 
 
     // 쿠키에서 리프레시 토큰 추출

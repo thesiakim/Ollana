@@ -8,6 +8,4 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface BattleHistoryRepository extends JpaRepository<BattleHistory, Integer> {
     Page<BattleHistory> findByUserId(Integer userId, Pageable pageable);
-    Page<BattleHistory> findByUserIdAndBattleType(Integer userId, BattleType battleType, Pageable pageable);
-
 }
