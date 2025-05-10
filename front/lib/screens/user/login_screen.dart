@@ -8,6 +8,7 @@ import 'package:jwt_decode/jwt_decode.dart'; // 🔥 JWT 디코딩 패키지
 import '../../models/app_state.dart';
 import './sign_up_screen.dart';
 import './password_reset_screen.dart';
+import './password_change_screen.dart'; // 🔥 비밀번호 변경 페이지 import
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -61,6 +62,45 @@ class _LoginScreenState extends State<LoginScreen> {
         final expA = payloadA['exp'] as int;
         final expiryA = DateTime.fromMillisecondsSinceEpoch(expA * 1000);
         await context.read<AppState>().setToken(accessToken);
+
+        // 🔥 tempPassword 검사
+        final user = data['data']['user'];
+        final isTemp = (user['tempPassword'] as bool?) ?? false;
+        if (isTemp) {
+          // 1) 확인용 모달창 띄우기
+          final shouldChange = await showDialog<bool>(
+            context: context,
+            barrierDismissible: false, // 바깥 터치로 닫히지 않게
+            builder: (ctx) => AlertDialog(
+              title: const Text('임시 비밀번호 안내'),
+              content: const Text('현재 임시비밀번호 발급을 받으셨습니다.\n'
+                  '비밀번호 변경 페이지로 이동하시겠습니까?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: const Text('취소'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  child: const Text('확인'),
+                ),
+              ],
+            ),
+          );
+
+          // 2) 확인을 눌렀을 때만 이동
+          if (shouldChange == true) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (_) => PasswordChangeScreen(
+                  accessToken: accessToken,
+                ),
+              ),
+            );
+          }
+          return; // 모달 후엔 함수 종료
+        }
+
         Navigator.of(context).pop();
       } else {
         setState(() => _errorMsg = data['message'] ?? '로그인에 실패했습니다.');
