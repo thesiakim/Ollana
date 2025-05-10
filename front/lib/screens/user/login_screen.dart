@@ -57,10 +57,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (response.statusCode == 200 && data['status'] == true) {
         final accessToken = data['data']['accessToken'];
+        final profileImageUrl = data['data']['user']['profileImageUrl'];
+        final nickname = data['data']['user']['nickname'];
         final payloadA = Jwt.parseJwt(accessToken);
         final expA = payloadA['exp'] as int;
         final expiryA = DateTime.fromMillisecondsSinceEpoch(expA * 1000);
-        await context.read<AppState>().setToken(accessToken);
+        await context.read<AppState>().setToken(accessToken, profileImageUrl: profileImageUrl, nickname: nickname,);
         Navigator.of(context).pop();
       } else {
         setState(() => _errorMsg = data['message'] ?? '로그인에 실패했습니다.');
