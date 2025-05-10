@@ -44,16 +44,11 @@ public class MountainServiceImpl implements MountainService {
 
         List<MountainMapResponseDto> response = mountainList.stream()
                 .map(mountain -> new MountainMapResponseDto(
+                        mountain.getId(),
                         mountain.getMountainName(),
                         mountain.getMountainLatitude(),
                         mountain.getMountainLongitude(),
-                        mountain.getMountainHeight(),
-                        mountain.getLevel().name(),
-                        mountain.getMountainLoc(),
-                        mountain.getMountainDescription(),
-                        mountain.getMountainImgs().stream()
-                                .map(MountainImg::getImage)
-                                .toList()
+                        mountain.getLevel().name()
                 ))
                 .toList();
 
