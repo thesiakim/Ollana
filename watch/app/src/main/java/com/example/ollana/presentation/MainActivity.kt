@@ -8,6 +8,7 @@ import androidx.compose.runtime.*
 import com.example.ollana.presentation.data.MessageSender
 import com.example.ollana.presentation.screen.HomeScreen
 import com.example.ollana.presentation.screen.TestScreen
+import com.example.ollana.presentation.sensor.SensorCollector
 import com.google.android.gms.wearable.MessageClient
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.Wearable
@@ -19,6 +20,7 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
 
     // // 메시지 수신을 위한 Google API Client
     private lateinit var messageClient: MessageClient
+    private lateinit var sensorCollector: SensorCollector //센서 수집
 
     // 상태 저장 변수 (UI 업데이트 용도)
     private var messageState: MutableState<String>? = null // UI에 표시할 메시지
@@ -30,10 +32,13 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
 
         // Wearable 메시지 클라이언트 초기화
         messageClient = Wearable.getMessageClient(this)
+        sensorCollector=SensorCollector(this)
+
+        sensorCollector.start()
 
         // UI 설정
         setContent {
-            val message = remember { mutableStateOf("테스트 모드 시작") }
+            val message = remember { mutableStateOf("센서 수집 중...") }
             val isHome = remember { mutableStateOf(false) }  // 화면 전환 상태
             val badgeUrl = remember { mutableStateOf<String?>(null) }
 
@@ -48,12 +53,6 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
                     receivedMessage = message.value,
                     badgeImageUrl = badgeUrl.value,
                     onStopTracking={
-                        //앱에 트래킹 종료 메시지 전송
-                        MessageSender.send(
-                         "/STOP_TRACKING_CONFIRM",
-                           "",
-                            this
-                        )
                         //워치 화면도 종료 UI로 전환
                         message.value="종료"
                     })
@@ -105,6 +104,16 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
         // 메시지를 받으면 자동으로 홈 화면으로 전환
         runOnUiThread {
             isHomeState?.value = true
+        }
+
+        //센서 정지
+        if(event.path=="/STOP_TRACKING_CONFIRM"){
+            Log.d(TAG,"센서 수집 중지 요청 수신")
+            sensorCollector.stop()
+
+            runOnUiThread {
+                messageState?.value="종료"
+            }
         }
     }
 
