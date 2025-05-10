@@ -24,14 +24,8 @@ public class BattleHistoryService {
      * 나 vs 친구, 나 vs AI 기록 조회
      */
     @Transactional(readOnly = true)
-    public PageResponse<UserVersusOtherResponseDto> getHikingBattleRecords(Integer userId, BattleType type, Pageable pageable) {
-        Page<BattleHistory> page;
-
-        switch (type) {
-            case FRIEND -> page = battleHistoryRepository.findByUserIdAndBattleType(userId, BattleType.FRIEND, pageable);
-            case AI -> page = battleHistoryRepository.findByUserIdAndBattleType(userId, BattleType.AI, pageable);
-            default -> page = battleHistoryRepository.findByUserId(userId, pageable);
-        }
+    public PageResponse<UserVersusOtherResponseDto> getHikingBattleRecords(Integer userId, Pageable pageable) {
+        Page<BattleHistory> page = battleHistoryRepository.findByUserId(userId, pageable);
 
         Page<UserVersusOtherResponseDto> dtoPage = page.map(UserVersusOtherResponseDto::from);
         return new PageResponse<>("list", dtoPage);
