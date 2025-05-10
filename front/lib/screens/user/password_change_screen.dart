@@ -7,7 +7,12 @@ import 'package:provider/provider.dart';
 import '../../models/app_state.dart';
 
 class PasswordChangeScreen extends StatefulWidget {
-  const PasswordChangeScreen({Key? key}) : super(key: key);
+  /// 로그인 후 임시 비밀번호 사용자일 때 API 호출을 위해 토큰을 넘겨받습니다.
+  final String accessToken;
+  const PasswordChangeScreen({
+    Key? key,
+    required this.accessToken,
+  }) : super(key: key);
 
   @override
   State<PasswordChangeScreen> createState() => _PasswordChangeScreenState();
@@ -100,8 +105,8 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
                   ? const SizedBox(
                       width: 24,
                       height: 24,
-                      child:
-                          CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
                     )
                   : const Text('비밀번호 변경'),
             ),
