@@ -65,11 +65,13 @@ public class HikingHistoryService {
                         HikingHistory secondLatest = records.get(records.size() - 2);
                         HikingHistory latest = records.get(records.size() - 1);
                         int timeDiff = latest.getHikingTime() - secondLatest.getHikingTime();
-                        int hrDiff = latest.getMaxHeartRate() - secondLatest.getMaxHeartRate();
+                        int maxHrDiff = latest.getMaxHeartRate() - secondLatest.getMaxHeartRate();
+                        int avgHrDiff = (int) (latest.getAverageHeartRate() - secondLatest.getAverageHeartRate());
 
                         result = DiffResponseDto.builder()
                                 .growthStatus(HikingHistoryUtils.determineStatus(timeDiff))
-                                .heartRateDiff(hrDiff)
+                                .maxHeartRateDiff(maxHrDiff)
+                                .avgHeartRateDiff(avgHrDiff)
                                 .timeDiff(timeDiff)
                                 .build();
                     }
