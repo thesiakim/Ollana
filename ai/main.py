@@ -8,6 +8,7 @@ import uvicorn
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Body
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -43,13 +44,6 @@ async def lifespan(app: FastAPI):
 
 #########################################
 app = FastAPI(lifespan=lifespan)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origin=[],
-    allow_credentials=False,
-    allow_methods=["POST"],
-    allow_header=["*"]
-)
 
 # K_MEANS_DATA_ROADED
 k_means_df = pd.read_csv("./datas/K_means/clustered_mountains.csv")
@@ -75,8 +69,10 @@ async def weather():
 
     return JSONResponse({"score": score})
 
+# 유저 설문 기반 추천(클러스터링)
 @app.post("/recommend/{user_id}")
 async def recommend(user_id:str, db: Session = Depends(get_db)):
+    # 설문데이터 sqlite에서 찾기
     user = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
     if not user:
         return JSONResponse(
@@ -89,16 +85,19 @@ async def recommend(user_id:str, db: Session = Depends(get_db)):
         experience=user.experience,
         region=user.region
     )
-
+    
+    # 유저의 백터 검색
     user_vector = method.make_user_vector(user_input.model_dump(), scaler)
     scaled_vec = scaler.transform(user_vector)
     cluster_label = kmeans.predict(scaled_vec)[0]
 
     matched = k_means_df[k_means_df["cluster"] == cluster_label]
+    # 이름과 설명을 찾기
     recommendations = matched.sample(n=min(3, len(matched)))[
         ["mountain_name", "mountain_description"]
     ].to_dict(orient="records")
 
+    # 이미지 URL 찾기
     for rec_data in recommendations:
         rec_data["image_url"] = method.get_image_by_mountain_name(rec_data["mountain_name"])
 
@@ -107,7 +106,40 @@ async def recommend(user_id:str, db: Session = Depends(get_db)):
         "recommendations": recommendations
     })
 
+# 키워드 기반 검색 API
+@app.post("/recommend_by_keyword")
+async def recommend_by_keyword(keyword: str = Body(..., embed=True)):
+    # 사용자가 입력한 키워드
+    theme_col = f"has_{keyword}"
 
+    # 키워드 검사
+    if theme_col not in k_means_df.columns:
+        return JSONResponse(
+            status_code=400,
+            content={"message": f"유효하지 않은 키워드입니다: {keyword}"}
+        )
+
+    # 키워드 추출
+    matched = k_means_df[k_means_df[theme_col] > 0]
+
+    # 비었는지 체크
+    if matched.empty:
+        return JSONResponse(
+            status_code=404,
+            content={"message": f"'{keyword}' 키워드를 포함한 산을 찾을 수 없습니다."}
+        )
+
+    recommendations = matched.sample(n=min(3, len(matched)))[
+        ["mountain_name", "mountain_description"]
+    ].to_dict(orient="records")
+
+    for rec_data in recommendations:
+        image_url = method.get_image_by_mountain_name(rec_data["mountain_name"])
+        rec_data["image_url"] = image_url or "https://image.ytn.co.kr/general/jpg/2020/0924/202009241540389154_d.jpg"
+    return JSONResponse({
+        "keyword": keyword,
+        "recommendations": recommendations
+    })
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
