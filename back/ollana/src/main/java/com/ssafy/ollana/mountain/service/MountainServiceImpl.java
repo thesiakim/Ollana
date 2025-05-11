@@ -5,6 +5,7 @@ import com.ssafy.ollana.mountain.persistent.entity.Mountain;
 import com.ssafy.ollana.mountain.persistent.entity.MountainImg;
 import com.ssafy.ollana.mountain.persistent.repository.MountainImgRepository;
 import com.ssafy.ollana.mountain.persistent.repository.MountainRepository;
+import com.ssafy.ollana.mountain.web.dto.response.MountainListResponseDto;
 import com.ssafy.ollana.mountain.web.dto.response.MountainMapResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +25,7 @@ import java.io.StringReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -51,6 +53,30 @@ public class MountainServiceImpl implements MountainService {
                         mountain.getMountainHeight(),
                         mountain.getLevel().name(),
                         mountain.getMountainDescription()
+                ))
+                .toList();
+
+        return response;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MountainListResponseDto> getMountainList() {
+        List<Mountain> mountainList = mountainRepository.findAll();
+
+        List<MountainListResponseDto> response = mountainList.stream()
+                .map(mountain -> new MountainListResponseDto(
+                        mountain.getId(),
+                        mountain.getMountainName(),
+                        mountain.getMountainLatitude(),
+                        mountain.getMountainLongitude(),
+                        mountain.getMountainHeight(),
+                        mountain.getMountainLoc(),
+                        mountain.getLevel().name(),
+                        mountain.getMountainDescription(),
+                        mountain.getMountainImgs().stream()
+                                .map(MountainImg::getImage)
+                                .toList()
                 ))
                 .toList();
 
