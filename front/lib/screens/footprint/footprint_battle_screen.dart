@@ -132,29 +132,30 @@ class _FootprintBattleScreenState extends State<FootprintBattleScreen> {
                                 ),
                               ],
                             ),
-                            Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Text(
-                                  result.mountainName,
-                                  style: const TextStyle(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black87,
+                            Expanded(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center, // 세로 방향 중앙 정렬
+                                crossAxisAlignment: CrossAxisAlignment.center, // 가로 방향 중앙 정렬
+                                children: [
+                                  Text(
+                                    result.mountainName,
+                                    style: const TextStyle(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
+                                    ),
+                                    textAlign: TextAlign.center,
                                   ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                const SizedBox(height: 8),
-                                const SizedBox(height: 6),
-                                Text(
-                                  result.date,
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey,
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    result.date,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                             Column(
                               children: [

@@ -106,7 +106,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
   }
 
   String displayDate(DateTime? date) {
-    return date != null ? formatDate(date) : '날짜 선택';
+    return date != null ? formatDate(date) : '선택';
   }
 
   double _getMaxValue(PathDetail path) {
@@ -595,7 +595,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                             const SizedBox(width: 10),
                             ElevatedButton(
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
+                                backgroundColor: Colors.blue,
                                 foregroundColor: Colors.white,
                               ),
                               onPressed: _startDatesByPath[path.pathId] == null
