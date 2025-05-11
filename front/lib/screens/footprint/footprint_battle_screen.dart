@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import '../../models/battle_result.dart';
 import 'dart:convert';
 
-
 class FootprintBattleScreen extends StatefulWidget {
   final String token;
 
@@ -21,7 +20,7 @@ class _FootprintBattleScreenState extends State<FootprintBattleScreen> {
   List<BattleResult> _battleResults = [];
   int _currentPage = 0;
   bool _isLoading = false;
-  bool _lastPage = false; // last 필드를 추적
+  bool _lastPage = false;
 
   @override
   void initState() {
@@ -69,7 +68,7 @@ class _FootprintBattleScreenState extends State<FootprintBattleScreen> {
         final jsonData = jsonDecode(decoded);
         final data = jsonData['data'];
         final List<dynamic> list = data['list'];
-        final bool isLast = data['last']; // last 필드 추출
+        final bool isLast = data['last'];
 
         setState(() {
           if (page == 0) {
@@ -78,7 +77,7 @@ class _FootprintBattleScreenState extends State<FootprintBattleScreen> {
             _battleResults.addAll(list.map((e) => BattleResult.fromJson(e)));
           }
           _currentPage = page;
-          _lastPage = isLast; // last 필드 업데이트
+          _lastPage = isLast;
         });
       }
     } catch (e) {
@@ -125,7 +124,7 @@ class _FootprintBattleScreenState extends State<FootprintBattleScreen> {
                           children: [
                             Column(
                               children: [
-                                _circleAvatar(myProfile),
+                                _circleAvatar(myProfile, result.result, isMe: true),
                                 const SizedBox(height: 4),
                                 Text(
                                   nickname ?? '나',
@@ -147,7 +146,6 @@ class _FootprintBattleScreenState extends State<FootprintBattleScreen> {
                                   textAlign: TextAlign.center,
                                 ),
                                 const SizedBox(height: 8),
-                                _resultBadge(result.result),
                                 const SizedBox(height: 6),
                                 Text(
                                   result.date,
@@ -160,7 +158,7 @@ class _FootprintBattleScreenState extends State<FootprintBattleScreen> {
                             ),
                             Column(
                               children: [
-                                _circleAvatar(result.opponentProfile),
+                                _circleAvatar(result.opponentProfile, result.result, isMe: false),
                                 const SizedBox(height: 4),
                                 Text(
                                   result.opponentNickname,
@@ -180,69 +178,42 @@ class _FootprintBattleScreenState extends State<FootprintBattleScreen> {
     );
   }
 
-  Widget _circleAvatar(String? url) {
-  return CircleAvatar(
-    radius: 28,
-    backgroundImage: url != null && url.isNotEmpty
-        ? NetworkImage(url)
-        : null,
-    child: url == null || url.isEmpty ? const Icon(Icons.person, size: 28) : null,
-  );
-}
+  Widget _circleAvatar(String? url, String result, {required bool isMe}) {
+    const double avatarRadius = 28;
+    const double crownSize = 24;
 
-  Widget _resultBadge(String code) {
-    String text;
-    Color color;
-
-    switch (code) {
-      case 'W':
-        text = '승리';
-        color = Colors.green;
-        break;
-      case 'S':
-        text = '무승부';
-        color = Colors.orange;
-        break;
-      case 'L':
-        text = '패배';
-        color = Colors.red;
-        break;
-      default:
-        text = '알 수 없음';
-        color = Colors.grey;
+    // 왕관 표시 조건
+    bool showCrown = false;
+    if (result == 'S') {
+      // 무승부: 양쪽 모두 왕관 표시
+      showCrown = true;
+    } else if (result == 'W' && isMe) {
+      // 내가 승리: 나에게 왕관 표시
+      showCrown = true;
+    } else if (result == 'L' && !isMe) {
+      // 내가 패배: 상대방에게 왕관 표시
+      showCrown = true;
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        border: Border.all(color: color),
-        borderRadius: BorderRadius.circular(13),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.bold,
-          fontSize: 13,
+    return Stack(
+      clipBehavior: Clip.none, // 스택 영역 밖으로 위젯이 넘쳐도 잘리지 않도록 설정
+      alignment: Alignment.center,
+      children: [
+        CircleAvatar(
+          radius: avatarRadius,
+          backgroundImage: url != null && url.isNotEmpty ? NetworkImage(url) : null,
+          child: url == null || url.isEmpty ? const Icon(Icons.person, size: 28) : null,
         ),
-      ),
+        if (showCrown)
+          Positioned(
+            top: -crownSize * 0.75, // 아바타 상단 위로 더 올려서 배치
+            child: Image.asset(
+              'lib/assets/images/crown.png',
+              width: crownSize,
+              height: crownSize,
+            ),
+          ),
+      ],
     );
   }
-
-
-  Color _resultColor(String code) {
-    switch (code) {
-      case 'W':
-        return Colors.green;
-      case 'S':
-        return Colors.orange;
-      case 'L':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
-  }
-
-
 }

@@ -582,7 +582,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                         ),
                         const SizedBox(height: 12),
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             ElevatedButton(
                               style: ElevatedButton.styleFrom(
@@ -590,7 +590,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                                 foregroundColor: Colors.white,
                               ),
                               onPressed: () => _showDatePickerModal(path.pathId, true),
-                              child: Text('시작일: ${displayDate(_startDatesByPath[path.pathId])}'),
+                              child: Text('시작일 ${displayDate(_startDatesByPath[path.pathId])}'),
                             ),
                             const SizedBox(width: 10),
                             ElevatedButton(
@@ -599,9 +599,9 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                                 foregroundColor: Colors.white,
                               ),
                               onPressed: _startDatesByPath[path.pathId] == null
-                                  ? null // 시작일 없으면 비활성화
+                                  ? null
                                   : () => _showDatePickerModal(path.pathId, false),
-                              child: Text('종료일: ${displayDate(_endDatesByPath[path.pathId])}'),
+                              child: Text('종료일 ${displayDate(_endDatesByPath[path.pathId])}'),
                             ),
                           ],
                         ),
