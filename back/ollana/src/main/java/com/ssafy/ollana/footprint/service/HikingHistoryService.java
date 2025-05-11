@@ -13,6 +13,7 @@ import com.ssafy.ollana.mountain.web.dto.response.MountainResponseDto;
 import com.ssafy.ollana.mountain.web.dto.response.PathResponseDto;
 import com.ssafy.ollana.footprint.web.dto.response.TodayHikingResultResponseDto;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -27,6 +28,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class HikingHistoryService {
 
     private final HikingHistoryRepository hikingHistoryRepository;
@@ -117,7 +119,9 @@ public class HikingHistoryService {
 
         // 데이터 5개 초과 여부 판단
         boolean isExceed = histories.size() > 5;
-        List<HikingHistory> limitedHistories = isExceed ? histories.subList(0, 5) : histories;
+        List<HikingHistory> limitedHistories = isExceed
+                                            ? histories.subList(histories.size() - 5, histories.size())
+                                            : histories;
 
         List<TodayHikingResultResponseDto> records = limitedHistories.stream()
                                                             .map(TodayHikingResultResponseDto::from)
