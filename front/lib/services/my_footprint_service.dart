@@ -4,47 +4,36 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import '../models/footprint_response.dart';
 import '../models/footprint_detail_response.dart';
+import '../models/path_detail.dart';
 
 class MyFootprintService {
-    final String _baseUrl = dotenv.get('BASE_URL');
-    final http.Client _client;
+  final String _baseUrl = dotenv.get('BASE_URL');
+  final http.Client _client;
 
-    MyFootprintService({http.Client? client}) : _client = client ?? http.Client();
+  MyFootprintService({http.Client? client}) : _client = client ?? http.Client();
 
-    Future<FootprintResponse> getFootprints(String token, {int page = 0}) async {
-      final uri = Uri.parse('$_baseUrl/footprint?page=$page');
+  Future<FootprintResponse> getFootprints(String token, {int page = 0}) async {
+    final uri = Uri.parse('$_baseUrl/footprint?page=$page');
 
-      final headers = {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      };
+    final headers = {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    };
 
-      debugPrint('uri = $uri');
-      debugPrint('headers = $headers');
+    debugPrint('uri = $uri');
+    debugPrint('headers = $headers');
 
-      final res = await _client.get(uri, headers: headers);
-      debugPrint('발자취 API 응답 코드: ${res.statusCode}');
-      debugPrint('발자취 API 응답 본문: ${res.body}');
+    final res = await _client.get(uri, headers: headers);
+    debugPrint('발자취 API 응답 코드: ${res.statusCode}');
+    debugPrint('발자취 API 응답 본문: ${res.body}');
 
-      if (res.statusCode == 200) {
-        final jsonData = json.decode(utf8.decode(res.bodyBytes));
-        return FootprintResponse.fromJson(jsonData);
-      } else {
-        throw Exception("발자취 API 호출 실패: ${res.statusCode}");
-      }
-   }
-
-  //  Future<void> getFootprintDetail(String token, int footprintId) async {
-  //   final uri = Uri.parse('$_baseUrl/footprint/$footprintId');
-  //   final headers = {
-  //     'Content-Type': 'application/json',
-  //     'Authorization': 'Bearer $token',
-  //   };
-
-  //   final res = await _client.get(uri, headers: headers);
-  //   debugPrint('상세 API 응답 코드: ${res.statusCode}');
-  //   debugPrint('상세 API 응답 본문: ${res.body}');
-  // }
+    if (res.statusCode == 200) {
+      final jsonData = json.decode(utf8.decode(res.bodyBytes));
+      return FootprintResponse.fromJson(jsonData);
+    } else {
+      throw Exception("발자취 API 호출 실패: ${res.statusCode}");
+    }
+  }
 
   Future<FootprintDetailResponse> getFootprintDetail(String token, int footprintId, {int page = 0}) async {
     final uri = Uri.parse('$_baseUrl/footprint/$footprintId?page=$page');
@@ -58,12 +47,46 @@ class MyFootprintService {
     debugPrint('상세 API 응답 본문: ${res.body}');
 
     if (res.statusCode == 200) {
-      final jsonData = json.decode(utf8.decode(res.bodyBytes)); 
-      return FootprintDetailResponse.fromJson(jsonData); 
+      final jsonData = json.decode(utf8.decode(res.bodyBytes));
+      return FootprintDetailResponse.fromJson(jsonData);
     } else {
       throw Exception('상세 발자취 조회 실패: ${res.statusCode}');
     }
   }
 
+  Future<PathDetail> getFootprintPathDetail(
+    String token,
+    int footprintId,
+    int pathId, {
+    String? start,
+    String? end,
+  }) async {
+    final query = <String, String>{};
+    if (start != null) query['start'] = start;
+    if (end != null) query['end'] = end;
+    final uri = Uri.parse('$_baseUrl/footprint/$footprintId/path/$pathId').replace(queryParameters: query);
 
+    debugPrint('Calling API: $uri');
+    final response = await _client.get(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    debugPrint('API Response Status: ${response.statusCode}');
+    debugPrint('API Response Body: ${response.body}');
+
+    if (response.statusCode == 200) {
+      final jsonData = jsonDecode(utf8.decode(response.bodyBytes));
+      debugPrint('Parsed JSON: $jsonData');
+      if (jsonData['data'] == null) {
+        throw Exception('API response does not contain "data" field');
+      }
+      return PathDetail.fromJson(jsonData['data'], pathId: pathId);
+    } else {
+      throw Exception('Failed to load path detail: ${response.statusCode}');
+    }
+  }
 }
