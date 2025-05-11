@@ -5,6 +5,7 @@ import com.ssafy.ollana.mountain.persistent.entity.Mountain;
 import com.ssafy.ollana.mountain.persistent.entity.MountainImg;
 import com.ssafy.ollana.mountain.persistent.repository.MountainImgRepository;
 import com.ssafy.ollana.mountain.persistent.repository.MountainRepository;
+import com.ssafy.ollana.mountain.web.dto.response.MountainMapResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,6 +36,26 @@ public class MountainServiceImpl implements MountainService {
 
     private final MountainRepository mountainRepository;
     private final MountainImgRepository mountainImgRepository;
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MountainMapResponseDto> getMountains() {
+        List<Mountain> mountainList = mountainRepository.findAll();
+
+        List<MountainMapResponseDto> response = mountainList.stream()
+                .map(mountain -> new MountainMapResponseDto(
+                        mountain.getId(),
+                        mountain.getMountainName(),
+                        mountain.getMountainLatitude(),
+                        mountain.getMountainLongitude(),
+                        mountain.getMountainHeight(),
+                        mountain.getLevel().name(),
+                        mountain.getMountainDescription()
+                ))
+                .toList();
+
+        return response;
+    }
 
     @Override
     @Transactional
