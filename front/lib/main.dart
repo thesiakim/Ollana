@@ -39,11 +39,57 @@ void main() async {
 }
 
 // - MyApp: 앱의 루트 위젯 정의 (테마 및 홈 화면 설정)
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
   @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  bool _isCheckingTrackingStatus = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkTrackingStatus();
+  }
+
+  // 앱 시작 시 등산 상태 확인
+  Future<void> _checkTrackingStatus() async {
+    // AppState 가져오기
+    final appState = Provider.of<AppState>(context, listen: false);
+
+    // 등산 상태 확인
+    final hasActiveTracking = await appState.checkTrackingStatus();
+
+    if (mounted) {
+      setState(() {
+        _isCheckingTrackingStatus = false;
+      });
+
+      if (hasActiveTracking) {
+        debugPrint('활성화된 등산 발견: 등산 화면으로 이동합니다.');
+        // 등산 화면으로 자동 이동하는 코드는 필요하지 않음
+        // AppState의 상태 변경으로 자동으로 해당 화면이 표시됨
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // 등산 상태 확인 중일 때 로딩 화면
+    if (_isCheckingTrackingStatus) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: Scaffold(
+          body: Center(
+            child: CircularProgressIndicator(),
+          ),
+        ),
+      );
+    }
+
     return MaterialApp(
       title: 'Ollana',
       theme: appTheme,
