@@ -2,6 +2,7 @@ package com.ssafy.ollana.mountain.web.controller;
 
 import com.ssafy.ollana.common.util.Response;
 import com.ssafy.ollana.mountain.service.MountainService;
+import com.ssafy.ollana.mountain.web.dto.response.MountainListResponseDto;
 import com.ssafy.ollana.mountain.web.dto.response.MountainMapResponseDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +22,12 @@ public class MountainController {
     @GetMapping("/map")
     public ResponseEntity<Response<List<MountainMapResponseDto>>> getMountains() {
         List<MountainMapResponseDto> response = mountainService.getMountains();
+        return ResponseEntity.ok(Response.success(response));
+    }
+
+    @GetMapping("/list")
+    public ResponseEntity<Response<List<MountainListResponseDto>>> getMountainList() {
+        List<MountainListResponseDto> response = mountainService.getMountainList();
         return ResponseEntity.ok(Response.success(response));
     }
 
