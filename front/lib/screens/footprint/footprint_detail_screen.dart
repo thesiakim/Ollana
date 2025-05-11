@@ -106,7 +106,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
   }
 
   String displayDate(DateTime? date) {
-    return date != null ? formatDate(date) : '날짜 선택';
+    return date != null ? formatDate(date) : '선택';
   }
 
   double _getMaxValue(PathDetail path) {
@@ -342,7 +342,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
     return Scaffold(
       resizeToAvoidBottomInset: false, // SnackBar로 인한 레이아웃 이동 방지
       appBar: AppBar(
-        title: Text(mountainName != null ? '$mountainName 등산 상세 결과' : '등산 상세 결과'),
+        title: Text(mountainName != null ? '$mountainName 발자취' : '발자취'),
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -582,26 +582,26 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                         ),
                         const SizedBox(height: 12),
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             ElevatedButton(
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue,
+                                backgroundColor: Color(0xFF52A486),
                                 foregroundColor: Colors.white,
                               ),
                               onPressed: () => _showDatePickerModal(path.pathId, true),
-                              child: Text('시작일: ${displayDate(_startDatesByPath[path.pathId])}'),
+                              child: Text('시작일 ${displayDate(_startDatesByPath[path.pathId])}'),
                             ),
                             const SizedBox(width: 10),
                             ElevatedButton(
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
+                                backgroundColor: Color(0xFF52A486),
                                 foregroundColor: Colors.white,
                               ),
                               onPressed: _startDatesByPath[path.pathId] == null
-                                  ? null // 시작일 없으면 비활성화
+                                  ? null
                                   : () => _showDatePickerModal(path.pathId, false),
-                              child: Text('종료일: ${displayDate(_endDatesByPath[path.pathId])}'),
+                              child: Text('종료일 ${displayDate(_endDatesByPath[path.pathId])}'),
                             ),
                           ],
                         ),
@@ -626,118 +626,319 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Card(
-            elevation: 2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: records.map((record) {
-                  return Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${record.date}',
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        const SizedBox(height: 16),
+        const Divider(thickness: 1),
+        // 상세 데이터를 하나의 카드에 통합 (텍스트 레이블 제거)
+        Card(
+          elevation: 0, // 그림자 제거
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          shape: RoundedRectangleBorder(
+            side: BorderSide(color: Colors.grey[300]!, width: 1), // 외곽선 추가
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: records.map((record) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: Color(0xFF52A486),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          record.date,
+                          style: TextStyle(
+                            fontSize: 14,
+                            //fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
-                          const SizedBox(height: 8),
-                          Text('최고 심박수: ${record.maxHeartRate} bpm'),
-                          Text('평균 심박수: ${record.averageHeartRate.toStringAsFixed(1)} bpm'),
-                          Text('소요 시간: ${record.time} 분'),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _buildMetricCard(
+                            '', // 텍스트 레이블 제거
+                            '${record.maxHeartRate}',
+                            'bpm',
+                            Colors.red[100]!,
+                            Colors.red[700]!,
+                            Icons.favorite,
+                          ),
+                          _buildMetricCard(
+                            '', // 텍스트 레이블 제거
+                            '${record.averageHeartRate.toStringAsFixed(1)}',
+                            'bpm',
+                            Colors.blue[100]!,
+                            Colors.blue[700]!,
+                            Icons.monitor_heart_outlined,
+                          ),
+                          _buildMetricCard(
+                            '', // 텍스트 레이블 제거
+                            '${record.time}',
+                            '분',
+                            Colors.green[100]!,
+                            Colors.green[700]!,
+                            Icons.timer,
+                          ),
                         ],
                       ),
-                    ),
-                  );
-                }).toList(),
-              ),
+                    ],
+                  ),
+                );
+              }).toList(),
             ),
           ),
         ),
+        // 비교 결과를 별도의 카드에 렌더링
         if (result != null) ...[
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8.0),
-            child: Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          const SizedBox(height: 12),
+          Card(
+            elevation: 0, // 그림자 제거
+            margin: const EdgeInsets.symmetric(vertical: 12),
+            shape: RoundedRectangleBorder(
+              side: BorderSide(color: Colors.grey[300]!, width: 1), // 외곽선 추가
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  RichText(
+                    text: TextSpan(
                       children: [
-                        Text(
-                          '비교 결과',
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                        ),
-                        Text(
-                          '성장 상태: ${_formatGrowthStatus(result.growthStatus)}',
+                        TextSpan(
+                          text: '',
                           style: TextStyle(
-                            color: result.growthStatus == 'IMPROVING' ? Colors.green : Colors.red,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                        WidgetSpan(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  result.growthStatus == 'IMPROVING' ? Icons.emoji_events : Icons.trending_down,
+                                  size: 18,
+                                  color: Colors.black,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  _formatGrowthStatus(result.growthStatus),
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        TextSpan(
+                          text: '',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: result.growthStatus == 'IMPROVING' ? Colors.green[700] : Colors.red[700],
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('최고 심박수 변화:'),
-                        Text(
-                          '${result.maxHeartRateDiff > 0 ? '+' : ''}${result.maxHeartRateDiff} bpm',
-                          style: TextStyle(
-                            color: result.maxHeartRateDiff <= 0 ? Colors.green : Colors.red,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('평균 심박수 변화:'),
-                        Text(
-                          '${result.avgHeartRateDiff > 0 ? '+' : ''}${result.avgHeartRateDiff} bpm',
-                          style: TextStyle(
-                            color: result.avgHeartRateDiff <= 0 ? Colors.green : Colors.red,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('소요 시간 변화:'),
-                        Text(
-                          '${result.timeDiff > 0 ? '+' : ''}${result.timeDiff} 분',
-                          style: TextStyle(
-                            color: result.timeDiff <= 0 ? Colors.green : Colors.red,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  _buildComparisonItemCute('최고 심박수', result.maxHeartRateDiff, 'bpm', result.maxHeartRateDiff <= 0, Icons.favorite),
+                  const SizedBox(height: 16),
+                  _buildComparisonItemCute('평균 심박수', result.avgHeartRateDiff, 'bpm', result.avgHeartRateDiff <= 0, Icons.monitor_heart_outlined),
+                  const SizedBox(height: 16),
+                  _buildComparisonItemCute('소요 시간', result.timeDiff, '분', result.timeDiff <= 0, Icons.timer),
+                ],
               ),
             ),
           ),
         ],
+        const SizedBox(height: 16),
+        const Divider(thickness: 1),
       ],
     );
   }
 
+  Widget _buildMetricCard(String label, String value, String unit, Color bgColor, Color textColor, IconData icon) {
+    return Container(
+      width: 100,
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.2),
+            spreadRadius: 1,
+            blurRadius: 3,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: textColor, size: 22),
+          const SizedBox(height: 8),
+          if (label.isNotEmpty) // 레이블이 비어있을 경우 텍스트 생략
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: textColor,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          const SizedBox(height: 4),
+          RichText(
+            text: TextSpan(
+              children: [
+                TextSpan(
+                  text: value,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
+                ),
+                TextSpan(
+                  text: ' $unit',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.normal,
+                    color: textColor.withOpacity(0.8),
+                  ),
+                ),
+              ],
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildComparisonItemCute(String label, int diff, String unit, bool isPositive, IconData icon) {
+    final sign = diff > 0 ? '+' : '';
+    
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isPositive ? Colors.green[50] : Colors.red[50],
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.2),
+                  spreadRadius: 1,
+                  blurRadius: 3,
+                  offset: Offset(0, 1),
+                ),
+              ],
+            ),
+            child: Icon(
+              icon,
+              color: isPositive ? Colors.green[600] : Colors.red[600],
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[800],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '이전 기록 대비',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.2),
+                  spreadRadius: 1,
+                  blurRadius: 3,
+                  offset: Offset(0, 1),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isPositive ? Icons.arrow_downward : Icons.arrow_upward,
+                  color: isPositive ? Colors.green[700] : Colors.red[700],
+                  size: 16,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '$sign$diff $unit',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: isPositive ? Colors.green[700] : Colors.red[700],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
   String _formatGrowthStatus(String status) {
     switch (status) {
       case 'IMPROVING':
-        return '향상';
+        return '기록이 성장했어요!';
       case 'DECLINING':
-        return '악화';
+        return '기록이 부진해요!';
+      case 'STABLE':
+        return '기록이 비슷해요!';
       default:
         return status;
     }
