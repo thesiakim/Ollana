@@ -342,7 +342,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
     return Scaffold(
       resizeToAvoidBottomInset: false, // SnackBar로 인한 레이아웃 이동 방지
       appBar: AppBar(
-        title: Text(mountainName != null ? '$mountainName 등산 상세 결과' : '등산 상세 결과'),
+        title: Text(mountainName != null ? '$mountainName 발자취' : '발자취'),
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -628,52 +628,68 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
       children: [
         const SizedBox(height: 16),
         const Divider(thickness: 1),
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
-          child: Text(
-            '등산 기록 비교',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.blueGrey[800],
-            ),
-          ),
-        ),
+        // 상세 데이터를 하나의 카드에 통합
         Card(
           elevation: 3,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          child: Container(
-            width: double.infinity,
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: records.map((record) {
-                return Expanded(
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16.0),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
                         decoration: BoxDecoration(
-                          color: Colors.blue[100],
-                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.blue[50],
+                          borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
                           record.date,
                           style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
                             color: Colors.blue[800],
                           ),
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      _buildMetricItem('최고 심박수', '${record.maxHeartRate} bpm', Colors.red),
-                      const SizedBox(height: 8),
-                      _buildMetricItem('평균 심박수', '${record.averageHeartRate.toStringAsFixed(1)} bpm', Colors.blue),
-                      const SizedBox(height: 8),
-                      _buildMetricItem('소요 시간', '${record.time} 분', Colors.green),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _buildMetricCard(
+                            '최고 심박수',
+                            '${record.maxHeartRate}',
+                            'bpm',
+                            Colors.red[100]!,
+                            Colors.red[700]!,
+                            Icons.favorite,
+                          ),
+                          _buildMetricCard(
+                            '평균 심박수',
+                            '${record.averageHeartRate.toStringAsFixed(1)}',
+                            'bpm',
+                            Colors.blue[100]!,
+                            Colors.blue[700]!,
+                            Icons.monitor_heart_outlined,
+                          ),
+                          _buildMetricCard(
+                            '소요 시간',
+                            '${record.time}',
+                            '분',
+                            Colors.green[100]!,
+                            Colors.green[700]!,
+                            Icons.timer,
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 );
@@ -681,148 +697,236 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
             ),
           ),
         ),
+        // 비교 결과를 별도의 카드에 렌더링
         if (result != null) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Card(
-            elevation: 3,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16.0),
+            elevation: 4,
+            margin: const EdgeInsets.symmetric(vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+              side: BorderSide(
+                color: result.growthStatus == 'IMPROVING' ? Colors.green[300]! : Colors.red[300]!,
+                width: 2,
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '성장 상태',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey[800],
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 20),
+                    decoration: BoxDecoration(
+                      color: result.growthStatus == 'IMPROVING' ? Colors.green[100] : Colors.red[100],
+                      borderRadius: BorderRadius.circular(25),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 4,
+                          offset: Offset(0, 2),
                         ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
-                        decoration: BoxDecoration(
-                          color: result.growthStatus == 'IMPROVING' ? Colors.green[100] : Colors.red[100],
-                          borderRadius: BorderRadius.circular(12),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          result.growthStatus == 'IMPROVING' ? Icons.emoji_events : Icons.trending_down,
+                          size: 20,
+                          color: result.growthStatus == 'IMPROVING' ? Colors.green[800] : Colors.red[800],
                         ),
-                        child: Text(
+                        const SizedBox(width: 8),
+                        Text(
                           _formatGrowthStatus(result.growthStatus),
                           style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
                             color: result.growthStatus == 'IMPROVING' ? Colors.green[800] : Colors.red[800],
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
+                  const SizedBox(height: 24),
+                  _buildComparisonItemCute('최고 심박수', result.maxHeartRateDiff, 'bpm', result.maxHeartRateDiff <= 0, Icons.favorite),
                   const SizedBox(height: 16),
-                  _buildComparisonItem('최고 심박수', result.maxHeartRateDiff, 'bpm', result.maxHeartRateDiff <= 0),
-                  const Divider(height: 20),
-                  _buildComparisonItem('평균 심박수', result.avgHeartRateDiff, 'bpm', result.avgHeartRateDiff <= 0),
-                  const Divider(height: 20),
-                  _buildComparisonItem('소요 시간', result.timeDiff, '분', result.timeDiff <= 0),
+                  _buildComparisonItemCute('평균 심박수', result.avgHeartRateDiff, 'bpm', result.avgHeartRateDiff <= 0, Icons.monitor_heart_outlined),
+                  const SizedBox(height: 16),
+                  _buildComparisonItemCute('소요 시간', result.timeDiff, '분', result.timeDiff <= 0, Icons.timer),
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          const Divider(thickness: 1),
         ],
+        const SizedBox(height: 16),
+        const Divider(thickness: 1),
       ],
     );
   }
 
-  Widget _buildMetricItem(String label, String value, Color color) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
+  Widget _buildMetricCard(String label, String value, String unit, Color bgColor, Color textColor, IconData icon) {
+    return Container(
+      width: 100,
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.2),
+            spreadRadius: 1,
+            blurRadius: 3,
+            offset: Offset(0, 2),
           ),
-        ),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                ),
-              ),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildComparisonItem(String label, int diff, String unit, bool isPositive) {
-    final sign = diff > 0 ? '+' : '';
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Row(
-          children: [
-            Icon(
-              isPositive ? Icons.arrow_downward : Icons.arrow_upward,
-              color: isPositive ? Colors.green : Colors.red,
-              size: 18,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Colors.grey[800],
-              ),
-            ),
-          ],
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 8),
-          decoration: BoxDecoration(
-            color: isPositive ? Colors.green[50] : Colors.red[50],
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            '$sign$diff $unit',
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: textColor, size: 22),
+          const SizedBox(height: 8),
+          Text(
+            label,
             style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: isPositive ? Colors.green[700] : Colors.red[700],
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: textColor,
             ),
+            textAlign: TextAlign.center,
           ),
-        ),
-      ],
+          const SizedBox(height: 4),
+          RichText(
+            text: TextSpan(
+              children: [
+                TextSpan(
+                  text: value,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
+                ),
+                TextSpan(
+                  text: ' $unit',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.normal,
+                    color: textColor.withOpacity(0.8),
+                  ),
+                ),
+              ],
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
+
+  Widget _buildComparisonItemCute(String label, int diff, String unit, bool isPositive, IconData icon) {
+    final sign = diff > 0 ? '+' : '';
+    
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isPositive ? Colors.green[50] : Colors.red[50],
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.2),
+                  spreadRadius: 1,
+                  blurRadius: 3,
+                  offset: Offset(0, 1),
+                ),
+              ],
+            ),
+            child: Icon(
+              icon,
+              color: isPositive ? Colors.green[600] : Colors.red[600],
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[800],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '이전 기록 대비',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.2),
+                  spreadRadius: 1,
+                  blurRadius: 3,
+                  offset: Offset(0, 1),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isPositive ? Icons.arrow_downward : Icons.arrow_upward,
+                  color: isPositive ? Colors.green[700] : Colors.red[700],
+                  size: 16,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '$sign$diff $unit',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: isPositive ? Colors.green[700] : Colors.red[700],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
 
   String _formatGrowthStatus(String status) {
     switch (status) {
       case 'IMPROVING':
-        return '향상';
+        return '성장했어요!';
       case 'DECLINING':
-        return '악화';
+        return '부진해요!';
+      case 'STABLE':
+        return '비슷해요!';
       default:
         return status;
     }
