@@ -58,7 +58,7 @@ class ModeService {
     required int pathId,
     required String mode,
     int? opponentId,
-    required int recordId,
+    int? recordId,
     required double latitude,
     required double longitude,
     required String token,
@@ -92,17 +92,33 @@ class ModeService {
       final streamedResponse = await _client.send(request);
       final response = await http.Response.fromStream(streamedResponse);
 
+      // 응답 본문이 비어있는지 확인
       final decodedBody = utf8.decode(response.bodyBytes);
-      final jsonData = jsonDecode(decodedBody);
+      debugPrint('응답 본문 길이: ${decodedBody.length}');
 
-      debugPrint('등산 시작 응답: ${response.statusCode}, ${jsonData['status']}');
+      if (decodedBody.isEmpty) {
+        throw Exception('서버 응답이 비어 있습니다. 상태 코드: ${response.statusCode}');
+      }
 
-      if (response.statusCode == 200 && jsonData['status'] == true) {
-        // data 필드에서 ModeData 객체 생성
-        return ModeData.fromJson(jsonData['data']);
-      } else {
-        final errorMessage = jsonData['message'] ?? '등산 시작 요청 실패';
-        throw Exception('$errorMessage (${response.statusCode})');
+      // JSON 파싱 전에 유효한 JSON인지 확인
+      try {
+        final jsonData = jsonDecode(decodedBody);
+        debugPrint('등산 시작 응답: ${response.statusCode}, ${jsonData['status']}');
+
+        if (response.statusCode == 200 && jsonData['status'] == true) {
+          // data 필드에서 ModeData 객체 생성
+          if (jsonData['data'] == null) {
+            throw Exception('응답에 data 필드가 없습니다');
+          }
+          return ModeData.fromJson(jsonData['data']);
+        } else {
+          final errorMessage = jsonData['message'] ?? '등산 시작 요청 실패';
+          throw Exception('$errorMessage (${response.statusCode})');
+        }
+      } catch (jsonError) {
+        debugPrint('JSON 파싱 오류: $jsonError');
+        debugPrint('잘못된 응답 본문: $decodedBody');
+        throw Exception('서버 응답을 파싱할 수 없습니다: $jsonError');
       }
     } catch (e) {
       debugPrint('등산 시작 요청 오류: $e');
@@ -206,7 +222,7 @@ class ModeService {
     required List<Map<String, dynamic>> records,
     required String token,
   }) async {
-    final uri = Uri.parse('$_baseUrl/tracking/end');
+    final uri = Uri.parse('$_baseUrl/tracking/finish');
 
     try {
       final headers = {
@@ -253,6 +269,43 @@ class ModeService {
     } catch (e) {
       debugPrint('등산 종료 요청 오류: $e');
       throw Exception('등산 종료 요청 중 오류 발생: $e');
+    }
+  }
+
+  /// 사용자의 현재 트래킹 상태 확인
+  Future<ModeData?> checkActiveTracking(String token) async {
+    final uri = Uri.parse('$_baseUrl/tracking/status');
+
+    try {
+      final headers = {
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token',
+      };
+
+      final response = await _client.get(uri, headers: headers);
+
+      final decodedBody = utf8.decode(response.bodyBytes);
+      final jsonData = jsonDecode(decodedBody);
+
+      debugPrint('트래킹 상태 확인 응답: ${response.statusCode}, ${jsonData['status']}');
+
+      if (response.statusCode == 200 && jsonData['status'] == true) {
+        // 활성화된 트래킹이 있는 경우
+        if (jsonData['data'] != null &&
+            jsonData['data']['isTracking'] == true) {
+          debugPrint('활성화된 트래킹 발견');
+          return ModeData.fromJson(jsonData['data']);
+        } else {
+          debugPrint('활성화된 트래킹 없음');
+          return null;
+        }
+      } else {
+        debugPrint('트래킹 상태 확인 실패: ${jsonData['message']}');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('트래킹 상태 확인 오류: $e');
+      return null;
     }
   }
 

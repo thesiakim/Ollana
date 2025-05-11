@@ -5,16 +5,20 @@
 
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import '../../models/app_state.dart';
 import '../../utils/app_colors.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import '../../models/mode_data.dart';
 import '../../services/mode_service.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 // 네이버 지도 라이브러리 임포트
 import 'package:flutter_naver_map/flutter_naver_map.dart';
@@ -205,6 +209,9 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   void initState() {
     super.initState();
 
+    // 블루투스 권한 요청
+    _requestBluetoothPermissions();
+
     // AppState에서 데이터 가져오기
     final appState = Provider.of<AppState>(context, listen: false);
 
@@ -303,9 +310,18 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
         // 남은 거리와 예상 시간 계산 (매 초마다 실시간 업데이트)
         _calculateRemainingDistanceAndTime();
 
-        // 이전 기록과 현재 기록 비교 (5초마다, 일반 모드가 아닐 때만)
-        if (_elapsedSeconds % 5 == 0 && _modeData?.opponent != null) {
-          await _compareWithPastRecord();
+        // 이전 기록과 현재 기록 비교
+        if (_modeData?.opponent != null) {
+          // 5초마다 내부 계산 업데이트 (UI 갱신용)
+          if (_elapsedSeconds % 5 == 0) {
+            await _compareWithPastRecord(sendNotification: false);
+          }
+
+          // 30분(1800초)마다 워치 알림 전송
+          if (_elapsedSeconds % 1800 == 0 && _elapsedSeconds > 0) {
+            await _compareWithPastRecord(sendNotification: true);
+            debugPrint('30분 주기 워치 알림 전송 시간: $_elapsedMinutes분');
+          }
         }
 
         // 목적지 도착 감지 (3초마다)
@@ -1036,7 +1052,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   }
 
   // 이전 기록과 현재 기록 비교
-  Future<void> _compareWithPastRecord() async {
+  Future<void> _compareWithPastRecord({bool sendNotification = false}) async {
     if (_modeData == null || _modeData?.opponent == null) return;
 
     try {
@@ -1065,9 +1081,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
       debugPrint(
           '기록 비교: 현재=${_currentTotalDistance.toStringAsFixed(2)}km, 이전=${_pastDistanceAtCurrentTime.toStringAsFixed(2)}km, 차이=${_distanceDifference.toStringAsFixed(2)}km');
 
-      // 앞서거나 뒤처진 상태가
-      // 변경되었을 때만 워치에 알림 전송
-      if (_isAheadOfRecord != oldAheadState) {
+      // 앞서거나 뒤처진 상태가 변경되었을 때 또는 sendNotification이 true일 때(30분 주기) 워치에 알림 전송
+      if (_isAheadOfRecord != oldAheadState || sendNotification) {
         if (_isAheadOfRecord) {
           _notifyWatch('ahead');
           _hasNotifiedWatchForAhead = true;
@@ -1235,28 +1250,82 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
 
   // 워치에 알림 전송 (목데이터 사용)
   void _notifyWatch(String status) {
-    // 워치 알림 서비스 구현 필요
-    // 여기서는 로그만 출력
-    debugPrint('워치 알림 전송 (목데이터): $status');
+    // 워치 알림 메시지 구성
+    String notificationTitle = '등산 상태 알림';
+    String notificationBody = '';
 
-    // 워치 알림을 위한 HTTP 요청 구현 예시
-    // 실제 구현 시 적절한 서비스 클래스 사용 필요
     try {
       switch (status) {
         case 'ahead':
-          debugPrint(
-              '[워치 알림 내용] 이전 기록보다 ${_distanceDifference.abs().toStringAsFixed(2)}km 앞서고 있습니다.');
+          notificationTitle = '앞서고 있습니다';
+          notificationBody =
+              '이전 기록보다 ${_distanceDifference.abs().toStringAsFixed(2)}km 앞서고 있습니다.';
+          debugPrint('[워치 알림 내용] $notificationBody');
           break;
         case 'behind':
-          debugPrint(
-              '[워치 알림 내용] 이전 기록보다 ${_distanceDifference.abs().toStringAsFixed(2)}km 뒤처지고 있습니다.');
+          notificationTitle = '뒤처지고 있습니다';
+          notificationBody =
+              '이전 기록보다 ${_distanceDifference.abs().toStringAsFixed(2)}km 뒤처지고 있습니다.';
+          debugPrint('[워치 알림 내용] $notificationBody');
           break;
         case 'destination':
-          debugPrint('[워치 알림 내용] 목적지에 도착했습니다. 등산을 종료하시겠습니까?');
+          notificationTitle = '목적지 도착';
+          notificationBody = '목적지에 도착했습니다. 등산을 종료하시겠습니까?';
+          debugPrint('[워치 알림 내용] $notificationBody');
           break;
       }
+
+      // 워치 앱에 알림 전송
+      _sendWatchNotification(notificationTitle, notificationBody);
     } catch (e) {
       debugPrint('워치 알림 전송 중 오류: $e');
+    }
+  }
+
+  // 워치 앱에 알림 전송 메소드 (실제 구현)
+  void _sendWatchNotification(String title, String messageBody) async {
+    try {
+      debugPrint('워치 알림 전송 시작: $title - $messageBody');
+
+      // 블루투스 지원 및 활성화 여부 확인
+      if (!await FlutterBluePlus.isSupported) {
+        debugPrint('이 기기는 블루투스를 지원하지 않습니다.');
+        return;
+      }
+
+      // adapterState를 확인하여 블루투스가 켜져 있는지 확인
+      final BluetoothAdapterState adapterState =
+          await FlutterBluePlus.adapterState.first;
+      if (adapterState != BluetoothAdapterState.on) {
+        debugPrint('블루투스가 비활성화되어 있습니다.');
+        return;
+      }
+
+      // 블루투스를 통한 워치 알림 데이터 준비
+      final notificationData = {
+        'title': title,
+        'body': messageBody,
+        'data': {
+          'mountainName': _modeData?.mountain.name ?? '',
+          'pathName': _modeData?.path.name ?? '',
+          'elapsedTime': _formattedTime,
+          'currentDistance': _currentTotalDistance.toStringAsFixed(2),
+          'remainingDistance': _remainingDistance.toStringAsFixed(2),
+        }
+      };
+
+      // 실제 연결된 워치 앱에서는 다음 로직을 구현해야 합니다:
+      // 1. 연결된 워치 디바이스 찾기
+      // 2. 워치 디바이스에 알림 데이터 전송
+
+      // 디버깅용 로그만 출력 (실제 구현 필요)
+      debugPrint('워치에 전송할 데이터 (목업): ${jsonEncode(notificationData)}');
+      debugPrint('실제 블루투스 구현 필요 - 현재는 디버깅 모드');
+
+      // 알림 완료 메시지
+      debugPrint('워치 알림 전송 완료 (mock)');
+    } catch (e) {
+      debugPrint('워치 알림 전송 실패: $e');
     }
   }
 
@@ -2183,11 +2252,11 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
         _averageSpeedMetersPerSecond =
             (_averageSpeedMetersPerSecond * 0.8 + avgSpeed * 0.2);
 
-        // 너무 느리거나 빠른 속도 방지
+        // 너무 느리거나 빠른 속도 방지 (일반 등산 속도 기준으로 조정)
         _averageSpeedMetersPerSecond =
             math.max(_averageSpeedMetersPerSecond, 0.15); // 최소 초당 15cm
-        _averageSpeedMetersPerSecond =
-            math.min(_averageSpeedMetersPerSecond, 1.5); // 최대 초당 1.5m
+        _averageSpeedMetersPerSecond = math.min(
+            _averageSpeedMetersPerSecond, 0.8); // 최대 초당 0.8m (약 2.88km/h)
       }
 
       // 9. 예상 남은 시간 계산 (초 단위)
@@ -2197,22 +2266,23 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
             (remainingDistance / _averageSpeedMetersPerSecond).round();
 
         // 경사도, 지형 난이도 등을 고려한 보정 (상향 보정)
-        double difficultyFactor = 1.0;
+        double difficultyFactor = 1.2; // 기본 보정 계수를 1.0에서 1.2로 증가 (20% 더 오래 걸림)
 
         // 남은 부분이 많을수록 더 많은 보정
-        difficultyFactor += 0.2 * (1.0 - _completedPercentage);
+        difficultyFactor +=
+            0.3 * (1.0 - _completedPercentage); // 0.2에서 0.3으로 증가
 
         // 등산로 난이도에 따른 보정 (AppState에서 선택된 경로가 있는 경우)
         if (appState.selectedRoute != null) {
           switch (appState.selectedRoute!.difficulty) {
             case '상':
-              difficultyFactor += 0.3;
+              difficultyFactor += 0.5; // 0.3에서 0.5로 증가
               break;
             case '중':
-              difficultyFactor += 0.2;
+              difficultyFactor += 0.3; // 0.2에서 0.3으로 증가
               break;
             case '하':
-              difficultyFactor += 0.1;
+              difficultyFactor += 0.15; // 0.1에서 0.15로 증가
               break;
           }
         }
@@ -2319,6 +2389,22 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
 
       debugPrint(
           '기록 저장: ${_trackingRecords.length}번째 기록 ($_elapsedSeconds초, ${_currentTotalDistance.toStringAsFixed(2)}km)');
+    }
+  }
+
+  // 블루투스 권한 요청
+  Future<void> _requestBluetoothPermissions() async {
+    try {
+      // 블루투스 관련 권한 요청
+      final status = await Permission.bluetooth.request();
+      final connectStatus = await Permission.bluetoothConnect.request();
+      final scanStatus = await Permission.bluetoothScan.request();
+
+      debugPrint('블루투스 권한 상태: $status');
+      debugPrint('블루투스 연결 권한 상태: $connectStatus');
+      debugPrint('블루투스 스캔 권한 상태: $scanStatus');
+    } catch (e) {
+      debugPrint('블루투스 권한 요청 오류: $e');
     }
   }
 }

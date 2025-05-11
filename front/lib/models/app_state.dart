@@ -21,7 +21,7 @@ class AppState extends ChangeNotifier {
   bool _isLoggedIn = false;
   String? _accessToken;
   String? _profileImageUrl;
-  String? _nickname; 
+  String? _nickname;
 
   // 페이지 인덱스
   int _currentPageIndex = 0;
@@ -112,7 +112,8 @@ class AppState extends ChangeNotifier {
   }
 
   // 🔥 토큰 설정 및 SecureStorage에 저장
-  Future<void> setToken(String token, {String? profileImageUrl, String? nickname}) async {
+  Future<void> setToken(String token,
+      {String? profileImageUrl, String? nickname}) async {
     _accessToken = token;
     _isLoggedIn = true;
     _profileImageUrl = profileImageUrl;
@@ -141,7 +142,7 @@ class AppState extends ChangeNotifier {
     try {
       await _storage.delete(key: 'accessToken');
       await _storage.delete(key: 'profileImageUrl');
-      await _storage.delete(key: 'nickname'); 
+      await _storage.delete(key: 'nickname');
       debugPrint('SecureStorage에서 토큰 삭제 완료');
     } catch (e) {
       debugPrint('SecureStorage 삭제 오류: $e');
@@ -194,10 +195,13 @@ class AppState extends ChangeNotifier {
       final modeService = ModeService();
 
       // 모드에 따른 파라미터 설정
-      int modeRecordId = 0;
+      int? modeRecordId; // null로 기본값 설정
       if (mode == '나 vs 나' && recordId != null) {
         // 나 vs 나 모드에서는 비교할 이전 기록의 ID가 필요
         modeRecordId = recordId;
+      } else if (mode == '일반 등산') {
+        // 일반 등산 모드에서는 recordId를 null로 명시적 설정
+        modeRecordId = null;
       }
 
       // 모드 문자열을 서버에서 요구하는 값으로 변환
@@ -369,6 +373,68 @@ class AppState extends ChangeNotifier {
       changed = true;
     }
     if (changed) notifyListeners();
+  }
+
+  // 앱 시작 시 등산 상태 확인
+  Future<bool> checkTrackingStatus() async {
+    try {
+      if (_accessToken == null || _accessToken!.isEmpty) {
+        debugPrint('트래킹 상태 확인: 토큰이 없습니다.');
+        return false;
+      }
+
+      // 서버에서 현재 등산 상태 확인
+      final modeService = ModeService();
+      final trackingData = await modeService.checkActiveTracking(_accessToken!);
+
+      // 등산 중인 상태가 아니면 반환
+      if (trackingData == null) {
+        debugPrint('트래킹 상태 확인: 활성화된, 등산이 없습니다.');
+        return false;
+      }
+
+      // 등산 중인 상태면 데이터 복원
+      debugPrint('트래킹 상태 확인: 활성화된 등산이 있습니다. 데이터 복원 시작');
+
+      // 산과 등산로 정보 복원
+      _selectedMountain = trackingData.mountain.name;
+      _selectedRoute = trackingData.path;
+      _modeData = trackingData;
+
+      // 모드 정보 복원 (경쟁자 정보에 따라)
+      if (trackingData.opponent != null) {
+        if (trackingData.opponent?.opponentId == null) {
+          _selectedMode = '나 vs 나';
+        } else {
+          _selectedMode = '나 vs 친구';
+        }
+      } else {
+        _selectedMode = '일반 등산';
+      }
+
+      // 트래킹 상태로 변경
+      _isTracking = true;
+      _trackingStage = TrackingStage.tracking;
+
+      // 등산로 좌표 설정
+      if (trackingData.path.path.isNotEmpty) {
+        final pathPoints = trackingData.path.path
+            .map((coord) =>
+                NLatLng(coord['latitude'] ?? 0.0, coord['longitude'] ?? 0.0))
+            .toList();
+        if (pathPoints.isNotEmpty) {
+          _routeCoordinates = pathPoints;
+        }
+      }
+
+      notifyListeners();
+      debugPrint(
+          '트래킹 상태 복원 완료: ${trackingData.mountain.name}, ${trackingData.path.name}');
+      return true;
+    } catch (e) {
+      debugPrint('트래킹 상태 확인 오류: $e');
+      return false;
+    }
   }
 
   // 트래킹 종료

@@ -127,7 +127,10 @@ class _ModeSelectScreenState extends State<ModeSelectScreen> {
                         color: Colors.orange,
                         onTap: () async {
                           try {
-                            await appState.startTracking('일반 등산');
+                            await appState.startTracking(
+                              '일반 등산',
+                              recordId: null,
+                            );
                           } catch (e) {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(

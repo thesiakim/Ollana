@@ -55,6 +55,7 @@ dependencies:
   jwt_decode: ^0.3.1
   url_launcher: ^6.3.1
   google_fonts: ^6.2.1
+  flutter_blue_plus: ^1.35.5
   
   
 
