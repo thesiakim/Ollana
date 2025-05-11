@@ -6,6 +6,7 @@ import '../../models/path_detail.dart';
 import '../../services/my_footprint_service.dart';
 import 'dart:convert';
 import '../../models/record.dart';
+import './date_picker_modal.dart';
 
 class CompareResponse {
   final List<CompareRecord> records;
@@ -97,10 +98,15 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
   bool _hasNextPage = true;
   Map<int, Set<int>> _selectedRecordIdsByPath = {};
   Map<int, CompareResponse?> _compareDataByPath = {};
+  Map<int, DateTime?> _startDatesByPath = {};
+  Map<int, DateTime?> _endDatesByPath = {};
 
   String formatDate(DateTime date) {
-    final shortYear = date.year % 100;
-    return '${shortYear.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}';
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  String displayDate(DateTime? date) {
+    return date != null ? formatDate(date) : '선택';
   }
 
   double _getMaxValue(PathDetail path) {
@@ -125,31 +131,98 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
     _fetchFootprintDetail();
   }
 
-  Future<void> _fetchFootprintDetail() async {
-    if (_isFetching || !_hasNextPage) return;
+  Future<void> _fetchFootprintDetail({int? pathId}) async {
+    if (_isFetching || (!_hasNextPage && pathId == null)) return;
 
+    debugPrint('Fetching footprint detail for pathId: $pathId');
     setState(() => _isFetching = true);
 
     try {
       final service = MyFootprintService();
-      final detailResponse = await service.getFootprintDetail(
-        widget.token,
-        widget.footprintId,
-        page: _currentPage,
-      );
+      if (pathId != null) {
+        debugPrint('Fetching path detail for pathId: $pathId');
+        final startDate = _startDatesByPath[pathId];
+        final endDate = _endDatesByPath[pathId];
+        final detailResponse = await service.getFootprintPathDetail(
+          widget.token,
+          widget.footprintId,
+          pathId,
+          start: startDate != null ? formatDate(startDate) : null,
+          end: endDate != null ? formatDate(endDate) : null,
+        );
 
-      setState(() {
-        mountainName ??= detailResponse.mountainName;
-        paths.addAll(detailResponse.paths);
-        for (var path in detailResponse.paths) {
-          _selectedRecordIdsByPath[path.pathId] ??= {};
-          _compareDataByPath[path.pathId] ??= null;
+        setState(() {
+          final index = paths.indexWhere((p) => p.pathId == pathId);
+          if (index != -1) {
+            debugPrint('Updating path at index: $index, isExceed: ${detailResponse.isExceed}, records: ${detailResponse.records.length}');
+            if (detailResponse.records.isEmpty) {
+              // records가 비어 있으면 기존 records 유지
+              debugPrint('Empty records, keeping existing records');
+            } else {
+              // records가 있으면 업데이트
+              paths[index] = PathDetail(
+                pathId: pathId,
+                pathName: paths[index].pathName,
+                records: detailResponse.records,
+                isExceed: detailResponse.isExceed,
+              );
+              _selectedRecordIdsByPath[pathId] = {};
+              _compareDataByPath[pathId] = null;
+            }
+          } else {
+            debugPrint('Path with pathId $pathId not found, adding new path, isExceed: ${detailResponse.isExceed}, records: ${detailResponse.records.length}');
+            if (!detailResponse.records.isEmpty) {
+              paths.add(detailResponse);
+            }
+          }
+        });
+
+        // isExceed가 true인 경우
+        if (detailResponse.isExceed) {
+          ScaffoldMessenger.of(context).removeCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              key: Key('isExceed_$pathId'),
+              content: Text('설정하신 기간의 등산 기록이 5개를 초과하여 최근 5개만 확인 가능합니다'),
+              duration: Duration(seconds: 3),
+            ),
+          );
         }
-        _currentPage++;
-        _hasNextPage = !detailResponse.last;
-      });
+        // records가 비어 있는 경우
+        else if (detailResponse.records.isEmpty) {
+          ScaffoldMessenger.of(context).removeCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              key: Key('emptyRecords_$pathId'),
+              content: Text('설정하신 기간의 등산 기록이 존재하지 않습니다'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      } else {
+        final detailResponse = await service.getFootprintDetail(
+          widget.token,
+          widget.footprintId,
+          page: _currentPage,
+        );
+
+        setState(() {
+          mountainName ??= detailResponse.mountainName;
+          paths.addAll(detailResponse.paths);
+          debugPrint('Fetched paths: ${paths.length}');
+          for (var path in detailResponse.paths) {
+            _selectedRecordIdsByPath[path.pathId] ??= {};
+            _compareDataByPath[path.pathId] ??= null;
+            _startDatesByPath[path.pathId] ??= null;
+            _endDatesByPath[path.pathId] ??= null;
+          }
+          _currentPage++;
+          _hasNextPage = !detailResponse.last;
+        });
+      }
     } catch (e) {
       debugPrint('상세 조회 에러: $e');
+      ScaffoldMessenger.of(context).removeCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('등산 상세 결과를 불러오지 못했습니다.')),
       );
@@ -221,11 +294,55 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
     _fetchCompareData(pathId);
   }
 
+  Future<void> _showDatePickerModal(int pathId, bool isStartDate) async {
+    final selectedDate = await showDialog<DateTime>(
+      context: context,
+      builder: (context) => DatePickerModal(
+        initialDate: isStartDate
+            ? _startDatesByPath[pathId] ?? DateTime.now()
+            : _endDatesByPath[pathId] ?? DateTime.now(),
+      ),
+    );
+
+    if (selectedDate != null) {
+      setState(() {
+        if (isStartDate) {
+          _startDatesByPath[pathId] = selectedDate;
+          // 종료일이 시작일보다 빠르면 초기화
+          if (_endDatesByPath[pathId] != null &&
+              _endDatesByPath[pathId]!.isBefore(selectedDate)) {
+            _endDatesByPath[pathId] = null;
+          }
+        } else {
+          if (_startDatesByPath[pathId] == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('시작일을 선택해주세요.')),
+            );
+            return;
+          }
+          if (selectedDate.isBefore(_startDatesByPath[pathId]!)) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('종료일은 시작일 이후여야 합니다.')),
+            );
+            return;
+          }
+          _endDatesByPath[pathId] = selectedDate;
+        }
+      });
+
+      // 시작일과 종료일이 모두 선택된 경우에만 API 호출
+      if (_startDatesByPath[pathId] != null && _endDatesByPath[pathId] != null) {
+        await _fetchFootprintDetail(pathId: pathId);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false, // SnackBar로 인한 레이아웃 이동 방지
       appBar: AppBar(
-        title: Text(mountainName != null ? '$mountainName 등산 상세 결과' : '등산 상세 결과'),
+        title: Text(mountainName != null ? '$mountainName 발자취' : '발자취'),
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -271,6 +388,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
                           path.pathName,
@@ -284,38 +402,44 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                             child: LineChart(
                               LineChartData(
                                 minX: 0,
-                                maxX: path.records.length - 1 > 0 ? path.records.length - 1.0 : 0,
+                                maxX: path.records.isEmpty ? 0 : path.records.length - 1.0,
                                 minY: 0,
-                                maxY: _getMaxValue(path) * 1.1,
+                                maxY: path.records.isEmpty ? 100 : _getMaxValue(path) * 1.1,
                                 lineBarsData: [
                                   _line(
-                                    path.records.asMap().entries.map((entry) {
-                                      final idx = entry.key;
-                                      final record = entry.value;
-                                      return FlSpot(idx.toDouble(), record.maxHeartRate.toDouble());
-                                    }).toList(),
+                                    path.records.isEmpty
+                                        ? [FlSpot(0, 0)] // 빈 데이터일 때 기본 점
+                                        : path.records.asMap().entries.map((entry) {
+                                            final idx = entry.key;
+                                            final record = entry.value;
+                                            return FlSpot(idx.toDouble(), record.maxHeartRate.toDouble());
+                                          }).toList(),
                                     Colors.red,
                                     '최고 심박수',
                                     path.records,
                                     path.pathId,
                                   ),
                                   _line(
-                                    path.records.asMap().entries.map((entry) {
-                                      final idx = entry.key;
-                                      final record = entry.value;
-                                      return FlSpot(idx.toDouble(), record.averageHeartRate);
-                                    }).toList(),
+                                    path.records.isEmpty
+                                        ? [FlSpot(0, 0)]
+                                        : path.records.asMap().entries.map((entry) {
+                                            final idx = entry.key;
+                                            final record = entry.value;
+                                            return FlSpot(idx.toDouble(), record.averageHeartRate);
+                                          }).toList(),
                                     Colors.blue,
                                     '평균 심박수',
                                     path.records,
                                     path.pathId,
                                   ),
                                   _line(
-                                    path.records.asMap().entries.map((entry) {
-                                      final idx = entry.key;
-                                      final record = entry.value;
-                                      return FlSpot(idx.toDouble(), record.time.toDouble());
-                                    }).toList(),
+                                    path.records.isEmpty
+                                        ? [FlSpot(0, 0)]
+                                        : path.records.asMap().entries.map((entry) {
+                                            final idx = entry.key;
+                                            final record = entry.value;
+                                            return FlSpot(idx.toDouble(), record.time.toDouble());
+                                          }).toList(),
                                     Colors.green,
                                     '소요 시간',
                                     path.records,
@@ -456,6 +580,31 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                             ),
                           ),
                         ),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Color(0xFF52A486),
+                                foregroundColor: Colors.white,
+                              ),
+                              onPressed: () => _showDatePickerModal(path.pathId, true),
+                              child: Text('시작일 ${displayDate(_startDatesByPath[path.pathId])}'),
+                            ),
+                            const SizedBox(width: 10),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Color(0xFF52A486),
+                                foregroundColor: Colors.white,
+                              ),
+                              onPressed: _startDatesByPath[path.pathId] == null
+                                  ? null
+                                  : () => _showDatePickerModal(path.pathId, false),
+                              child: Text('종료일 ${displayDate(_endDatesByPath[path.pathId])}'),
+                            ),
+                          ],
+                        ),
                         if (compareData != null && compareData.records.isNotEmpty)
                           _buildCompareResult(compareData),
                       ],
@@ -474,95 +623,322 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
     final records = compareData.records;
     final result = compareData.result;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-      child: Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: records.map((record) {
-                  return Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${record.date}',
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 16),
+        const Divider(thickness: 1),
+        // 상세 데이터를 하나의 카드에 통합 (텍스트 레이블 제거)
+        Card(
+          elevation: 0, // 그림자 제거
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          shape: RoundedRectangleBorder(
+            side: BorderSide(color: Colors.grey[300]!, width: 1), // 외곽선 추가
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: records.map((record) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: Color(0xFF52A486),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          record.date,
+                          style: TextStyle(
+                            fontSize: 14,
+                            //fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
-                          const SizedBox(height: 8),
-                          Text('최고 심박수: ${record.maxHeartRate} bpm'),
-                          Text('평균 심박수: ${record.averageHeartRate.toStringAsFixed(1)} bpm'),
-                          Text('소요 시간: ${record.time} 분'),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _buildMetricCard(
+                            '', // 텍스트 레이블 제거
+                            '${record.maxHeartRate}',
+                            'bpm',
+                            Colors.red[100]!,
+                            Colors.red[700]!,
+                            Icons.favorite,
+                          ),
+                          _buildMetricCard(
+                            '', // 텍스트 레이블 제거
+                            '${record.averageHeartRate.toStringAsFixed(1)}',
+                            'bpm',
+                            Colors.blue[100]!,
+                            Colors.blue[700]!,
+                            Icons.monitor_heart_outlined,
+                          ),
+                          _buildMetricCard(
+                            '', // 텍스트 레이블 제거
+                            '${record.time}',
+                            '분',
+                            Colors.green[100]!,
+                            Colors.green[700]!,
+                            Icons.timer,
+                          ),
                         ],
                       ),
-                    ),
-                  );
-                }).toList(),
-              ),
-              if (result != null) ...[
-                const Divider(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '비교 결과',
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                    ),
-                    Text(
-                      '성장 상태: ${_formatGrowthStatus(result.growthStatus)}',
-                      style: TextStyle(
-                        color: result.growthStatus == 'IMPROVING' ? Colors.green : Colors.red,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('최고 심박수 변화:'),
-                    Text(
-                      '${result.maxHeartRateDiff > 0 ? '+' : ''}${result.maxHeartRateDiff} bpm',
-                      style: TextStyle(
-                        color: result.maxHeartRateDiff <= 0 ? Colors.green : Colors.red,
-                      ),
-                    ),
-                  ],
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('소요 시간 변화:'),
-                    Text(
-                      '${result.timeDiff > 0 ? '+' : ''}${result.timeDiff} 분',
-                      style: TextStyle(
-                        color: result.timeDiff <= 0 ? Colors.green : Colors.red,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ],
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
           ),
         ),
+        // 비교 결과를 별도의 카드에 렌더링
+        if (result != null) ...[
+          const SizedBox(height: 12),
+          Card(
+            elevation: 0, // 그림자 제거
+            margin: const EdgeInsets.symmetric(vertical: 12),
+            shape: RoundedRectangleBorder(
+              side: BorderSide(color: Colors.grey[300]!, width: 1), // 외곽선 추가
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  RichText(
+                    text: TextSpan(
+                      children: [
+                        TextSpan(
+                          text: '',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                        WidgetSpan(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  result.growthStatus == 'IMPROVING' ? Icons.emoji_events : Icons.trending_down,
+                                  size: 18,
+                                  color: Colors.black,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  _formatGrowthStatus(result.growthStatus),
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        TextSpan(
+                          text: '',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: result.growthStatus == 'IMPROVING' ? Colors.green[700] : Colors.red[700],
+                          ),
+                        ),
+                      ],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  _buildComparisonItemCute('최고 심박수', result.maxHeartRateDiff, 'bpm', result.maxHeartRateDiff <= 0, Icons.favorite),
+                  const SizedBox(height: 16),
+                  _buildComparisonItemCute('평균 심박수', result.avgHeartRateDiff, 'bpm', result.avgHeartRateDiff <= 0, Icons.monitor_heart_outlined),
+                  const SizedBox(height: 16),
+                  _buildComparisonItemCute('소요 시간', result.timeDiff, '분', result.timeDiff <= 0, Icons.timer),
+                ],
+              ),
+            ),
+          ),
+        ],
+        const SizedBox(height: 16),
+        const Divider(thickness: 1),
+      ],
+    );
+  }
+
+  Widget _buildMetricCard(String label, String value, String unit, Color bgColor, Color textColor, IconData icon) {
+    return Container(
+      width: 100,
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.2),
+            spreadRadius: 1,
+            blurRadius: 3,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: textColor, size: 22),
+          const SizedBox(height: 8),
+          if (label.isNotEmpty) // 레이블이 비어있을 경우 텍스트 생략
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: textColor,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          const SizedBox(height: 4),
+          RichText(
+            text: TextSpan(
+              children: [
+                TextSpan(
+                  text: value,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
+                ),
+                TextSpan(
+                  text: ' $unit',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.normal,
+                    color: textColor.withOpacity(0.8),
+                  ),
+                ),
+              ],
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildComparisonItemCute(String label, int diff, String unit, bool isPositive, IconData icon) {
+    final sign = diff > 0 ? '+' : '';
+    
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isPositive ? Colors.green[50] : Colors.red[50],
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.2),
+                  spreadRadius: 1,
+                  blurRadius: 3,
+                  offset: Offset(0, 1),
+                ),
+              ],
+            ),
+            child: Icon(
+              icon,
+              color: isPositive ? Colors.green[600] : Colors.red[600],
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[800],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '이전 기록 대비',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.2),
+                  spreadRadius: 1,
+                  blurRadius: 3,
+                  offset: Offset(0, 1),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isPositive ? Icons.arrow_downward : Icons.arrow_upward,
+                  color: isPositive ? Colors.green[700] : Colors.red[700],
+                  size: 16,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '$sign$diff $unit',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: isPositive ? Colors.green[700] : Colors.red[700],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 
+
   String _formatGrowthStatus(String status) {
     switch (status) {
       case 'IMPROVING':
-        return '향상';
+        return '기록이 성장했어요!';
       case 'DECLINING':
-        return '악화';
+        return '기록이 부진해요!';
+      case 'STABLE':
+        return '기록이 비슷해요!';
       default:
         return status;
     }

@@ -81,15 +81,26 @@ class _MyFootprintScreenState extends State<MyFootprintScreen> {
 
   @override
   Widget build(BuildContext context) {
-    
     return Scaffold(
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : Padding(
               padding: const EdgeInsets.all(12.0),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center, // 전체 Column을 중앙 정렬
                 children: [
+                  // 텍스트를 맨 위에 중앙 정렬
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Text(
+                      footprints.isEmpty
+                          ? '아직 등산하신 적이 없어요'
+                          : '총 ${totalDistance.toStringAsFixed(0)}m만큼 등산하셨어요!',
+                      style: const TextStyle(fontSize: 18),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  // 대결 결과 버튼을 오른쪽 정렬
                   Align(
                     alignment: Alignment.centerRight,
                     child: ElevatedButton(
@@ -102,9 +113,8 @@ class _MyFootprintScreenState extends State<MyFootprintScreen> {
                           ),
                         );
                       },
-
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF714504),
+                        backgroundColor: const Color(0xFF52A486),
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
@@ -117,28 +127,13 @@ class _MyFootprintScreenState extends State<MyFootprintScreen> {
                       ),
                     ),
                   ),
-                  if (footprints.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                      child: Text(
-                        '아직 등산하신 적이 없어요',
-                        style: TextStyle(fontSize: 18),
-                      ),
-                    )
-                  else
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      child: Text(
-                        '총 ${totalDistance.toStringAsFixed(0)}m만큼 등산하셨어요!',
-                        style: const TextStyle(fontSize: 18),
-                      ),
-                    ),
+                  // 나머지 그리드 부분
                   Expanded(
                     child: NotificationListener<ScrollNotification>(
                       onNotification: (ScrollNotification scrollInfo) {
-
                         // 스크롤이 하단에 도달하면 더 많은 데이터 로드
-                        if (!_isFetching && _hasNextPage && 
+                        if (!_isFetching &&
+                            _hasNextPage &&
                             scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent * 0.8) {
                           debugPrint('[발자취] 스크롤 끝에 가까워짐: 다음 페이지 요청 시도');
                           _loadMoreData();
@@ -165,7 +160,6 @@ class _MyFootprintScreenState extends State<MyFootprintScreen> {
                                       debugPrint('[발자취] 상세 정보 요청: footprintId=${item.footprintId}');
                                       await service.getFootprintDetail(token, item.footprintId);
 
-                                      // 위젯이 마운트된 상태인지 확인
                                       if (!mounted) {
                                         debugPrint('[발자취] 위젯이 마운트되지 않음: 네비게이션 취소');
                                         return;
@@ -175,7 +169,10 @@ class _MyFootprintScreenState extends State<MyFootprintScreen> {
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(
-                                          builder: (_) => FootprintDetailScreen(footprintId: item.footprintId, token: token),
+                                          builder: (_) => FootprintDetailScreen(
+                                            footprintId: item.footprintId,
+                                            token: token,
+                                          ),
                                         ),
                                       );
                                     } catch (e, stackTrace) {
@@ -232,7 +229,6 @@ class _MyFootprintScreenState extends State<MyFootprintScreen> {
                               },
                               childCount: footprints.length,
                             ),
-
                           ),
                           // 하단에 로딩 표시기 추가
                           SliverToBoxAdapter(
@@ -246,7 +242,7 @@ class _MyFootprintScreenState extends State<MyFootprintScreen> {
                                 : !_hasNextPage && footprints.isNotEmpty
                                     ? const Center(
                                         child: Padding(
-                                          padding: EdgeInsets.all(16.0)
+                                          padding: EdgeInsets.all(16.0),
                                         ),
                                       )
                                     : const SizedBox.shrink(),
