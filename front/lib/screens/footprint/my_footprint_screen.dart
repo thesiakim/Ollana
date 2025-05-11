@@ -114,7 +114,7 @@ class _MyFootprintScreenState extends State<MyFootprintScreen> {
                         );
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF714504),
+                        backgroundColor: const Color(0xFF52A486),
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),

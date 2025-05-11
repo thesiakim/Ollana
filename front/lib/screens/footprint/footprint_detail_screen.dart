@@ -586,7 +586,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                           children: [
                             ElevatedButton(
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue,
+                                backgroundColor: Color(0xFF52A486),
                                 foregroundColor: Colors.white,
                               ),
                               onPressed: () => _showDatePickerModal(path.pathId, true),
@@ -595,7 +595,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                             const SizedBox(width: 10),
                             ElevatedButton(
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue,
+                                backgroundColor: Color(0xFF52A486),
                                 foregroundColor: Colors.white,
                               ),
                               onPressed: _startDatesByPath[path.pathId] == null
@@ -628,11 +628,12 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
       children: [
         const SizedBox(height: 16),
         const Divider(thickness: 1),
-        // 상세 데이터를 하나의 카드에 통합
+        // 상세 데이터를 하나의 카드에 통합 (텍스트 레이블 제거)
         Card(
-          elevation: 3,
+          elevation: 0, // 그림자 제거
           margin: const EdgeInsets.symmetric(vertical: 8),
           shape: RoundedRectangleBorder(
+            side: BorderSide(color: Colors.grey[300]!, width: 1), // 외곽선 추가
             borderRadius: BorderRadius.circular(15),
           ),
           child: Padding(
@@ -648,15 +649,15 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
                         decoration: BoxDecoration(
-                          color: Colors.blue[50],
+                          color: Color(0xFF52A486),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
                           record.date,
                           style: TextStyle(
                             fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue[800],
+                            //fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
                         ),
                       ),
@@ -665,7 +666,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
                           _buildMetricCard(
-                            '최고 심박수',
+                            '', // 텍스트 레이블 제거
                             '${record.maxHeartRate}',
                             'bpm',
                             Colors.red[100]!,
@@ -673,7 +674,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                             Icons.favorite,
                           ),
                           _buildMetricCard(
-                            '평균 심박수',
+                            '', // 텍스트 레이블 제거
                             '${record.averageHeartRate.toStringAsFixed(1)}',
                             'bpm',
                             Colors.blue[100]!,
@@ -681,7 +682,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                             Icons.monitor_heart_outlined,
                           ),
                           _buildMetricCard(
-                            '소요 시간',
+                            '', // 텍스트 레이블 제거
                             '${record.time}',
                             '분',
                             Colors.green[100]!,
@@ -697,13 +698,14 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
             ),
           ),
         ),
-        // 비교 결과를 별도의 카드에 렌더링 (테두리 색상 제거)
+        // 비교 결과를 별도의 카드에 렌더링
         if (result != null) ...[
           const SizedBox(height: 12),
           Card(
-            elevation: 4,
+            elevation: 0, // 그림자 제거
             margin: const EdgeInsets.symmetric(vertical: 12),
             shape: RoundedRectangleBorder(
+              side: BorderSide(color: Colors.grey[300]!, width: 1), // 외곽선 추가
               borderRadius: BorderRadius.circular(18),
             ),
             child: Padding(
@@ -711,38 +713,51 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 20),
-                    decoration: BoxDecoration(
-                      color: result.growthStatus == 'IMPROVING' ? Colors.green[100] : Colors.red[100],
-                      borderRadius: BorderRadius.circular(25),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 4,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+                  RichText(
+                    text: TextSpan(
                       children: [
-                        Icon(
-                          result.growthStatus == 'IMPROVING' ? Icons.emoji_events : Icons.trending_down,
-                          size: 20,
-                          color: result.growthStatus == 'IMPROVING' ? Colors.green[800] : Colors.red[800],
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          _formatGrowthStatus(result.growthStatus),
+                        TextSpan(
+                          text: '',
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 20,
                             fontWeight: FontWeight.bold,
-                            color: result.growthStatus == 'IMPROVING' ? Colors.green[800] : Colors.red[800],
+                            color: Colors.black,
+                          ),
+                        ),
+                        WidgetSpan(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  result.growthStatus == 'IMPROVING' ? Icons.emoji_events : Icons.trending_down,
+                                  size: 18,
+                                  color: Colors.black,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  _formatGrowthStatus(result.growthStatus),
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        TextSpan(
+                          text: '',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: result.growthStatus == 'IMPROVING' ? Colors.green[700] : Colors.red[700],
                           ),
                         ),
                       ],
                     ),
+                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
                   _buildComparisonItemCute('최고 심박수', result.maxHeartRateDiff, 'bpm', result.maxHeartRateDiff <= 0, Icons.favorite),
@@ -782,15 +797,16 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
         children: [
           Icon(icon, color: textColor, size: 22),
           const SizedBox(height: 8),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: textColor,
+          if (label.isNotEmpty) // 레이블이 비어있을 경우 텍스트 생략
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: textColor,
+              ),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
-          ),
           const SizedBox(height: 4),
           RichText(
             text: TextSpan(
@@ -819,7 +835,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
       ),
     );
   }
-
+  
   Widget _buildComparisonItemCute(String label, int diff, String unit, bool isPositive, IconData icon) {
     final sign = diff > 0 ? '+' : '';
     
@@ -918,11 +934,11 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
   String _formatGrowthStatus(String status) {
     switch (status) {
       case 'IMPROVING':
-        return '성장했어요!';
+        return '기록이 성장했어요!';
       case 'DECLINING':
-        return '부진해요!';
+        return '기록이 부진해요!';
       case 'STABLE':
-        return '비슷해요!';
+        return '기록이 비슷해요!';
       default:
         return status;
     }
