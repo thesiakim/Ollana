@@ -16,7 +16,8 @@ class ModeSelectScreen extends StatefulWidget {
 }
 
 class _ModeSelectScreenState extends State<ModeSelectScreen> {
-  // 친구 검색 상태 변수들 제거
+  // 선택된 기록 ID
+  int? _selectedRecordId;
 
   @override
   void dispose() {
@@ -94,7 +95,8 @@ class _ModeSelectScreenState extends State<ModeSelectScreen> {
                         description: '과거의 나와 경쟁하며 등산해보세요! 이전 기록을 갱신할 수 있습니다.',
                         icon: Icons.history,
                         color: Colors.blue,
-                        onTap: () => _showMeVsMeModal(context, appState),
+                        onTap: () =>
+                            _showTrackingOptionsModal(context, appState),
                       ),
 
                       const SizedBox(height: 16),
@@ -149,9 +151,11 @@ class _ModeSelectScreenState extends State<ModeSelectScreen> {
     );
   }
 
-  // 나 vs 나 모달 표시
-  Future<void> _showMeVsMeModal(BuildContext context, AppState appState) async {
+  // 이전 등산 기록 목록 모달 표시
+  Future<void> _showTrackingOptionsModal(
+      BuildContext context, AppState appState) async {
     final modeService = ModeService();
+    _selectedRecordId = null;
 
     try {
       // 로딩 표시
@@ -167,342 +171,281 @@ class _ModeSelectScreenState extends State<ModeSelectScreen> {
         );
       }
 
-      // 이전 등산 기록 가져오기
+      // 이전 등산 기록 목록 가져오기
       final mountainId = appState.selectedRoute?.mountainId ?? 0;
       final pathId = appState.selectedRoute?.id ?? 0;
+      final token = appState.accessToken ?? '';
 
-      final previousRecord =
-          await modeService.getMeVsMeRecord(mountainId, pathId);
+      final recordsList = await modeService.getMyTrackingOptions(
+        mountainId: mountainId.toInt(),
+        pathId: pathId.toInt(),
+        token: token,
+      );
 
       // 로딩 다이얼로그 닫기
       if (!mounted) return;
       if (context.mounted) Navigator.of(context).pop();
 
-      if (previousRecord == null) {
+      if (recordsList.isEmpty) {
         // 이전 기록이 없는 경우
         if (!mounted) return;
         if (context.mounted) {
-          // 기록이 없는 경우와 동일한 UI 표시
-          showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              return Dialog(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
+          _showNoRecordsDialog(context);
+        }
+        return;
+      }
+
+      // 이전 기록이 있는 경우 목록 표시
+      if (!mounted) return;
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return StatefulBuilder(
+              builder: (context, setState) {
+                return Dialog(
+                  shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // 상단 날짜 비교 부분
-                      Container(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '이전 등산 기록',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: 10),
+                        Container(
+                          constraints: BoxConstraints(
+                            maxHeight: MediaQuery.of(context).size.height * 0.4,
+                          ),
+                          child: ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: recordsList.length,
+                            itemBuilder: (context, index) {
+                              final record = recordsList[index];
+                              final recordId = record['recordId'];
+                              final date = record['date'];
+                              final time = record['time'];
+
+                              final isSelected = _selectedRecordId == recordId;
+
+                              return InkWell(
+                                onTap: () {
+                                  setState(() {
+                                    _selectedRecordId = recordId;
+                                  });
+                                },
+                                child: Container(
+                                  margin: EdgeInsets.symmetric(vertical: 5),
+                                  padding: EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? Colors.blue.withOpacity(0.1)
+                                        : Colors.white,
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? Colors.blue
+                                          : Colors.grey.shade300,
+                                      width: isSelected ? 2 : 1,
+                                    ),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      // 선택 여부 표시
+                                      isSelected
+                                          ? Icon(Icons.check_circle,
+                                              color: Colors.blue)
+                                          : Icon(Icons.circle_outlined,
+                                              color: Colors.grey),
+                                      SizedBox(width: 10),
+
+                                      // 날짜와 시간 정보
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            date,
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          SizedBox(height: 4),
+                                          Text(
+                                            '등반 시간: ${_formatMinutes(time)}',
+                                            style: TextStyle(
+                                              color: Colors.grey.shade700,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        SizedBox(height: 20),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            // 이전 날짜
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade300,
-                                borderRadius: BorderRadius.circular(15),
-                              ),
-                              child: const Text(
-                                '이전 기록',
+                            // 취소 버튼
+                            TextButton(
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                              },
+                              child: Text(
+                                '취소',
                                 style: TextStyle(
+                                  color: Colors.grey.shade700,
+                                ),
+                              ),
+                            ),
+
+                            // 시작하기 버튼
+                            ElevatedButton(
+                              onPressed: _selectedRecordId != null
+                                  ? () {
+                                      Navigator.of(context).pop();
+                                      appState.startTracking(
+                                        '나 vs 나',
+                                        recordId: _selectedRecordId,
+                                      );
+                                    }
+                                  : null,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue,
+                                disabledBackgroundColor: Colors.grey.shade400,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(30),
+                                ),
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 10),
+                              ),
+                              child: Text(
+                                '시작하기',
+                                style: TextStyle(
+                                  color: Colors.white,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ),
                           ],
                         ),
-                      ),
-
-                      // 정보 컨테이너
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.black, width: 2),
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: const Center(
-                          child: Text(
-                            '기록이 없습니다\n일반모드를 선택해 주세요',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      // 확인 버튼으로 변경
-                      Container(
-                        margin: const EdgeInsets.only(top: 20),
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30),
-                            ),
-                          ),
-                          child: const Text(
-                            '확인',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              );
-            },
-          );
-        }
-        return;
-      }
-
-      // 이전 기록이 있는 경우 모달 표시
-      if (!mounted) return;
-      if (context.mounted) {
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // 상단 날짜 비교 부분
-                    Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          // 이전 날짜
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade300,
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                            child: Text(
-                              previousRecord.date,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // 정보 컨테이너
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.black, width: 2),
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '이전 등산 기록',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-
-                          // 등산 시간
-                          Text(
-                            '등반 시간 ${_formatMinutes(previousRecord.time)}',
-                            style: const TextStyle(
-                              fontSize: 15,
-                            ),
-                          ),
-
-                          const SizedBox(height: 12),
-
-                          // 심박수 정보
-                          Text(
-                            '평균 심박수 ${previousRecord.averageHeartRate.toStringAsFixed(0)}bpm',
-                            style: const TextStyle(
-                              fontSize: 15,
-                            ),
-                          ),
-
-                          const SizedBox(height: 8),
-
-                          Text(
-                            '최고 심박수 ${previousRecord.maxHeartRate}bpm',
-                            style: const TextStyle(
-                              fontSize: 15,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // 시작하기 버튼
-                    Container(
-                      margin: const EdgeInsets.only(top: 20),
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                          appState.startTracking('나 vs 나',
-                              recordId: previousRecord.recordId.toInt());
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                        ),
-                        child: const Text(
-                          '시작하기',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+                );
+              },
             );
           },
         );
       }
     } catch (e) {
       // 오류 처리
-      debugPrint('MeVsMe 모달 표시 오류: $e');
+      debugPrint('등산 기록 목록 조회 오류: $e');
       if (context.mounted) {
-        // 기록이 없는 경우와 동일한 UI 표시
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // 상단 날짜 비교 부분
-                    Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          // 이전 날짜
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade300,
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                            child: const Text(
-                              '이전 기록',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // 정보 컨테이너
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.black, width: 2),
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: const Center(
-                        child: Text(
-                          '기록이 없습니다\n일반모드를 선택해 주세요',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    // 확인 버튼으로 변경
-                    Container(
-                      margin: const EdgeInsets.only(top: 20),
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                        ),
-                        child: const Text(
-                          '확인',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
+        Navigator.of(context).pop(); // 로딩 다이얼로그 닫기
+        _showNoRecordsDialog(context);
       }
     }
+  }
+
+  // 기록이 없는 경우 표시할 다이얼로그
+  void _showNoRecordsDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 상단 제목
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: const Text(
+                    '등산 기록 없음',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+
+                // 정보 컨테이너
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.red.shade300, width: 1),
+                    borderRadius: BorderRadius.circular(15),
+                    color: Colors.red.shade50,
+                  ),
+                  child: const Center(
+                    child: Text(
+                      '등산 기록이 없습니다.\n일반 모드를 선택해 주세요.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+
+                // 확인 버튼
+                Container(
+                  margin: const EdgeInsets.only(top: 20),
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                    ),
+                    child: const Text(
+                      '확인',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   // 분 형식 변환 (예: 72분 -> 1h 12m)
