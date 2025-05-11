@@ -697,7 +697,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
             ),
           ),
         ),
-        // 비교 결과를 별도의 카드에 렌더링
+        // 비교 결과를 별도의 카드에 렌더링 (테두리 색상 제거)
         if (result != null) ...[
           const SizedBox(height: 12),
           Card(
@@ -705,10 +705,6 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
             margin: const EdgeInsets.symmetric(vertical: 12),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(18),
-              side: BorderSide(
-                color: result.growthStatus == 'IMPROVING' ? Colors.green[300]! : Colors.red[300]!,
-                width: 2,
-              ),
             ),
             child: Padding(
               padding: const EdgeInsets.all(20.0),
