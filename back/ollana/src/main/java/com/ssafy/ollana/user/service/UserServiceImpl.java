@@ -45,7 +45,8 @@ public class UserServiceImpl implements UserService {
         MypageResponseDto response = new MypageResponseDto(
                 user.getNickname(),
                 user.getEmail(),
-                user.getProfileImage()
+                user.getProfileImage(),
+                user.isAgree()
         );
 
         return response;
@@ -85,7 +86,8 @@ public class UserServiceImpl implements UserService {
         MypageResponseDto response = new MypageResponseDto(
                 user.getNickname(),
                 user.getEmail(),
-                user.getProfileImage()
+                user.getProfileImage(),
+                user.isAgree()
         );
 
         return response;
