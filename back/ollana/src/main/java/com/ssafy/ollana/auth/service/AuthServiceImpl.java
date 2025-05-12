@@ -114,6 +114,7 @@ public class AuthServiceImpl implements AuthService {
             TempUserDto.TempUserDtoBuilder builder = TempUserDto.builder()
                     .email(kakaoProfileDto.getKakaoAccount().getEmail())
                     .nickname(kakaoProfileDto.getKakaoAccount().getProfile().getNickname())
+                    .kakaoId(kakaoProfileDto.getKakaoId())
                     .socialLogin(true);
 
             // 선택 동의 (프로필 이미지)
@@ -145,6 +146,7 @@ public class AuthServiceImpl implements AuthService {
                 .birth(request.getBirth())
                 .gender(Gender.valueOf(request.getGender()))
                 .profileImage(request.getProfileImage())
+                .kakaoId(request.getKakaoId())
                 .isSocial(request.isSocial())
                 .build();
         userRepository.save(newUser);
