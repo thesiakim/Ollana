@@ -9,4 +9,5 @@ public class MypageResponseDto {
     private String nickname;
     private String email;
     private String imageUrl;
+    private boolean isAgree;
 }
