@@ -5,7 +5,9 @@ import com.ssafy.ollana.footprint.persistent.entity.HikingHistory;
 import com.ssafy.ollana.footprint.persistent.repository.FootprintRepository;
 import com.ssafy.ollana.footprint.persistent.repository.HikingHistoryRepository;
 import com.ssafy.ollana.mountain.persistent.entity.Level;
+import com.ssafy.ollana.security.CustomUserDetails;
 import com.ssafy.ollana.user.dto.LatestRecordDto;
+import com.ssafy.ollana.user.dto.MypageResponseDto;
 import com.ssafy.ollana.user.dto.UserInfoDto;
 import com.ssafy.ollana.user.entity.User;
 import com.ssafy.ollana.user.repository.UserRepository;
@@ -33,6 +35,20 @@ public class UserServiceImpl implements UserService {
         this.footprintRepository = footprintRepository;
         this.hikingHistoryRepository = hikingHistoryRepository;
 
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MypageResponseDto getMypage(CustomUserDetails userDetails) {
+        User user = userDetails.getUser();
+
+        MypageResponseDto response = new MypageResponseDto(
+                user.getNickname(),
+                user.getEmail(),
+                user.getProfileImage()
+        );
+
+        return response;
     }
 
     @Override
