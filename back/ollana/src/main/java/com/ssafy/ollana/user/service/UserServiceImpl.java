@@ -75,6 +75,11 @@ public class UserServiceImpl implements UserService {
             user.setNickname(request.getNickname());
         }
 
+        // 동의 여부 업데이트
+        if (request.getIsAgree() != null) {
+            user.setAgree(request.getIsAgree());
+        }
+
         // 프로필 이미지 업데이트
         if (profileImage != null && !profileImage.isEmpty()) {
             // 새로운 프로필 이미지 S3 업로드

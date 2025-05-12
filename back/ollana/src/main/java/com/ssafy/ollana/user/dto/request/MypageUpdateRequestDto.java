@@ -1,10 +1,11 @@
 package com.ssafy.ollana.user.dto.request;
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Getter
-@AllArgsConstructor
+@NoArgsConstructor
 public class MypageUpdateRequestDto {
     private String nickname;
+    private Boolean isAgree;
 }
