@@ -10,7 +10,6 @@ import com.ssafy.ollana.user.dto.LatestRecordDto;
 import com.ssafy.ollana.user.dto.MypageResponseDto;
 import com.ssafy.ollana.user.dto.UserInfoDto;
 import com.ssafy.ollana.user.entity.User;
-import com.ssafy.ollana.user.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -26,12 +25,10 @@ import java.util.List;
 @Slf4j
 public class UserServiceImpl implements UserService {
 
-    private final UserRepository userRepository;
     private final FootprintRepository footprintRepository;
     private final HikingHistoryRepository hikingHistoryRepository;
 
-    public UserServiceImpl(UserRepository userRepository, FootprintRepository footprintRepository, HikingHistoryRepository hikingHistoryRepository) {
-        this.userRepository = userRepository;
+    public UserServiceImpl(FootprintRepository footprintRepository, HikingHistoryRepository hikingHistoryRepository) {
         this.footprintRepository = footprintRepository;
         this.hikingHistoryRepository = hikingHistoryRepository;
 
