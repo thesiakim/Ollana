@@ -1,9 +1,14 @@
 package com.ssafy.ollana.user.entity;
 
 import com.ssafy.ollana.common.BaseEntity;
+import com.ssafy.ollana.footprint.persistent.entity.BattleHistory;
+import com.ssafy.ollana.footprint.persistent.entity.Footprint;
+import com.ssafy.ollana.tracking.persistent.entity.HikingLiveRecords;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
+import java.util.List;
 
 @Entity
 @EntityListeners(AuditingEntityListener.class)
@@ -55,6 +60,18 @@ public class User extends BaseEntity {
 
     @Column(nullable = false)
     private String profileImage;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<HikingLiveRecords> hikingLiveRecords;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<BattleHistory> battleHistories;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<BattleHistory> opponentBattleHistories;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<Footprint> footprints;
 
     @Column(nullable = false, columnDefinition = "boolean default false")
     private boolean isSurvey = false;

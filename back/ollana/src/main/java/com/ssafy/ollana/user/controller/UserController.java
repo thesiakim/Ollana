@@ -3,6 +3,7 @@ package com.ssafy.ollana.user.controller;
 import com.ssafy.ollana.common.util.Response;
 import com.ssafy.ollana.security.CustomUserDetails;
 import com.ssafy.ollana.user.dto.request.MypageUpdateRequestDto;
+import com.ssafy.ollana.user.dto.request.WithdrawlRequest;
 import com.ssafy.ollana.user.dto.response.MypageResponseDto;
 import com.ssafy.ollana.user.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -30,5 +31,12 @@ public class UserController {
                                                                     @RequestPart(value = "profileImage", required = false) MultipartFile profileImage) {
         MypageResponseDto response = userService.updateMypage(userDetails, requset, profileImage);
         return ResponseEntity.ok(Response.success(response));
+    }
+
+    @DeleteMapping("/withdraw")
+    public ResponseEntity<Response<Void>> withdraw(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                                   @RequestBody WithdrawlRequest request) {
+        userService.withdraw(userDetails, request);
+        return ResponseEntity.ok(Response.success());
     }
 }

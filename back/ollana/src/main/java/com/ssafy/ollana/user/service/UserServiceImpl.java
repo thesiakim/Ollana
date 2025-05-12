@@ -1,5 +1,7 @@
 package com.ssafy.ollana.user.service;
 
+import com.ssafy.ollana.auth.exception.AuthenticationException;
+import com.ssafy.ollana.auth.service.TokenService;
 import com.ssafy.ollana.common.s3.service.S3Service;
 import com.ssafy.ollana.footprint.persistent.entity.Footprint;
 import com.ssafy.ollana.footprint.persistent.entity.HikingHistory;
@@ -9,6 +11,7 @@ import com.ssafy.ollana.mountain.persistent.entity.Level;
 import com.ssafy.ollana.security.CustomUserDetails;
 import com.ssafy.ollana.user.dto.LatestRecordDto;
 import com.ssafy.ollana.user.dto.request.MypageUpdateRequestDto;
+import com.ssafy.ollana.user.dto.request.WithdrawlRequest;
 import com.ssafy.ollana.user.dto.response.MypageResponseDto;
 import com.ssafy.ollana.user.dto.UserInfoDto;
 import com.ssafy.ollana.user.entity.User;
@@ -20,6 +23,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -36,6 +40,8 @@ public class UserServiceImpl implements UserService {
     private final HikingHistoryRepository hikingHistoryRepository;
     private final UserRepository userRepository;
     private final S3Service s3Service;
+    private final TokenService tokenService;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     @Transactional(readOnly = true)
@@ -91,6 +97,32 @@ public class UserServiceImpl implements UserService {
         );
 
         return response;
+    }
+
+    @Override
+    @Transactional
+    public void withdraw(CustomUserDetails userDetails, WithdrawlRequest request) {
+        User user = userDetails.getUser();
+
+        // 소셜 회원이 아닐 경우에만 비밀번호 확인
+        if (!user.isSocial()) {
+            // 비밀번호 확인 절차
+            if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+                AuthenticationException.passwordMismatch();
+            }
+        }
+
+        // refresh token 삭제
+        tokenService.deleteRefreshToken(user.getEmail());
+
+        // S3 프로필 이미지 삭제 (기본 이미지가 아닐 때)
+        if (!user.getProfileImage().equals(s3Service.getDefaultProfileImageUrl())) {
+            s3Service.deleteFile(user.getProfileImage());
+        }
+
+        // user 삭제
+        userRepository.delete(user);
+        log.info("사용자 탈퇴 완료: userId={}", user.getId());
     }
 
     @Override
