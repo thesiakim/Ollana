@@ -94,4 +94,10 @@ class MyPageService {
       rethrow;
     }
   }
+
+  Future<void> changePassword(String token, String currentPassword, String newPassword) async {
+  // API 호출 로직
+  // 예: await http.post(...)
+  // 성공 시 아무것도 반환하지 않거나, 실패 시 예외 throw
+}
 }
