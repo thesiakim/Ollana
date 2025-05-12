@@ -4,6 +4,7 @@ import com.ssafy.ollana.footprint.persistent.entity.Footprint;
 import com.ssafy.ollana.footprint.persistent.entity.HikingHistory;
 import com.ssafy.ollana.footprint.persistent.repository.FootprintRepository;
 import com.ssafy.ollana.footprint.persistent.repository.HikingHistoryRepository;
+import com.ssafy.ollana.footprint.service.BattleHistoryService;
 import com.ssafy.ollana.footprint.service.exception.NotFoundException;
 import com.ssafy.ollana.footprint.web.dto.response.TodayHikingResultResponseDto;
 import com.ssafy.ollana.mountain.persistent.entity.Mountain;
@@ -14,6 +15,7 @@ import com.ssafy.ollana.mountain.web.dto.response.MountainResponseDto;
 import com.ssafy.ollana.tracking.persistent.repository.HikingLiveRecordsRepository;
 import com.ssafy.ollana.tracking.persistent.entity.HikingLiveRecords;
 import com.ssafy.ollana.tracking.service.exception.AlreadyTrackingException;
+import com.ssafy.ollana.tracking.service.exception.CannotSaveBeforeSummitException;
 import com.ssafy.ollana.tracking.service.exception.InvalidTrackingException;
 import com.ssafy.ollana.tracking.service.exception.NoNearbyMountainException;
 import com.ssafy.ollana.tracking.web.dto.request.TrackingFinishRequestDto;
@@ -21,6 +23,7 @@ import com.ssafy.ollana.tracking.web.dto.request.TrackingStartRequestDto;
 import com.ssafy.ollana.tracking.web.dto.response.*;
 import com.ssafy.ollana.user.entity.User;
 import com.ssafy.ollana.user.repository.UserRepository;
+import com.ssafy.ollana.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.locationtech.jts.geom.Coordinate;
@@ -42,6 +45,8 @@ public class TrackingService {
     private final UserRepository userRepository;
     private final HikingHistoryRepository hikingHistoryRepository;
     private final HikingLiveRecordsRepository hikingLiveRecordsRepository;
+    private final UserService userService;
+    private final BattleHistoryService battleHistoryService;
     private final ApplicationEventPublisher eventPublisher;
     private final RedisTemplate<String, String> redisTemplate;
     private static final String TRACKING_STATUS_KEY_PREFIX = "tracking:";
@@ -206,7 +211,7 @@ public class TrackingService {
      * 트래킹 종료 요청
      */
     @Transactional
-    public String manageTrackingFinish(Integer userId, TrackingFinishRequestDto request) {
+    public void manageTrackingFinish(Integer userId, TrackingFinishRequestDto request) {
 
         // 등산 중인지 + 그 산의 등산로를 등산 중인지 검증
         String redisKey = getTrackingStatusKey(userId);
@@ -223,6 +228,8 @@ public class TrackingService {
                                   .orElseThrow(NotFoundException::new);
         Mountain mountain = mountainRepository.findById(request.getMountainId())
                                               .orElseThrow(NotFoundException::new);
+        User opponent = userRepository.findById(request.getOpponentId())
+                                      .orElseThrow(NotFoundException::new);
 
         // 거리 측정
         Coordinate end = path.getRoute().getEndPoint().getCoordinate();
@@ -232,8 +239,8 @@ public class TrackingService {
         double userLng = request.getFinalLongitude();
         double distance = TrackingUtils.calculateDistance(endLat, endLng, userLat, userLng);
 
-        if (distance > 300) {
-            return "등반하시는 코스의 마지막 지점까지 도착하지 않았습니다";
+        if (distance > 300 && request.isSave()==true) {
+            throw new CannotSaveBeforeSummitException();
         }
 
         // 실시간 등산 기록 저장
@@ -257,23 +264,14 @@ public class TrackingService {
             log.info("등산 기록 저장 완료");
         }
 
-        redisTemplate.delete(getTrackingStatusKey(userId));
-
         // 대결 결과 저장
-        if (request.getRecordId() != null && request.getOpponentId() != null) {
-            eventPublisher.publishEvent(
-                    new BattleResultEvent(
-                            userId,
-                            request.getOpponentId(),
-                            request.getMountainId(),
-                            request.getPathId(),
-                            request.getRecordId(),
-                            request.getFinalTime()
-                    )
-            );
-        }
+        battleHistoryService.saveBattleHistoryAfterTracking(user, opponent, mountain, path, request.getRecordId(), request.getFinalTime());
 
-        return "등산을 완료했습니다";
+        // 사용자 거리 및 경험치 갱신
+        userService.updateUserInfoAfterTracking(user, request.getFinalDistance(), mountain.getLevel());
+
+        // 등산 상태 저장 key 제거
+        redisTemplate.delete(getTrackingStatusKey(userId));
     }
 
     private String getTrackingStatusKey(Integer userId) {
