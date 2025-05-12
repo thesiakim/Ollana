@@ -1,5 +1,6 @@
 package com.ssafy.ollana.user.service;
 
+import com.ssafy.ollana.auth.service.TokenService;
 import com.ssafy.ollana.common.s3.service.S3Service;
 import com.ssafy.ollana.footprint.persistent.entity.Footprint;
 import com.ssafy.ollana.footprint.persistent.entity.HikingHistory;
@@ -36,6 +37,7 @@ public class UserServiceImpl implements UserService {
     private final HikingHistoryRepository hikingHistoryRepository;
     private final UserRepository userRepository;
     private final S3Service s3Service;
+    private final TokenService tokenService;
 
     @Override
     @Transactional(readOnly = true)
@@ -91,6 +93,24 @@ public class UserServiceImpl implements UserService {
         );
 
         return response;
+    }
+
+    @Override
+    @Transactional
+    public void withdraw(CustomUserDetails userDetails) {
+        User user = userDetails.getUser();
+
+        // refresh token 삭제
+        tokenService.deleteRefreshToken(user.getEmail());
+
+        // S3 프로필 이미지 삭제 (기본 이미지가 아닐 때)
+        if (!user.getProfileImage().equals(s3Service.getDefaultProfileImageUrl())) {
+            s3Service.deleteFile(user.getProfileImage());
+        }
+
+        // user 삭제
+        userRepository.delete(user);
+        log.info("사용자 탈퇴 완료: userEmail={}", user.getEmail());
     }
 
     @Override
