@@ -31,4 +31,10 @@ public class UserController {
         MypageResponseDto response = userService.updateMypage(userDetails, requset, profileImage);
         return ResponseEntity.ok(Response.success(response));
     }
+
+    @DeleteMapping("/withdraw")
+    public ResponseEntity<Response<Void>> withdraw(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        userService.withdraw(userDetails);
+        return ResponseEntity.ok(Response.success());
+    }
 }
