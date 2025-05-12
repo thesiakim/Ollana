@@ -159,8 +159,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
                           // 임시로 UI만 업데이트, 서버 동기화 필요
                         });
                       },
-                      activeColor: Colors.teal,
-                      activeTrackColor: Colors.teal.withOpacity(0.5),
+                      activeColor: Color(0xFF52A486),
+                      activeTrackColor: Color(0xFF52A486).withOpacity(0.5),
                       inactiveThumbColor: Colors.grey.shade400,
                       inactiveTrackColor: Colors.grey.shade300,
                     ),
@@ -184,6 +184,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   label: const Text('비밀번호 변경하기'),
                   style: ElevatedButton.styleFrom(
                     minimumSize: const Size.fromHeight(48),
+                    backgroundColor: const Color(0xFF52A486),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),

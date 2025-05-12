@@ -126,7 +126,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('내 정보 수정하기'),
+        title: const Text('내 정보 수정'),
         centerTitle: true,
       ),
       body: Padding(
@@ -160,32 +160,31 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   borderSide: BorderSide(color: Colors.grey),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.blue),
+                  borderSide: BorderSide(color: Color(0xFF52A486)),
                 ),
-                errorBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.red),
-                ),
-                focusedErrorBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.red),
-                ),
+                floatingLabelStyle: TextStyle(color: Color(0xFF52A486)),
               ),
             ),
             const SizedBox(height: 20),
-            SizedBox(
-              width: 120,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _updateProfile,
-                child: _isLoading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : const Text('완료'),
+            ElevatedButton(
+              onPressed: _isLoading ? null : _updateProfile,
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size.fromHeight(48),
+                backgroundColor: const Color(0xFF52A486),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Text('완료'),
             ),
           ],
         ),
