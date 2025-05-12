@@ -62,7 +62,7 @@ public class User extends BaseEntity {
     private String profileImage;
 
     @Column
-    private long kakaoId;
+    private Long kakaoId;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE, orphanRemoval = true)
     private List<HikingLiveRecords> hikingLiveRecords;
