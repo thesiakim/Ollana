@@ -1,5 +1,6 @@
 package com.ssafy.ollana.mountain.web.controller;
 
+import com.ssafy.ollana.common.util.PageResponse;
 import com.ssafy.ollana.common.util.Response;
 import com.ssafy.ollana.mountain.service.MountainService;
 import com.ssafy.ollana.mountain.web.dto.response.MountainDetailResponseDto;
@@ -7,10 +8,7 @@ import com.ssafy.ollana.mountain.web.dto.response.MountainListResponseDto;
 import com.ssafy.ollana.mountain.web.dto.response.MountainMapResponseDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -28,8 +26,11 @@ public class MountainController {
     }
 
     @GetMapping("/list")
-    public ResponseEntity<Response<List<MountainListResponseDto>>> getMountainList() {
-        List<MountainListResponseDto> response = mountainService.getMountainList();
+    public ResponseEntity<Response<PageResponse<MountainListResponseDto>>> getMountainList(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        PageResponse<MountainListResponseDto> response = mountainService.getMountainList(page, size);
         return ResponseEntity.ok(Response.success(response));
     }
 

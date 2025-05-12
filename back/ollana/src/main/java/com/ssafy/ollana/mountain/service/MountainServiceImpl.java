@@ -1,5 +1,6 @@
 package com.ssafy.ollana.mountain.service;
 
+import com.ssafy.ollana.common.util.PageResponse;
 import com.ssafy.ollana.mountain.exception.MountainNotFoundException;
 import com.ssafy.ollana.mountain.persistent.entity.Mountain;
 import com.ssafy.ollana.mountain.persistent.entity.MountainImg;
@@ -16,6 +17,8 @@ import com.ssafy.ollana.mountain.web.dto.response.PathResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
@@ -72,11 +75,11 @@ public class MountainServiceImpl implements MountainService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<MountainListResponseDto> getMountainList() {
-        List<Mountain> mountainList = mountainRepository.findAll();
+    public PageResponse<MountainListResponseDto> getMountainList(int page, int size) {
+        PageRequest pageRequest = PageRequest.of(page, size);
+        Page<Mountain> mountainList = mountainRepository.findAll(pageRequest);
 
-        List<MountainListResponseDto> response = mountainList.stream()
-                .map(mountain -> new MountainListResponseDto(
+        Page<MountainListResponseDto> response = mountainList.map(mountain -> new MountainListResponseDto(
                         mountain.getId(),
                         mountain.getMountainName(),
                         mountain.getMountainLatitude(),
@@ -88,10 +91,9 @@ public class MountainServiceImpl implements MountainService {
                         mountain.getMountainImgs().stream()
                                 .map(MountainImg::getImage)
                                 .toList()
-                ))
-                .toList();
+                ));
 
-        return response;
+        return new PageResponse<>("mountains", response);
     }
 
     @Override
