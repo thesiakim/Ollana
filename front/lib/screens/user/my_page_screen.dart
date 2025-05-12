@@ -14,7 +14,6 @@ class MyPageScreen extends StatefulWidget {
 
 class _MyPageScreenState extends State<MyPageScreen> {
   late Future<User> userFuture;
-  bool isHikingRecordShared = false;
 
   @override
   void initState() {
@@ -152,10 +151,11 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       ),
                     ),
                     Switch(
-                      value: isHikingRecordShared,
+                      value: user.agree, // User.agree 값으로 설정
                       onChanged: (value) {
+                        // TODO: agree 값을 서버에 업데이트하는 로직 추가 필요
                         setState(() {
-                          isHikingRecordShared = value;
+                          // 임시로 UI만 업데이트, 서버 동기화 필요
                         });
                       },
                       activeColor: Colors.teal,
