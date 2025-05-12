@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../models/app_state.dart';
 import '../../models/user.dart';
 import '../../services/my_page_service.dart';
+import 'edit_profile_screen.dart'; // 새로 생성한 화면 임포트
 
 class MyPageScreen extends StatefulWidget {
   const MyPageScreen({Key? key}) : super(key: key);
@@ -12,13 +13,13 @@ class MyPageScreen extends StatefulWidget {
 }
 
 class _MyPageScreenState extends State<MyPageScreen> {
-  late Future<User> userFuture; // Future를 상태로 관리
+  late Future<User> userFuture;
   bool isHikingRecordShared = false;
 
   @override
   void initState() {
     super.initState();
-    final appState = context.read<AppState>(); // initState에서 watch 대신 read 사용
+    final appState = context.read<AppState>();
     final userService = MyPageService();
     userFuture = userService.fetchUserDetails(appState.accessToken ?? '');
   }
@@ -60,7 +61,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
             return Column(
               children: [
-                // 프로필 카드
                 Card(
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -102,7 +102,15 @@ class _MyPageScreenState extends State<MyPageScreen> {
                         ),
                         TextButton(
                           onPressed: () {
-                            // TODO: 프로필 수정 화면으로 이동
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => EditProfileScreen(
+                                  nickname: user.nickname,
+                                  imageUrl: user.imageUrl,
+                                ),
+                              ),
+                            );
                           },
                           child: const Text('수정하기'),
                         ),
@@ -113,7 +121,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
                 const SizedBox(height: 16),
 
-                // 등산 기록 정보 제공 여부 섹션
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -122,7 +129,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            '등산 기록 정보 제공 여부',
+                            '등산기록 제공 동의',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
@@ -130,7 +137,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '켯이 등산 기록을 획득하면 알려드려요.',
+                            '친구가 대결할 수 있도록 해주세요!',
                             style: TextStyle(
                               fontSize: 14,
                               color: Colors.grey.shade600,
@@ -156,7 +163,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
                 const SizedBox(height: 16),
 
-                // 비밀번호 변경
                 ElevatedButton.icon(
                   onPressed: () {
                     // TODO: 비밀번호 변경 로직
@@ -172,7 +178,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 ),
 
                 const SizedBox(height: 16),
-                // 회원탈퇴
                 ElevatedButton.icon(
                   onPressed: () {
                     // TODO: 회원 탈퇴 로직
