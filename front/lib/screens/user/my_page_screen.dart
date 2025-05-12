@@ -197,7 +197,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     // TODO: 회원 탈퇴 로직
                   },
                   icon: const Text('🥲', style: TextStyle(fontSize: 24)),
-                  label: const Text('회원탈퇴하기'),
+                  label: const Text('회원 탈퇴하기'),
                   style: ElevatedButton.styleFrom(
                     minimumSize: const Size.fromHeight(48),
                     backgroundColor: Colors.grey.shade300,
