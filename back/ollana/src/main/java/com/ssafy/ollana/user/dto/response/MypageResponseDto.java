@@ -1,4 +1,4 @@
-package com.ssafy.ollana.user.dto;
+package com.ssafy.ollana.user.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

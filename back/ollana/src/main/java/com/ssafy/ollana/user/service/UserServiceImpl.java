@@ -1,5 +1,6 @@
 package com.ssafy.ollana.user.service;
 
+import com.ssafy.ollana.common.s3.service.S3Service;
 import com.ssafy.ollana.footprint.persistent.entity.Footprint;
 import com.ssafy.ollana.footprint.persistent.entity.HikingHistory;
 import com.ssafy.ollana.footprint.persistent.repository.FootprintRepository;
@@ -7,37 +8,79 @@ import com.ssafy.ollana.footprint.persistent.repository.HikingHistoryRepository;
 import com.ssafy.ollana.mountain.persistent.entity.Level;
 import com.ssafy.ollana.security.CustomUserDetails;
 import com.ssafy.ollana.user.dto.LatestRecordDto;
-import com.ssafy.ollana.user.dto.MypageResponseDto;
+import com.ssafy.ollana.user.dto.request.MypageUpdateRequestDto;
+import com.ssafy.ollana.user.dto.response.MypageResponseDto;
 import com.ssafy.ollana.user.dto.UserInfoDto;
 import com.ssafy.ollana.user.entity.User;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.ssafy.ollana.user.exception.NicknameAlreadyExistsException;
+import com.ssafy.ollana.user.repository.UserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 @Slf4j
 public class UserServiceImpl implements UserService {
 
     private final FootprintRepository footprintRepository;
     private final HikingHistoryRepository hikingHistoryRepository;
-
-    public UserServiceImpl(FootprintRepository footprintRepository, HikingHistoryRepository hikingHistoryRepository) {
-        this.footprintRepository = footprintRepository;
-        this.hikingHistoryRepository = hikingHistoryRepository;
-
-    }
+    private final UserRepository userRepository;
+    private final S3Service s3Service;
 
     @Override
     @Transactional(readOnly = true)
     public MypageResponseDto getMypage(CustomUserDetails userDetails) {
         User user = userDetails.getUser();
+
+        MypageResponseDto response = new MypageResponseDto(
+                user.getNickname(),
+                user.getEmail(),
+                user.getProfileImage()
+        );
+
+        return response;
+    }
+
+    @Override
+    @Transactional
+    public MypageResponseDto updateMypage(CustomUserDetails userDetails, MypageUpdateRequestDto request, MultipartFile profileImage) {
+        User user = userDetails.getUser();
+
+        // 닉네임 업데이트
+        if (request.getNickname() != null && !request.getNickname().isEmpty()) {
+            // 닉네임 중복검사
+            if (!request.getNickname().equals(user.getNickname()) && userRepository.existsByNickname(request.getNickname())) {
+                throw new NicknameAlreadyExistsException();
+            }
+
+            user.setNickname(request.getNickname());
+        }
+
+        // 프로필 이미지 업데이트
+        if (profileImage != null && !profileImage.isEmpty()) {
+            // 새로운 프로필 이미지 S3 업로드
+            String profileImageUrl = s3Service.uploadFile(profileImage, "profile");
+
+            // 기본 이미지가 아니라면 S3에서 삭제
+            String currentProfileImageUrl = user.getProfileImage();
+            if (!currentProfileImageUrl.equals(s3Service.getDefaultProfileImageUrl())) {
+                s3Service.deleteFile(currentProfileImageUrl);
+            }
+
+            user.setProfileImage(profileImageUrl);
+        }
+
+        userRepository.save(user);
 
         MypageResponseDto response = new MypageResponseDto(
                 user.getNickname(),
