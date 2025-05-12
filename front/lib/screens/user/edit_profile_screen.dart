@@ -2,9 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter/foundation.dart';
+import 'dart:convert';
 import '../../models/app_state.dart';
-import '../../models/user.dart';
 import '../../services/my_page_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -78,28 +77,61 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       // 성공적으로 업데이트되면 이전 화면으로 돌아가며 결과를 전달
       Navigator.pop(context, updatedUser);
     } catch (e) {
-      // 실패 응답 처리
-      String errorMessage = e.toString().replaceFirst('Exception: ', '');
-      if (errorMessage.contains('이미 사용중인 닉네임입니다')) {
-        errorMessage = '이미 사용 중인 닉네임입니다. 다른 닉네임을 입력해주세요.';
-      } else if (errorMessage.contains('Failed to update user profile: 500')) {
-        errorMessage = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+        String errorMessage = e.toString().replaceFirst('Exception: ', '');
+        Map<String, dynamic>? errorData;
+
+        try {
+          errorData = jsonDecode(errorMessage) as Map<String, dynamic>;
+        } catch (_) {
+          // JSON 파싱 실패
+          errorData = null;
+        }
+
+        if (errorData != null) {
+          final code = errorData['code'];
+          final message = errorData['message']?.toString() ?? '알 수 없는 오류';
+
+          if (code == 'U-002') {
+            // 닉네임 중복 모달
+            if (context.mounted) {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('닉네임 중복'),
+                  content: Text(message),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('확인'),
+                    ),
+                  ],
+                ),
+              );
+            }
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(message)),
+            );
+          }
+        } else {
+          // JSON 파싱 실패 시 기본 에러 처리
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(errorMessage)),
+          );
+        }
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(errorMessage)),
-      );
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
+      finally {
+                  setState(() {
+                    _isLoading = false;
+                  });
+                }
+        }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('프로필 수정'),
+        title: const Text('내 정보 수정하기'),
         centerTitle: true,
         actions: [
           TextButton(
@@ -133,7 +165,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: _pickImage,
-              child: const Text('프로필 이미지 변경'),
+              child: const Text('프로필 변경'),
             ),
             const SizedBox(height: 20),
             TextField(

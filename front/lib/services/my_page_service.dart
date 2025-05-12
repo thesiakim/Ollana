@@ -85,15 +85,8 @@ class MyPageService {
           throw Exception('API failed: ${jsonData['message']} (code: ${jsonData['code']})');
         }
       } else {
-        // 오류 발생 시 상세 정보 제공
-        var errorMsg = 'Failed to update user profile: ${response.statusCode}';
-        try {
-          final errorData = jsonDecode(response.body);
-          errorMsg += ' - ${errorData['message']} (${errorData['code']})';
-        } catch (e) {
-          errorMsg += ' - ${response.body}';
-        }
-        throw Exception(errorMsg);
+        final decodedBody = utf8.decode(response.bodyBytes); 
+        throw Exception(decodedBody); 
       }
     } catch (e) {
       debugPrint('========= ERROR =========');
