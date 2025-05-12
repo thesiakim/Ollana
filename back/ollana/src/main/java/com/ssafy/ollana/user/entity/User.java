@@ -49,6 +49,10 @@ public class User extends BaseEntity {
     @Builder.Default
     private int exp = 0;
 
+    @Column(nullable = false, columnDefinition = "integer default 0")
+    @Builder.Default
+    private int gradeCount = 0;
+
     @Column(nullable = false)
     private String profileImage;
 
@@ -70,6 +74,12 @@ public class User extends BaseEntity {
     // exp 증가 및 그에 따른 grade 업데이트
     public void addExp(int exp) {
         this.exp += exp;
+
+        if (this.exp >= Grade.getMaxExp()) {
+            this.gradeCount++;
+            this.exp = this.exp - Grade.getMaxExp();
+        }
+
         this.grade = Grade.getGrade(this.exp);
     }
 
