@@ -4,7 +4,7 @@ import '../../models/app_state.dart';
 import '../../models/user.dart';
 import '../../services/my_page_service.dart';
 import 'edit_profile_screen.dart';
-import 'change_password_screen.dart';
+import 'password_change_screen.dart'; 
 
 class MyPageScreen extends StatefulWidget {
   const MyPageScreen({Key? key}) : super(key: key);
@@ -174,7 +174,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const ChangePasswordScreen(),
+                        builder: (context) => PasswordChangeScreen(
+                          accessToken: context.read<AppState>().accessToken ?? '',
+                        ),
                       ),
                     );
                   },
