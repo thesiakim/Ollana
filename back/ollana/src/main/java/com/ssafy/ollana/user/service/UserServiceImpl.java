@@ -4,7 +4,9 @@ import com.ssafy.ollana.footprint.persistent.entity.Footprint;
 import com.ssafy.ollana.footprint.persistent.entity.HikingHistory;
 import com.ssafy.ollana.footprint.persistent.repository.FootprintRepository;
 import com.ssafy.ollana.footprint.persistent.repository.HikingHistoryRepository;
+import com.ssafy.ollana.security.CustomUserDetails;
 import com.ssafy.ollana.user.dto.LatestRecordDto;
+import com.ssafy.ollana.user.dto.MypageResponseDto;
 import com.ssafy.ollana.user.dto.UserInfoDto;
 import com.ssafy.ollana.user.entity.User;
 import org.springframework.data.domain.Page;
@@ -26,6 +28,20 @@ public class UserServiceImpl implements UserService {
     public UserServiceImpl(FootprintRepository footprintRepository, HikingHistoryRepository hikingHistoryRepository) {
         this.footprintRepository = footprintRepository;
         this.hikingHistoryRepository = hikingHistoryRepository;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MypageResponseDto getMypage(CustomUserDetails userDetails) {
+        User user = userDetails.getUser();
+
+        MypageResponseDto response = new MypageResponseDto(
+                user.getNickname(),
+                user.getEmail(),
+                user.getProfileImage()
+        );
+
+        return response;
     }
 
     @Override
