@@ -10,6 +10,7 @@ public class TempUserDto {
     private String email;
     private String nickname;
     private String profileImage;
+    private Long kakaoId;
     @JsonProperty("isSocial")
     private boolean socialLogin;
 }
