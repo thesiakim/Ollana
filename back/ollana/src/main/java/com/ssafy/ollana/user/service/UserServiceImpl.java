@@ -4,9 +4,12 @@ import com.ssafy.ollana.footprint.persistent.entity.Footprint;
 import com.ssafy.ollana.footprint.persistent.entity.HikingHistory;
 import com.ssafy.ollana.footprint.persistent.repository.FootprintRepository;
 import com.ssafy.ollana.footprint.persistent.repository.HikingHistoryRepository;
+import com.ssafy.ollana.mountain.persistent.entity.Level;
 import com.ssafy.ollana.user.dto.LatestRecordDto;
 import com.ssafy.ollana.user.dto.UserInfoDto;
 import com.ssafy.ollana.user.entity.User;
+import com.ssafy.ollana.user.repository.UserRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -18,14 +21,18 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Service
+@Slf4j
 public class UserServiceImpl implements UserService {
 
+    private final UserRepository userRepository;
     private final FootprintRepository footprintRepository;
     private final HikingHistoryRepository hikingHistoryRepository;
 
-    public UserServiceImpl(FootprintRepository footprintRepository, HikingHistoryRepository hikingHistoryRepository) {
+    public UserServiceImpl(UserRepository userRepository, FootprintRepository footprintRepository, HikingHistoryRepository hikingHistoryRepository) {
+        this.userRepository = userRepository;
         this.footprintRepository = footprintRepository;
         this.hikingHistoryRepository = hikingHistoryRepository;
+
     }
 
     @Override
@@ -83,5 +90,23 @@ public class UserServiceImpl implements UserService {
                 .climbTime(latestHistory.getHikingTime())
                 .climbDistance(latestHistory.getPath().getPathLength())
                 .build();
+    }
+
+    // 등산 종료 후 거리와 경험치 갱신
+    @Override
+    public void updateUserInfoAfterTracking(User user, Double finalDistance, Level level) {
+        // 거리 누적
+        user.addTotalDistance(finalDistance);
+
+        // 경험치 계산
+        int expToAdd = switch (level) {
+            case L -> 20;
+            case M -> 40;
+            case H -> 60;
+        };
+        user.addExp(expToAdd);
+
+        log.info("User [{}] 거리와 경험치 갱신 완료. 추가 거리: {}, 추가 EXP: {}",
+                user.getNickname(), finalDistance, expToAdd);
     }
 }

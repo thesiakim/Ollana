@@ -111,9 +111,9 @@ public class TrackingController {
      * 트래킹 종료 요청
      */
     @PostMapping("/finish")
-    public ResponseEntity<Response<String>> manageTrackingFinish(@AuthenticationPrincipal CustomUserDetails userDetails,
+    public ResponseEntity<Response<Void>> manageTrackingFinish(@AuthenticationPrincipal CustomUserDetails userDetails,
                                                                  @RequestBody TrackingFinishRequestDto request) {
-        String message = trackingService.manageTrackingFinish(userDetails.getUser().getId(), request);
-        return ResponseEntity.ok(Response.success(message));
+        trackingService.manageTrackingFinish(userDetails.getUser().getId(), request);
+        return ResponseEntity.ok(Response.success());
     }
 }
