@@ -144,6 +144,7 @@ public class UserServiceImpl implements UserService {
                 .totalDistance(user.getTotalDistance())
                 .profileImageUrl(user.getProfileImage())
                 .isTempPassword(user.isTempPassword())
+                .isSocial(user.isSocial())
                 .build();
     }
 
