@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../../models/app_state.dart';
 import '../../models/user.dart';
 import '../../services/my_page_service.dart';
-import 'edit_profile_screen.dart'; // 새로 생성한 화면 임포트
+import 'edit_profile_screen.dart';
 
 class MyPageScreen extends StatefulWidget {
   const MyPageScreen({Key? key}) : super(key: key);
@@ -101,8 +101,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
                           ),
                         ),
                         TextButton(
-                          onPressed: () {
-                            Navigator.push(
+                          onPressed: () async {
+                            final updatedUser = await Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (context) => EditProfileScreen(
@@ -111,6 +111,11 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                 ),
                               ),
                             );
+                            if (updatedUser != null) {
+                              setState(() {
+                                userFuture = Future.value(updatedUser);
+                              });
+                            }
                           },
                           child: const Text('수정하기'),
                         ),
