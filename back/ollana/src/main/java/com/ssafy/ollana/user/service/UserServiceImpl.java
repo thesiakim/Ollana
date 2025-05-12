@@ -12,6 +12,7 @@ import com.ssafy.ollana.user.dto.request.MypageUpdateRequestDto;
 import com.ssafy.ollana.user.dto.response.MypageResponseDto;
 import com.ssafy.ollana.user.dto.UserInfoDto;
 import com.ssafy.ollana.user.entity.User;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import com.ssafy.ollana.user.exception.NicknameAlreadyExistsException;
 import com.ssafy.ollana.user.repository.UserRepository;
@@ -27,6 +28,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 @Slf4j
 public class UserServiceImpl implements UserService {
 
@@ -34,14 +36,6 @@ public class UserServiceImpl implements UserService {
     private final HikingHistoryRepository hikingHistoryRepository;
     private final UserRepository userRepository;
     private final S3Service s3Service;
-
-    public UserServiceImpl(FootprintRepository footprintRepository, HikingHistoryRepository hikingHistoryRepository, UserRepository userRepository, S3Service s3Service) {
-        this.footprintRepository = footprintRepository;
-        this.hikingHistoryRepository = hikingHistoryRepository;
-
-        this.userRepository = userRepository;
-        this.s3Service = s3Service;
-    }
 
     @Override
     @Transactional(readOnly = true)
