@@ -8,6 +8,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 import '../screens/user/login_screen.dart';
+import '../screens/home_screen.dart';
 import '../../models/app_state.dart';
 
 class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
@@ -21,26 +22,25 @@ class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
 }
 
 class _CustomAppBarState extends State<CustomAppBar> {
-  final String _title = 'Ollana';
-  int _bounceIndex = -1; // 🔥 현재 튀는 글자 인덱스
+  final String _title = 'ollana';
+  int _bounceIndex = -1;
 
   @override
   void initState() {
     super.initState();
-    _startBounceLoop(); // 🔥 글자별 바운스 시작
+    _startBounceLoop();
   }
 
   void _startBounceLoop() {
-    // 비동기 루프: 글자 하나씩 튀고, 한 바퀴 돌면 5초 대기
     Future(() async {
       while (mounted) {
         for (int i = 0; i < _title.length; i++) {
           if (!mounted) return;
-          setState(() => _bounceIndex = i); // 🔥 i번째 글자 튀기기
+          setState(() => _bounceIndex = i);
           await Future.delayed(const Duration(milliseconds: 400));
         }
         if (!mounted) return;
-        setState(() => _bounceIndex = -1); // 🔥 리셋(모두 내려옴)
+        setState(() => _bounceIndex = -1);
         await Future.delayed(const Duration(seconds: 5));
       }
     });
@@ -79,11 +79,12 @@ class _CustomAppBarState extends State<CustomAppBar> {
       },
       body: jsonEncode({}),
     );
-
     if (!mounted) return;
 
+    // 403 : 세션 만료 시
     if (res.statusCode == 403) {
       appState.clearAuth();
+      appState.changePage(0); // 🔥 로그아웃 시 페이지 인덱스를 0으로 리셋
       scaffold.showSnackBar(
           const SnackBar(content: Text('세션이 만료되었습니다. 다시 로그인해주세요.')));
       navigator.pushAndRemoveUntil(
@@ -93,19 +94,28 @@ class _CustomAppBarState extends State<CustomAppBar> {
       return;
     }
 
+    // 200 : 정상 로그아웃
     if (res.statusCode == 200) {
+      bool success = false;
       try {
         final result = jsonDecode(res.body) as Map<String, dynamic>;
-        if (result['status'] == true) {
-          appState.clearAuth();
-          scaffold.showSnackBar(const SnackBar(content: Text('로그아웃되었습니다.')));
-        } else {
-          scaffold.showSnackBar(
-              SnackBar(content: Text(result['message'] ?? '로그아웃 실패')));
-        }
+        success = result['status'] == true;
       } catch (_) {
+        success = true;
+      }
+      if (success) {
         appState.clearAuth();
+        appState.changePage(0); // 🔥 로그아웃 시 페이지 인덱스를 0으로 리셋
         scaffold.showSnackBar(const SnackBar(content: Text('로그아웃되었습니다.')));
+        navigator.pushAndRemoveUntil(
+          MaterialPageRoute(
+              builder: (_) => const HomeScreen()), // 🔥 모든 페이지를 Home으로
+          (route) => false,
+        );
+      } else {
+        final msg = (jsonDecode(res.body) as Map<String, dynamic>)['message'] ??
+            '로그아웃 실패';
+        scaffold.showSnackBar(SnackBar(content: Text(msg)));
       }
     } else {
       scaffold
@@ -126,14 +136,14 @@ class _CustomAppBarState extends State<CustomAppBar> {
         children: List.generate(_title.length, (i) {
           return AnimatedContainer(
             duration: const Duration(milliseconds: 300),
-            transform: Matrix4.translationValues(
-                0, _bounceIndex == i ? -8 : 0, 0), // 🔥 튀는 효과
+            transform:
+                Matrix4.translationValues(0, _bounceIndex == i ? -8 : 0, 0),
             child: Text(
               _title[i],
               style: const TextStyle(
-                fontFamily: 'GmarketSans',
-                fontWeight: FontWeight.w500,
-                fontSize: 20,
+                fontFamily: 'Dovemayo',
+                fontWeight: FontWeight.w800,
+                fontSize: 25,
                 color: Colors.white,
               ),
             ),
