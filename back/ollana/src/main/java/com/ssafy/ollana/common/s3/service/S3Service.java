@@ -79,6 +79,12 @@ public class S3Service {
         return defaultProfileImageUrl;
     }
 
+    // S3에 업로드 된 파일 삭제
+    public void deleteFile(String fileUrl) {
+        String key = extractKeyFromFileUrl(fileUrl);
+        s3Template.deleteObject(bucket, key);
+    }
+
 
     // 파일 확장자 가져오기
     private String getFileExtension(String filename) {
@@ -87,5 +93,11 @@ public class S3Service {
             return filename.substring(lastDotIndex + 1);
         }
         return "";
+    }
+
+    // url에서 S3 객체 키 추출
+    private String extractKeyFromFileUrl(String fileUrl) {
+        String[] parts = fileUrl.split(".amazonaws.com/");
+        return parts[1];
     }
 }

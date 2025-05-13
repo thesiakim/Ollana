@@ -1,5 +1,6 @@
 package com.ssafy.ollana.mountain.service;
 
+import com.ssafy.ollana.common.util.PageResponse;
 import com.ssafy.ollana.mountain.exception.MountainNotFoundException;
 import com.ssafy.ollana.mountain.persistent.entity.Mountain;
 import com.ssafy.ollana.mountain.persistent.entity.MountainImg;
@@ -12,10 +13,12 @@ import com.ssafy.ollana.mountain.web.dto.OpenWeatherDto;
 import com.ssafy.ollana.mountain.web.dto.response.MountainDetailResponseDto;
 import com.ssafy.ollana.mountain.web.dto.response.MountainListResponseDto;
 import com.ssafy.ollana.mountain.web.dto.response.MountainMapResponseDto;
-import com.ssafy.ollana.mountain.web.dto.response.PathResponseDto;
+import com.ssafy.ollana.tracking.web.dto.response.PathForTrackingResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
@@ -72,11 +75,11 @@ public class MountainServiceImpl implements MountainService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<MountainListResponseDto> getMountainList() {
-        List<Mountain> mountainList = mountainRepository.findAll();
+    public PageResponse<MountainListResponseDto> getMountainList(int page, int size) {
+        PageRequest pageRequest = PageRequest.of(page, size);
+        Page<Mountain> mountainList = mountainRepository.findAll(pageRequest);
 
-        List<MountainListResponseDto> response = mountainList.stream()
-                .map(mountain -> new MountainListResponseDto(
+        Page<MountainListResponseDto> response = mountainList.map(mountain -> new MountainListResponseDto(
                         mountain.getId(),
                         mountain.getMountainName(),
                         mountain.getMountainLatitude(),
@@ -88,10 +91,9 @@ public class MountainServiceImpl implements MountainService {
                         mountain.getMountainImgs().stream()
                                 .map(MountainImg::getImage)
                                 .toList()
-                ))
-                .toList();
+                ));
 
-        return response;
+        return new PageResponse<>("mountains", response);
     }
 
     @Override
@@ -104,8 +106,8 @@ public class MountainServiceImpl implements MountainService {
         List<Path> paths = pathRepository.findByMountainId(mountainId);
 
         // Path -> dto
-        List<PathResponseDto> pathDto = paths.stream()
-                .map(PathResponseDto::from)
+        List<PathForTrackingResponseDto> pathDto = paths.stream()
+                .map(PathForTrackingResponseDto::from)
                 .toList();
 
         // 날씨 가져오기 (5일치)
@@ -123,6 +125,30 @@ public class MountainServiceImpl implements MountainService {
                         .toList())
                 .weather(weather)
                 .build();
+
+        return response;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MountainListResponseDto> searchMountain(String mountainName) {
+        List<Mountain> mountains = mountainRepository.findByMountainNameContaining(mountainName);
+
+        List<MountainListResponseDto> response = mountains.stream()
+                .map(mountain -> new MountainListResponseDto(
+                        mountain.getId(),
+                        mountain.getMountainName(),
+                        mountain.getMountainLatitude(),
+                        mountain.getMountainLongitude(),
+                        mountain.getMountainHeight(),
+                        mountain.getMountainLoc(),
+                        mountain.getLevel().name(),
+                        mountain.getMountainDescription(),
+                        mountain.getMountainImgs().stream()
+                                .map(MountainImg::getImage)
+                                .toList()
+                ))
+                .toList();
 
         return response;
     }

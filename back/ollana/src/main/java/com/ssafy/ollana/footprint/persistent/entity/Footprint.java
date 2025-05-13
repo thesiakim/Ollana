@@ -6,6 +6,8 @@ import com.ssafy.ollana.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.List;
+
 @Getter
 @Builder
 @Entity
@@ -31,6 +33,9 @@ public class Footprint extends BaseEntity {
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "mountain_id")
 	private Mountain mountain;
+
+	@OneToMany(mappedBy = "footprint", cascade = CascadeType.REMOVE, orphanRemoval = true)
+	private List<HikingHistory> hikingHistories;
 
 	public static Footprint of(User user, Mountain mountain) {
 		return Footprint.builder()

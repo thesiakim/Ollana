@@ -14,9 +14,9 @@ public class TrackingFinishRequestDto {
     private Integer opponentId;
     private Integer recordId;
     private boolean isSave;
-    private Integer opponentDataId;
     private Double finalLatitude;
     private Double finalLongitude;
     private Integer finalTime;
+    private Double finalDistance;
     private List<BattleRecordsForTrackingResponseDto> records;
 }
