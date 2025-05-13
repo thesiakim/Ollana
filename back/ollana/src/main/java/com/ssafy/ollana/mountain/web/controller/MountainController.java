@@ -26,12 +26,20 @@ public class MountainController {
     }
 
     @GetMapping("/list")
-    public ResponseEntity<Response<PageResponse<MountainListResponseDto>>> getMountainList(
+    public ResponseEntity<Response<?>> getMountainList(
+            @RequestParam(value = "search", required = false) String mountainName,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        PageResponse<MountainListResponseDto> response = mountainService.getMountainList(page, size);
-        return ResponseEntity.ok(Response.success(response));
+        // 검색어 있으면 산 검색
+        if (mountainName != null && !mountainName.isEmpty()) {
+            List<MountainListResponseDto> response = mountainService.searchMountain(mountainName);
+            return ResponseEntity.ok(Response.success(response));
+        } else {
+            // 검색어 없으면 산 전체 리스트
+            PageResponse<MountainListResponseDto> response = mountainService.getMountainList(page, size);
+            return ResponseEntity.ok(Response.success(response));
+        }
     }
 
     @GetMapping("/detail/{mountain_id}")
