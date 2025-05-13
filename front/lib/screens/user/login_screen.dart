@@ -60,10 +60,11 @@ class _LoginScreenState extends State<LoginScreen> {
         final accessToken = data['data']['accessToken'];
         final profileImageUrl = data['data']['user']['profileImageUrl'];
         final nickname = data['data']['user']['nickname'];
+        final social = data['data']['user']['social'] as bool;
         final payloadA = Jwt.parseJwt(accessToken);
         final expA = payloadA['exp'] as int;
         final expiryA = DateTime.fromMillisecondsSinceEpoch(expA * 1000);
-        await context.read<AppState>().setToken(accessToken, profileImageUrl: profileImageUrl, nickname: nickname,);
+        await context.read<AppState>().setToken(accessToken, profileImageUrl: profileImageUrl, nickname: nickname,social: social,);
 
         // 🔥 tempPassword 검사
         final user = data['data']['user'];
