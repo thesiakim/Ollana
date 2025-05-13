@@ -39,11 +39,13 @@ class MyPageService {
 
       // userData를 MultipartFile처럼 추가
       final userData = jsonEncode({"nickname": nickname});
+      
       request.files.add(http.MultipartFile.fromString(
         'userData',
         userData,
         contentType: MediaType('application', 'json'),
       ));
+      
 
       // 프로필 이미지 추가 (선택)
       if (profileImage != null) {
@@ -95,9 +97,85 @@ class MyPageService {
     }
   }
 
-  Future<void> changePassword(String token, String currentPassword, String newPassword) async {
-  // API 호출 로직
-  // 예: await http.post(...)
-  // 성공 시 아무것도 반환하지 않거나, 실패 시 예외 throw
-}
+  Future<User> updateUserAgreement(String token, bool isAgree) async {
+    try {
+      final uri = Uri.parse('$baseUrl/user/mypage');
+      final request = http.MultipartRequest('PATCH', uri);
+      request.headers['Authorization'] = 'Bearer $token';
+      
+      // 요청 본문
+      final userData = jsonEncode({"isAgree": isAgree});
+      
+      request.files.add(http.MultipartFile.fromString(
+        'userData',
+        userData,
+        contentType: MediaType('application', 'json'),
+      ));
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      
+      
+      // 응답 로깅
+      debugPrint('=============== AGREEMENT UPDATE RESPONSE ===============');
+      debugPrint('Status Code: ${response.statusCode}');
+      debugPrint('Body: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        final jsonData = jsonDecode(response.body);
+        if (jsonData['status'] == true) {
+          return User.fromJson(jsonData['data']);
+        } else {
+          throw Exception('API failed: ${jsonData['message']} (code: ${jsonData['code']})');
+        }
+      } else {
+        final decodedBody = utf8.decode(response.bodyBytes);
+        throw Exception(decodedBody);
+      }
+    } catch (e) {
+      debugPrint('========= AGREEMENT UPDATE ERROR =========');
+      debugPrint('$e');
+      rethrow;
+    }
+  }
+
+  Future withdrawUser(String token, bool social, {String? password}) async { 
+    try { 
+      final uri = Uri.parse('$baseUrl/user/withdraw'); 
+      final body = social ? {} : {'password': password };
+      final response = await http.delete(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(body),
+    );
+
+    debugPrint('=============== WITHDRAW REQUEST DETAILS ===============');
+    debugPrint('URL: $uri');
+    debugPrint('Method: DELETE');
+    debugPrint('Headers: {Authorization: Bearer $token, Content-Type: application/json}');
+    debugPrint('Body: $body');
+    debugPrint('=============== WITHDRAW RESPONSE DETAILS ===============');
+    debugPrint('Status Code: ${response.statusCode}');
+    debugPrint('Body: ${response.body}');
+
+    if (response.statusCode == 200) {
+      final jsonData = jsonDecode(response.body);
+      if (jsonData['status'] == true) {
+        return; // Success
+      } else {
+        throw Exception('API failed: ${jsonData['message']} (code: ${jsonData['code']})');
+      }
+    } else {
+      final decodedBody = utf8.decode(response.bodyBytes);
+      throw Exception(decodedBody);
+    }
+  } catch (e) {
+    debugPrint('========= WITHDRAW ERROR =========');
+    debugPrint('$e');
+    rethrow;
+  }
+  }
 }
