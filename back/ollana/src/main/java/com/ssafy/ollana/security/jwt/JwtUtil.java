@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 
+// 토큰 생성, 검증, 파싱
 @Slf4j
 @Component
 @Getter
@@ -33,17 +34,17 @@ public class JwtUtil {
         this.passwordResetTokenExpiration = passwordResetTokenExpiration;
     }
 
-    // accessToken 생성
+    // access token 생성
     public String createAccessToken(String userEmail) {
         return createAccessToken(userEmail, accessTokenExpiration);
     }
 
-    // refreshToken 생성
+    // refresh token 생성
     public String createRefreshToken(String userEmail) {
         return createAccessToken(userEmail, refreshTokenExpiration);
     }
 
-    // token 생성
+    // token 생성 공통 메서드
     private String createAccessToken(String userEmail, long tokenExpiration) {
         Date now = new Date();
         Date expiration = new Date(now.getTime() + tokenExpiration);
