@@ -4,7 +4,8 @@ import '../../models/app_state.dart';
 import '../../models/user.dart';
 import '../../services/my_page_service.dart';
 import 'edit_profile_screen.dart';
-import 'password_change_screen.dart'; 
+import 'password_change_screen.dart';
+import '../user/login_screen.dart';
 
 class MyPageScreen extends StatefulWidget {
   const MyPageScreen({Key? key}) : super(key: key);
@@ -14,7 +15,8 @@ class MyPageScreen extends StatefulWidget {
 }
 
 class _MyPageScreenState extends State<MyPageScreen> {
-  late Future<User> userFuture;
+  late Future userFuture;
+  bool? _isAgree;
 
   @override
   void initState() {
@@ -33,8 +35,116 @@ class _MyPageScreenState extends State<MyPageScreen> {
     if (userFuture != newFuture) {
       setState(() {
         userFuture = newFuture;
+        _isAgree = null;
       });
     }
+  }
+
+  Future _handleWithdraw() async {
+    final appState = context.read<AppState>();
+    final userService = MyPageService();
+    final social = appState.social ?? false;
+
+    if (!social) {
+      final passwordController = TextEditingController();
+      final result = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          title: const Text('회원 탈퇴하기'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 16),
+              TextField(
+                controller: passwordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: '비밀번호',
+                  border: OutlineInputBorder(),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.grey, width: 1.0),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Color(0xFF52A486), width: 2.0),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('취소'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('확인'),
+            ),
+          ],
+        ),
+      );
+
+      if (result != true) return;
+
+      try {
+        await userService.withdrawUser(
+          appState.accessToken ?? '',
+          social,
+          password: passwordController.text,
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('회원 탈퇴가 완료되었습니다.')),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('탈퇴 실패: $e')),
+        );
+        return;
+      }
+    } else {
+      final confirm = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          title: const Text('회원 탈퇴'),
+          content: const Text('정말로 회원 탈퇴하시겠습니까?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('취소'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('확인'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirm != true) return;
+
+      try {
+        await userService.withdrawUser(
+          appState.accessToken ?? '',
+          social,
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('회원 탈퇴가 완료되었습니다.')),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('탈퇴 실패: $e')),
+        );
+        return;
+      }
+    }
+
+    await appState.clearAuth();
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
   }
 
   @override
@@ -49,7 +159,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
         child: FutureBuilder(
           future: userFuture,
           builder: (context, AsyncSnapshot snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
+            if (snapshot.connectionState == ConnectionState.waiting && _isAgree == null) {
               return const Center(child: CircularProgressIndicator());
             } else if (snapshot.hasError) {
               return Center(child: Text('Error: ${snapshot.error}'));
@@ -58,6 +168,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
             }
 
             final user = snapshot.data as User;
+            _isAgree ??= user.agree;
 
             return Column(
               children: [
@@ -67,15 +178,14 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   ),
                   elevation: 2,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 20, horizontal: 16),
+                    padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
                     child: Row(
                       children: [
                         CircleAvatar(
                           radius: 28,
                           backgroundImage: NetworkImage(user.imageUrl),
-                          onBackgroundImageError: (_, __) => const AssetImage(
-                              'lib/assets/images/alps.jpg'),
+                          onBackgroundImageError: (_, __) =>
+                              const AssetImage('lib/assets/images/alps.jpg'),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
@@ -114,6 +224,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                             if (updatedUser != null) {
                               setState(() {
                                 userFuture = Future.value(updatedUser);
+                                _isAgree = updatedUser.agree;
                               });
                             }
                           },
@@ -123,9 +234,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 16),
-
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -152,23 +261,41 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       ),
                     ),
                     Switch(
-                      value: user.agree,
-                      onChanged: (value) {
-                        // TODO: agree 값을 서버에 업데이트하는 로직 추가 필요
+                      value: _isAgree!,
+                      onChanged: (value) async {
                         setState(() {
-                          // 임시로 UI만 업데이트, 서버 동기화 필요
+                          _isAgree = value;
                         });
+
+                        final appState = context.read<AppState>();
+                        final userService = MyPageService();
+
+                        try {
+                          final updatedUser = await userService.updateUserAgreement(
+                            appState.accessToken ?? '',
+                            value,
+                          );
+                          setState(() {
+                            userFuture = Future.value(updatedUser);
+                            _isAgree = updatedUser.agree;
+                          });
+                        } catch (e) {
+                          setState(() {
+                            _isAgree = user.agree;
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('설정 변경 실패: $e')),
+                          );
+                        }
                       },
-                      activeColor: Color(0xFF52A486),
-                      activeTrackColor: Color(0xFF52A486).withOpacity(0.5),
+                      activeColor: const Color(0xFF52A486),
+                      activeTrackColor: const Color(0xFF52A486).withOpacity(0.5),
                       inactiveThumbColor: Colors.grey.shade400,
                       inactiveTrackColor: Colors.grey.shade300,
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 16),
-
                 ElevatedButton.icon(
                   onPressed: () {
                     Navigator.push(
@@ -190,12 +317,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
-                  onPressed: () {
-                    // TODO: 회원 탈퇴 로직
-                  },
+                  onPressed: _handleWithdraw,
                   icon: const Text('🥲', style: TextStyle(fontSize: 24)),
                   label: const Text('회원 탈퇴하기'),
                   style: ElevatedButton.styleFrom(
