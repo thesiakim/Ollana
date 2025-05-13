@@ -22,6 +22,7 @@ class AppState extends ChangeNotifier {
   String? _accessToken;
   String? _profileImageUrl;
   String? _nickname;
+  bool? _social;
 
   // 페이지 인덱스
   int _currentPageIndex = 0;
@@ -66,6 +67,7 @@ class AppState extends ChangeNotifier {
   String? get selectedMode => _selectedMode;
   String? get profileImageUrl => _profileImageUrl;
   String? get nickname => _nickname;
+  bool? get social => _social;
 
   List<NLatLng> get routeCoordinates => _routeCoordinates;
   List<NLatLng> get userPath => _userPath;
@@ -89,14 +91,17 @@ class AppState extends ChangeNotifier {
       final token = await _storage.read(key: 'accessToken');
       final profileImage = await _storage.read(key: 'profileImageUrl');
       final nickname = await _storage.read(key: 'nickname');
+      final social = await _storage.read(key: 'social');
       if (token != null && token.isNotEmpty) {
         _accessToken = token;
         _profileImageUrl = profileImage;
         _nickname = nickname;
+        _social = social != null ? social.toLowerCase() == 'true' : null;
         _isLoggedIn = true;
         debugPrint('SecureStorage에서 토큰 복원: $_accessToken');
         debugPrint('SecureStorage에서 프로필 이미지 복원: $_profileImageUrl');
         debugPrint('SecureStorage에서 닉네임 복원: $_nickname');
+        debugPrint('SecureStorage에서 소셜 복원: $_social');
         notifyListeners();
       }
     } catch (e) {
@@ -113,18 +118,21 @@ class AppState extends ChangeNotifier {
 
   // 🔥 토큰 설정 및 SecureStorage에 저장
   Future<void> setToken(String token,
-      {String? profileImageUrl, String? nickname}) async {
+      {String? profileImageUrl, String? nickname, bool? social,}) async {
     _accessToken = token;
     _isLoggedIn = true;
     _profileImageUrl = profileImageUrl;
     _nickname = nickname;
+    _social = social;
     debugPrint('토큰 저장: $_accessToken');
     debugPrint('프로필 이미지 저장: $_profileImageUrl');
     debugPrint('닉네임 저장 : $_nickname');
+    debugPrint('소셜 저장: $_social');
     try {
       await _storage.write(key: 'accessToken', value: token);
       await _storage.write(key: 'profileImageUrl', value: profileImageUrl);
       await _storage.write(key: 'nickname', value: nickname);
+      await _storage.write(key: 'social', value: social?.toString());
       debugPrint('SecureStorage에 토큰 저장 완료');
     } catch (e) {
       debugPrint('SecureStorage 저장 오류: $e');
@@ -137,12 +145,14 @@ class AppState extends ChangeNotifier {
     _accessToken = null;
     _profileImageUrl = null;
     _nickname = null;
+    _social = null;
     _isLoggedIn = false;
     debugPrint('클라이언트 인증 정보 초기화');
     try {
       await _storage.delete(key: 'accessToken');
       await _storage.delete(key: 'profileImageUrl');
       await _storage.delete(key: 'nickname');
+      await _storage.delete(key: 'social');
       debugPrint('SecureStorage에서 토큰 삭제 완료');
     } catch (e) {
       debugPrint('SecureStorage 삭제 오류: $e');
