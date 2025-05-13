@@ -1,9 +1,12 @@
 // lib/widgets/custom_app_bar.dart
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'dart:convert';
 import 'package:http/http.dart' as http;
+
 import '../screens/user/login_screen.dart';
 import '../../models/app_state.dart';
 
@@ -18,15 +21,38 @@ class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
 }
 
 class _CustomAppBarState extends State<CustomAppBar> {
+  final String _title = 'Ollana';
+  int _bounceIndex = -1; // 🔥 현재 튀는 글자 인덱스
+
+  @override
+  void initState() {
+    super.initState();
+    _startBounceLoop(); // 🔥 글자별 바운스 시작
+  }
+
+  void _startBounceLoop() {
+    // 비동기 루프: 글자 하나씩 튀고, 한 바퀴 돌면 5초 대기
+    Future(() async {
+      while (mounted) {
+        for (int i = 0; i < _title.length; i++) {
+          if (!mounted) return;
+          setState(() => _bounceIndex = i); // 🔥 i번째 글자 튀기기
+          await Future.delayed(const Duration(milliseconds: 400));
+        }
+        if (!mounted) return;
+        setState(() => _bounceIndex = -1); // 🔥 리셋(모두 내려옴)
+        await Future.delayed(const Duration(seconds: 5));
+      }
+    });
+  }
+
   Future<void> _handleLogout() async {
-    // 비동기 작업 전에 필요한 값 캡처
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final scaffold = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     final appState = context.read<AppState>();
     final token = appState.accessToken;
     final baseUrl = dotenv.get('BASE_URL');
 
-    // 로그아웃 확인 모달
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -34,26 +60,19 @@ class _CustomAppBarState extends State<CustomAppBar> {
         content: const Text('로그아웃 하시겠습니까?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('취소'),
-          ),
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('취소')),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text(
-              '로그아웃',
-              style: TextStyle(color: Colors.red),
-            ),
+            child: const Text('로그아웃', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
     );
-    if (confirm != true) return;
-    if (!mounted) return;
+    if (confirm != true || !mounted) return;
 
-    // 요청 보내기
-    final uri = Uri.parse('$baseUrl/auth/logout');
     final res = await http.post(
-      uri,
+      Uri.parse('$baseUrl/auth/logout'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -61,24 +80,12 @@ class _CustomAppBarState extends State<CustomAppBar> {
       body: jsonEncode({}),
     );
 
-    // 응답 처리
-    debugPrint('Logout status: ${res.statusCode}');
-    debugPrint('Logout body: ${res.body}');
-
-    // 위젯이 여전히 마운트되어 있는지 확인
     if (!mounted) return;
 
-    // 403 상태코드 처리
     if (res.statusCode == 403) {
-      // 앱 상태 초기화
       appState.clearAuth();
-
-      // 스낵바 표시
-      scaffoldMessenger.showSnackBar(
-        const SnackBar(content: Text('세션이 만료되었습니다. 다시 로그인해주세요.')),
-      );
-
-      // 로그인 화면으로 이동
+      scaffold.showSnackBar(
+          const SnackBar(content: Text('세션이 만료되었습니다. 다시 로그인해주세요.')));
       navigator.pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginScreen()),
         (route) => false,
@@ -86,44 +93,23 @@ class _CustomAppBarState extends State<CustomAppBar> {
       return;
     }
 
-    // 200 상태코드 처리
     if (res.statusCode == 200) {
-      Map<String, dynamic> result;
-
-      if (res.body.isNotEmpty) {
-        try {
-          result = jsonDecode(res.body) as Map<String, dynamic>;
-        } catch (e) {
-          debugPrint('JSON 파싱 실패: $e');
-          result = {'status': true};
+      try {
+        final result = jsonDecode(res.body) as Map<String, dynamic>;
+        if (result['status'] == true) {
+          appState.clearAuth();
+          scaffold.showSnackBar(const SnackBar(content: Text('로그아웃되었습니다.')));
+        } else {
+          scaffold.showSnackBar(
+              SnackBar(content: Text(result['message'] ?? '로그아웃 실패')));
         }
-      } else {
-        result = {'status': true};
-      }
-
-      if (!mounted) return;
-
-      if (result['status'] == true) {
-        // 인증 정보 초기화
+      } catch (_) {
         appState.clearAuth();
-
-        // 성공 메시지 표시
-        scaffoldMessenger.showSnackBar(
-          const SnackBar(content: Text('로그아웃되었습니다.')),
-        );
-      } else {
-        // 실패 메시지 표시
-        final msg = result['message'] ?? '로그아웃 실패';
-        scaffoldMessenger.showSnackBar(
-          SnackBar(content: Text(msg)),
-        );
+        scaffold.showSnackBar(const SnackBar(content: Text('로그아웃되었습니다.')));
       }
     } else {
-      if (!mounted) return;
-      // 기타 HTTP 에러 처리
-      scaffoldMessenger.showSnackBar(
-        SnackBar(content: Text('서버 에러: ${res.statusCode}')),
-      );
+      scaffold
+          .showSnackBar(SnackBar(content: Text('서버 에러: ${res.statusCode}')));
     }
   }
 
@@ -132,24 +118,46 @@ class _CustomAppBarState extends State<CustomAppBar> {
     final isLoggedIn = context.watch<AppState>().isLoggedIn;
 
     return AppBar(
-      title: const Text('Ollana'),
+      backgroundColor: Theme.of(context).colorScheme.primary,
+      centerTitle: true,
+      elevation: 0,
+      title: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: List.generate(_title.length, (i) {
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            transform: Matrix4.translationValues(
+                0, _bounceIndex == i ? -8 : 0, 0), // 🔥 튀는 효과
+            child: Text(
+              _title[i],
+              style: const TextStyle(
+                fontFamily: 'GmarketSans',
+                fontWeight: FontWeight.w500,
+                fontSize: 20,
+                color: Colors.white,
+              ),
+            ),
+          );
+        }),
+      ),
       actions: [
         TextButton(
-          onPressed: () async {
+          onPressed: () {
             if (!isLoggedIn) {
-              // 로그인 화면으로 이동
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-              );
-              return;
+              Navigator.of(context)
+                  .push(MaterialPageRoute(builder: (_) => const LoginScreen()));
+            } else {
+              _handleLogout();
             }
-
-            await _handleLogout();
           },
-          child: Text(
-            isLoggedIn ? '로그아웃' : '로그인',
-            style: const TextStyle(color: Colors.black),
+          style: TextButton.styleFrom(
+            foregroundColor: Colors.white,
+            textStyle: const TextStyle(
+              fontFamily: 'GmarketSans',
+              fontWeight: FontWeight.w500,
+            ),
           ),
+          child: Text(isLoggedIn ? '로그아웃' : '로그인'),
         ),
       ],
     );
