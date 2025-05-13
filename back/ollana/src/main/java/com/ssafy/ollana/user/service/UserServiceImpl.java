@@ -1,6 +1,7 @@
 package com.ssafy.ollana.user.service;
 
 import com.ssafy.ollana.auth.exception.AuthenticationException;
+import com.ssafy.ollana.auth.service.KakaoService;
 import com.ssafy.ollana.auth.service.TokenService;
 import com.ssafy.ollana.common.s3.service.S3Service;
 import com.ssafy.ollana.footprint.persistent.entity.Footprint;
@@ -42,6 +43,7 @@ public class UserServiceImpl implements UserService {
     private final S3Service s3Service;
     private final TokenService tokenService;
     private final PasswordEncoder passwordEncoder;
+    private final KakaoService kakaoService;
 
     @Override
     @Transactional(readOnly = true)
@@ -71,6 +73,11 @@ public class UserServiceImpl implements UserService {
             }
 
             user.setNickname(request.getNickname());
+        }
+
+        // 동의 여부 업데이트
+        if (request.getIsAgree() != null) {
+            user.setAgree(request.getIsAgree());
         }
 
         // 프로필 이미지 업데이트
@@ -112,6 +119,12 @@ public class UserServiceImpl implements UserService {
             }
         }
 
+        // 소셜 회원(kakao) 연결 끊기
+        if (user.isSocial()) {
+            kakaoService.unlinkKakao(user);
+            log.info("kakao 소셜 회원 연결 끊기 완료: userId={}, kakaoId={}", user.getId(), user.getKakaoId());
+        }
+
         // refresh token 삭제
         tokenService.deleteRefreshToken(user.getEmail());
 
@@ -136,6 +149,7 @@ public class UserServiceImpl implements UserService {
                 .totalDistance(user.getTotalDistance())
                 .profileImageUrl(user.getProfileImage())
                 .isTempPassword(user.isTempPassword())
+                .isSocial(user.isSocial())
                 .build();
     }
 

@@ -5,7 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.ollana.auth.dto.KakaoProfileDto;
 import com.ssafy.ollana.auth.dto.KakaoTokenDto;
 import com.ssafy.ollana.auth.exception.KakaoResponseParsingException;
+import com.ssafy.ollana.user.entity.User;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -16,6 +18,7 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class KakaoService {
@@ -25,6 +28,9 @@ public class KakaoService {
 
     @Value("${spring.kakao.auth.redirect}")
     private String redirect;
+
+    @Value("${spring.kakao.auth.admin}")
+    private String admin;
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
@@ -90,5 +96,29 @@ public class KakaoService {
         }
 
         return kakaoProfileDto;
+    }
+
+    // 연결 끊기
+    public void unlinkKakao(User user) {
+        // 헤더
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization", "KakaoAK " + admin);
+        headers.add("Content-Type", "application/x-www-form-urlencoded;charset=UTF-8");
+
+        // 바디
+        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+        body.add("target_id_type", "user_id");
+        body.add("target_id", String.valueOf(user.getKakaoId()));
+
+        // 헤더, 바디 연결
+        HttpEntity<MultiValueMap<String, String>> kakaoUnlinkRequest = new HttpEntity<>(body, headers);
+
+        // request 통해서 response 받아오기
+        ResponseEntity<String> response = restTemplate.exchange(
+                "https://kapi.kakao.com/v1/user/unlink",
+                HttpMethod.POST,
+                kakaoUnlinkRequest,
+                String.class
+        );
     }
 }

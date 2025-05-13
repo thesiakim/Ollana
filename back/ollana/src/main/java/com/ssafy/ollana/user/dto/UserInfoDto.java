@@ -13,4 +13,5 @@ public class UserInfoDto {
     private double totalDistance;
     private String profileImageUrl;
     private boolean isTempPassword;
+    private boolean isSocial;
 }
