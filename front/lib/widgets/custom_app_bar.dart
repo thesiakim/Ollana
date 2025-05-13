@@ -21,7 +21,7 @@ class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
 }
 
 class _CustomAppBarState extends State<CustomAppBar> {
-  final String _title = 'Ollana';
+  final String _title = 'ollana';
   int _bounceIndex = -1; // 🔥 현재 튀는 글자 인덱스
 
   @override
@@ -131,9 +131,9 @@ class _CustomAppBarState extends State<CustomAppBar> {
             child: Text(
               _title[i],
               style: const TextStyle(
-                fontFamily: 'GmarketSans',
-                fontWeight: FontWeight.w500,
-                fontSize: 20,
+                fontFamily: 'Dovemayo',
+                fontWeight: FontWeight.w800,
+                fontSize: 25,
                 color: Colors.white,
               ),
             ),

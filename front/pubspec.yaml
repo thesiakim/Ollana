@@ -112,6 +112,9 @@ flutter:
     - family: GmarketSans
       fonts:
         - asset: assets/fonts/GmarketSansTTFMedium.ttf
+    - family: Dovemayo
+      fonts:
+        - asset: assets/fonts/Dovemayo_wild.ttf
               # weight: 500
   #       - asset: fonts/Schyler-Italic.ttf
   #         style: italic
