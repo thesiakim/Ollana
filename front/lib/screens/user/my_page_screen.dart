@@ -5,6 +5,7 @@ import '../../models/user.dart';
 import '../../services/my_page_service.dart';
 import 'edit_profile_screen.dart';
 import 'password_change_screen.dart';
+import '../user/login_screen.dart';
 
 class MyPageScreen extends StatefulWidget {
   const MyPageScreen({Key? key}) : super(key: key);
@@ -14,8 +15,8 @@ class MyPageScreen extends StatefulWidget {
 }
 
 class _MyPageScreenState extends State<MyPageScreen> {
-  late Future<User> userFuture;
-  bool? _isAgree; // 스위치 상태를 로컬로 관리
+  late Future userFuture;
+  bool? _isAgree;
 
   @override
   void initState() {
@@ -34,12 +35,12 @@ class _MyPageScreenState extends State<MyPageScreen> {
     if (userFuture != newFuture) {
       setState(() {
         userFuture = newFuture;
-        _isAgree = null; // 토큰 변경 시 스위치 상태 초기화
+        _isAgree = null;
       });
     }
   }
 
-  Future<void> _handleWithdraw() async {
+  Future _handleWithdraw() async {
     final appState = context.read<AppState>();
     final userService = MyPageService();
     final social = appState.social ?? false;
@@ -61,6 +62,12 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 decoration: const InputDecoration(
                   labelText: '비밀번호',
                   border: OutlineInputBorder(),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.grey, width: 1.0),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Color(0xFF52A486), width: 2.0),
+                  ),
                 ),
               ),
             ],
@@ -85,6 +92,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
           appState.accessToken ?? '',
           social,
           password: passwordController.text,
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('회원 탈퇴가 완료되었습니다.')),
         );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -119,6 +129,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
           appState.accessToken ?? '',
           social,
         );
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('회원 탈퇴가 완료되었습니다.')),
+        );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('탈퇴 실패: $e')),
@@ -128,7 +141,10 @@ class _MyPageScreenState extends State<MyPageScreen> {
     }
 
     await appState.clearAuth();
-    Navigator.of(context).pushReplacementNamed('/login');
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
   }
 
   @override
@@ -152,7 +168,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
             }
 
             final user = snapshot.data as User;
-            // 스위치 상태 초기화 (최초 로딩 시)
             _isAgree ??= user.agree;
 
             return Column(
@@ -163,8 +178,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   ),
                   elevation: 2,
                   child: Padding(
-                    padding:
-                        const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                    padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
                     child: Row(
                       children: [
                         CircleAvatar(
@@ -210,7 +224,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                             if (updatedUser != null) {
                               setState(() {
                                 userFuture = Future.value(updatedUser);
-                                _isAgree = updatedUser.agree; // 스위치 상태 동기화
+                                _isAgree = updatedUser.agree;
                               });
                             }
                           },
@@ -247,9 +261,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       ),
                     ),
                     Switch(
-                      value: _isAgree!, // 로컬 상태 사용
+                      value: _isAgree!,
                       onChanged: (value) async {
-                        // 즉시 로컬 상태 업데이트
                         setState(() {
                           _isAgree = value;
                         });
@@ -264,10 +277,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
                           );
                           setState(() {
                             userFuture = Future.value(updatedUser);
-                            _isAgree = updatedUser.agree; // 서버 응답으로 동기화
+                            _isAgree = updatedUser.agree;
                           });
                         } catch (e) {
-                          // 오류 시 원래 값으로 복원
                           setState(() {
                             _isAgree = user.agree;
                           });
@@ -290,8 +302,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => PasswordChangeScreen(
-                          accessToken:
-                              context.read<AppState>().accessToken ?? '',
+                          accessToken: context.read<AppState>().accessToken ?? '',
                         ),
                       ),
                     );
