@@ -9,6 +9,7 @@ import '../../models/app_state.dart';
 import './sign_up_screen.dart';
 import './password_reset_screen.dart';
 import './password_change_screen.dart'; // 🔥 비밀번호 변경 페이지 import
+import '../home_screen.dart'; // 🔥 홈 화면 import
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -58,10 +59,18 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (response.statusCode == 200 && data['status'] == true) {
         final accessToken = data['data']['accessToken'];
+        final profileImageUrl = data['data']['user']['profileImageUrl'];
+        final nickname = data['data']['user']['nickname'];
+        final social = data['data']['user']['social'] as bool;
         final payloadA = Jwt.parseJwt(accessToken);
         final expA = payloadA['exp'] as int;
         final expiryA = DateTime.fromMillisecondsSinceEpoch(expA * 1000);
-        await context.read<AppState>().setToken(accessToken);
+        await context.read<AppState>().setToken(
+              accessToken,
+              profileImageUrl: profileImageUrl,
+              nickname: nickname,
+              social: social,
+            );
 
         // 🔥 tempPassword 검사
         final user = data['data']['user'];
@@ -100,12 +109,15 @@ class _LoginScreenState extends State<LoginScreen> {
           }
           return; // 모달 후엔 함수 종료
         }
-
-        Navigator.of(context).pop();
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          (route) => false,
+        );
       } else {
         setState(() => _errorMsg = data['message'] ?? '로그인에 실패했습니다.');
       }
     } catch (e) {
+      debugPrint('❌ [Login] 오류 발생: $e');
       setState(() => _errorMsg = '네트워크 오류가 발생했습니다.');
     } finally {
       if (mounted) setState(() => _isLoading = false);

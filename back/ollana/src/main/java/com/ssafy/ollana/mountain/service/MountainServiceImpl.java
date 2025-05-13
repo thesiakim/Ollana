@@ -1,15 +1,27 @@
 package com.ssafy.ollana.mountain.service;
 
+import com.ssafy.ollana.common.util.PageResponse;
 import com.ssafy.ollana.mountain.exception.MountainNotFoundException;
 import com.ssafy.ollana.mountain.persistent.entity.Mountain;
 import com.ssafy.ollana.mountain.persistent.entity.MountainImg;
+import com.ssafy.ollana.mountain.persistent.entity.Path;
 import com.ssafy.ollana.mountain.persistent.repository.MountainImgRepository;
 import com.ssafy.ollana.mountain.persistent.repository.MountainRepository;
+import com.ssafy.ollana.mountain.persistent.repository.PathRepository;
+import com.ssafy.ollana.mountain.web.dto.MountainWeatherDto;
+import com.ssafy.ollana.mountain.web.dto.OpenWeatherDto;
+import com.ssafy.ollana.mountain.web.dto.response.MountainDetailResponseDto;
+import com.ssafy.ollana.mountain.web.dto.response.MountainListResponseDto;
+import com.ssafy.ollana.mountain.web.dto.response.MountainMapResponseDto;
+import com.ssafy.ollana.tracking.web.dto.response.PathForTrackingResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClient;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 
@@ -33,8 +45,114 @@ public class MountainServiceImpl implements MountainService {
     @Value("${api.service-key}")
     private String serviceKey;
 
+    @Value("${openweather.api.key}")
+    private String openweather;
+
+    private final RestClient restClient;
+    private final PathRepository pathRepository;
     private final MountainRepository mountainRepository;
     private final MountainImgRepository mountainImgRepository;
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MountainMapResponseDto> getMountains() {
+        List<Mountain> mountainList = mountainRepository.findAll();
+
+        List<MountainMapResponseDto> response = mountainList.stream()
+                .map(mountain -> new MountainMapResponseDto(
+                        mountain.getId(),
+                        mountain.getMountainName(),
+                        mountain.getMountainLatitude(),
+                        mountain.getMountainLongitude(),
+                        mountain.getMountainHeight(),
+                        mountain.getLevel().name(),
+                        mountain.getMountainDescription()
+                ))
+                .toList();
+
+        return response;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<MountainListResponseDto> getMountainList(int page, int size) {
+        PageRequest pageRequest = PageRequest.of(page, size);
+        Page<Mountain> mountainList = mountainRepository.findAll(pageRequest);
+
+        Page<MountainListResponseDto> response = mountainList.map(mountain -> new MountainListResponseDto(
+                        mountain.getId(),
+                        mountain.getMountainName(),
+                        mountain.getMountainLatitude(),
+                        mountain.getMountainLongitude(),
+                        mountain.getMountainHeight(),
+                        mountain.getMountainLoc(),
+                        mountain.getLevel().name(),
+                        mountain.getMountainDescription(),
+                        mountain.getMountainImgs().stream()
+                                .map(MountainImg::getImage)
+                                .toList()
+                ));
+
+        return new PageResponse<>("mountains", response);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MountainDetailResponseDto getMountainDetail(int mountainId) {
+        Mountain mountain = mountainRepository.findById(mountainId)
+                .orElseThrow(MountainNotFoundException::new);
+
+        // 등산로 가져오기
+        List<Path> paths = pathRepository.findByMountainId(mountainId);
+
+        // Path -> dto
+        List<PathForTrackingResponseDto> pathDto = paths.stream()
+                .map(PathForTrackingResponseDto::from)
+                .toList();
+
+        // 날씨 가져오기 (5일치)
+        MountainWeatherDto weather = getWeather(mountain);
+
+        MountainDetailResponseDto response = MountainDetailResponseDto.builder()
+                .name(mountain.getMountainName())
+                .altitude(mountain.getMountainHeight())
+                .location(mountain.getMountainLoc())
+                .level(mountain.getLevel().name())
+                .description(mountain.getMountainDescription())
+                .paths(pathDto)
+                .images(mountain.getMountainImgs().stream()
+                        .map(MountainImg::getImage)
+                        .toList())
+                .weather(weather)
+                .build();
+
+        return response;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MountainListResponseDto> searchMountain(String mountainName) {
+        List<Mountain> mountains = mountainRepository.findByMountainNameContaining(mountainName);
+
+        List<MountainListResponseDto> response = mountains.stream()
+                .map(mountain -> new MountainListResponseDto(
+                        mountain.getId(),
+                        mountain.getMountainName(),
+                        mountain.getMountainLatitude(),
+                        mountain.getMountainLongitude(),
+                        mountain.getMountainHeight(),
+                        mountain.getMountainLoc(),
+                        mountain.getLevel().name(),
+                        mountain.getMountainDescription(),
+                        mountain.getMountainImgs().stream()
+                                .map(MountainImg::getImage)
+                                .toList()
+                ))
+                .toList();
+
+        return response;
+    }
+
 
     @Override
     @Transactional
@@ -113,5 +231,21 @@ public class MountainServiceImpl implements MountainService {
                 log.error("산 이미지 저장 중 오류 발생: mntnCode={}, error={}", mntnCode, e.getMessage());
             }
         }
+    }
+
+    // openweather api로 날씨 가져오기
+    private MountainWeatherDto getWeather(Mountain mountain) {
+        OpenWeatherDto response = restClient
+                .get()
+                .uri("https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&exclude={exclude}&appid={appid}&units={units}",
+                        mountain.getMountainLatitude(),
+                        mountain.getMountainLongitude(),
+                        "current,minutely,hourly,alerts",
+                        openweather,
+                        "metric")
+                .retrieve()
+                .body(OpenWeatherDto.class);
+
+        return response.toMountainWeatherDto();
     }
 }

@@ -11,6 +11,7 @@ import '../widgets/custom_footer.dart';
 import '../widgets/home_body.dart';
 import './tracking/tracking_screen.dart';
 import './footprint/my_footprint_screen.dart';
+import './user/my_page_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -35,7 +36,7 @@ class HomeScreen extends StatelessWidget {
                   case 3:
                     return const MyFootprintScreen(); 
                   case 4:
-                    return const Center(child: Text('마이페이지'));
+                    return MyPageScreen();
                   default:
                     return HomeBody();
                 }

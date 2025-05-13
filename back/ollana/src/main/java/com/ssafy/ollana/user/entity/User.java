@@ -1,9 +1,14 @@
 package com.ssafy.ollana.user.entity;
 
 import com.ssafy.ollana.common.BaseEntity;
+import com.ssafy.ollana.footprint.persistent.entity.BattleHistory;
+import com.ssafy.ollana.footprint.persistent.entity.Footprint;
+import com.ssafy.ollana.tracking.persistent.entity.HikingLiveRecords;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
+import java.util.List;
 
 @Entity
 @EntityListeners(AuditingEntityListener.class)
@@ -49,8 +54,27 @@ public class User extends BaseEntity {
     @Builder.Default
     private int exp = 0;
 
+    @Column(nullable = false, columnDefinition = "integer default 0")
+    @Builder.Default
+    private int gradeCount = 0;
+
     @Column(nullable = false)
     private String profileImage;
+
+    @Column
+    private Long kakaoId;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<HikingLiveRecords> hikingLiveRecords;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<BattleHistory> battleHistories;
+
+    @OneToMany(mappedBy = "opponent", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<BattleHistory> opponentBattleHistories;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<Footprint> footprints;
 
     @Column(nullable = false, columnDefinition = "boolean default false")
     private boolean isSurvey = false;
@@ -70,6 +94,12 @@ public class User extends BaseEntity {
     // exp 증가 및 그에 따른 grade 업데이트
     public void addExp(int exp) {
         this.exp += exp;
+
+        if (this.exp >= Grade.getMaxExp()) {
+            this.gradeCount++;
+            this.exp = this.exp - Grade.getMaxExp();
+        }
+
         this.grade = Grade.getGrade(this.exp);
     }
 

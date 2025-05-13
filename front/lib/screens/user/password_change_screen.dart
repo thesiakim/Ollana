@@ -1,4 +1,3 @@
-// lib/screens/user/password_change_screen.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -89,6 +88,10 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
               decoration: const InputDecoration(
                 labelText: '새 비밀번호',
                 border: OutlineInputBorder(),
+                enabledBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.grey),
+                ),
+                floatingLabelStyle: TextStyle(color: Color(0xFF52A486)),
               ),
               obscureText: true,
             ),
@@ -97,6 +100,7 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
               onPressed: _isLoading ? null : _changePassword,
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size.fromHeight(48),
+                backgroundColor: const Color(0xFF52A486),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),

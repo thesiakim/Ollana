@@ -13,6 +13,7 @@ import com.ssafy.ollana.mountain.web.dto.response.MountainResponseDto;
 import com.ssafy.ollana.mountain.web.dto.response.PathResponseDto;
 import com.ssafy.ollana.footprint.web.dto.response.TodayHikingResultResponseDto;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -27,6 +28,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class HikingHistoryService {
 
     private final HikingHistoryRepository hikingHistoryRepository;
@@ -65,11 +67,13 @@ public class HikingHistoryService {
                         HikingHistory secondLatest = records.get(records.size() - 2);
                         HikingHistory latest = records.get(records.size() - 1);
                         int timeDiff = latest.getHikingTime() - secondLatest.getHikingTime();
-                        int hrDiff = latest.getMaxHeartRate() - secondLatest.getMaxHeartRate();
+                        int maxHrDiff = latest.getMaxHeartRate() - secondLatest.getMaxHeartRate();
+                        int avgHrDiff = (int) (latest.getAverageHeartRate() - secondLatest.getAverageHeartRate());
 
                         result = DiffResponseDto.builder()
                                 .growthStatus(HikingHistoryUtils.determineStatus(timeDiff))
-                                .heartRateDiff(hrDiff)
+                                .maxHeartRateDiff(maxHrDiff)
+                                .avgHeartRateDiff(avgHrDiff)
                                 .timeDiff(timeDiff)
                                 .build();
                     }
@@ -115,7 +119,9 @@ public class HikingHistoryService {
 
         // 데이터 5개 초과 여부 판단
         boolean isExceed = histories.size() > 5;
-        List<HikingHistory> limitedHistories = isExceed ? histories.subList(0, 5) : histories;
+        List<HikingHistory> limitedHistories = isExceed
+                                            ? histories.subList(histories.size() - 5, histories.size())
+                                            : histories;
 
         List<TodayHikingResultResponseDto> records = limitedHistories.stream()
                                                             .map(TodayHikingResultResponseDto::from)
@@ -165,11 +171,13 @@ public class HikingHistoryService {
             TodayHikingResultResponseDto d2 = recordDtos.get(1);
 
             int timeDiff = d2.getTime() - d1.getTime();
-            int hrDiff = d2.getMaxHeartRate() - d1.getMaxHeartRate();
+            int maxHrDiff = d2.getMaxHeartRate() - d1.getMaxHeartRate();
+            int avgHrDiff = (int) (d2.getAverageHeartRate() - d1.getAverageHeartRate());
 
             result = DiffResponseDto.builder()
                                     .growthStatus(HikingHistoryUtils.determineStatus(timeDiff))
-                                    .heartRateDiff(hrDiff)
+                                    .maxHeartRateDiff(maxHrDiff)
+                                    .avgHeartRateDiff(avgHrDiff)
                                     .timeDiff(timeDiff)
                                     .build();
         }
