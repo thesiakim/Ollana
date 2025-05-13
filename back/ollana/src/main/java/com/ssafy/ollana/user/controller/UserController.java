@@ -6,6 +6,8 @@ import com.ssafy.ollana.user.dto.request.MypageUpdateRequestDto;
 import com.ssafy.ollana.user.dto.request.WithdrawlRequest;
 import com.ssafy.ollana.user.dto.response.MypageResponseDto;
 import com.ssafy.ollana.user.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -34,9 +36,11 @@ public class UserController {
     }
 
     @DeleteMapping("/withdraw")
-    public ResponseEntity<Response<Void>> withdraw(@AuthenticationPrincipal CustomUserDetails userDetails,
-                                                   @RequestBody WithdrawlRequest request) {
-        userService.withdraw(userDetails, request);
+    public ResponseEntity<Response<Void>> withdraw(HttpServletRequest request,
+                                                   HttpServletResponse response,
+                                                   @AuthenticationPrincipal CustomUserDetails userDetails,
+                                                   @RequestBody WithdrawlRequest withDrawlRequest) {
+        userService.withdraw(request, response, userDetails, withDrawlRequest);
         return ResponseEntity.ok(Response.success());
     }
 }
