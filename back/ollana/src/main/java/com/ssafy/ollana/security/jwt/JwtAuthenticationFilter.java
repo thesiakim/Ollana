@@ -9,6 +9,7 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -16,9 +17,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
-// 로그인 및 JWT 생성하여 헤더에 추가
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
@@ -29,7 +30,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
 
         // 요청 헤더에서 access token 추출
-        String accessToken = getAccessTokenFromRequest(request);
+        String accessToken = tokenService.extractAccessTokenFromHeader(request);
 
         if (accessToken != null && !tokenService.isBlacklisted(accessToken)) {
 
@@ -44,14 +45,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 if (refreshToken != null && jwtUtil.validateToken(refreshToken)) {
                     String userEmail = jwtUtil.getUserEmailFromToken(refreshToken);
+                    int userId = jwtUtil.getUserIdFromToken(refreshToken);
 
                     // redis에 있는 refresh token과 일치하는지 확인
                     if (tokenService.validateRefreshToken(userEmail, refreshToken)) {
                         // 일치한다면 access token 재발급
-                        String newAccessToken = jwtUtil.createAccessToken(userEmail);
+                        String newAccessToken = jwtUtil.createAccessToken(userEmail, userId);
 
                         // 재발급한 access token을 응답 헤더에 넣어주기
                         response.setHeader("Authorization", "Bearer " + newAccessToken);
+                        log.info("new access token for user: userId={}", userId);
 
                         // SecurityContext 갱신
                         setAuthentication(newAccessToken);
@@ -63,14 +66,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    // 요청 헤더에서 access token 추출
-    private String getAccessTokenFromRequest(HttpServletRequest request) {
-        String header = request.getHeader("Authorization");
-        if (header != null && header.startsWith("Bearer ")) {
-            return header.substring(7);
-        }
-        return null;
-    }
 
     // 요청 쿠키에서 refresh token 추출
     private String getRefreshTokenFromCookie(HttpServletRequest request) {
