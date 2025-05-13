@@ -14,6 +14,7 @@ import com.ssafy.ollana.mountain.web.dto.response.MountainDetailResponseDto;
 import com.ssafy.ollana.mountain.web.dto.response.MountainListResponseDto;
 import com.ssafy.ollana.mountain.web.dto.response.MountainMapResponseDto;
 import com.ssafy.ollana.mountain.web.dto.response.PathResponseDto;
+import com.ssafy.ollana.tracking.web.dto.response.PathForTrackingResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -106,8 +107,8 @@ public class MountainServiceImpl implements MountainService {
         List<Path> paths = pathRepository.findByMountainId(mountainId);
 
         // Path -> dto
-        List<PathResponseDto> pathDto = paths.stream()
-                .map(PathResponseDto::from)
+        List<PathForTrackingResponseDto> pathDto = paths.stream()
+                .map(PathForTrackingResponseDto::from)
                 .toList();
 
         // 날씨 가져오기 (5일치)
