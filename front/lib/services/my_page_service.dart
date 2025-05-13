@@ -4,22 +4,22 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart';
 import '../../models/user.dart';
-import 'package:http_parser/http_parser.dart'; // 꼭 필요
+import 'package:http_parser/http_parser.dart';
 
 class MyPageService {
   final String baseUrl = dotenv.get('BASE_URL');
 
-  Future<User> fetchUserDetails(String token) async {
+  Future fetchUserDetails(String token) async {
     final response = await http.get(
       Uri.parse('$baseUrl/user/mypage'),
       headers: {
         'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json; charset=utf-8',
       },
     );
-
     if (response.statusCode == 200) {
-      final jsonData = jsonDecode(response.body);
+      final jsonString = utf8.decode(response.bodyBytes);
+      final jsonData = jsonDecode(jsonString);
       if (jsonData['status'] == true) {
         return User.fromJson(jsonData['data']);
       } else {
@@ -33,11 +33,10 @@ class MyPageService {
   Future<User> updateUserProfile(String token, String nickname, XFile? profileImage) async {
     try {
       final uri = Uri.parse('$baseUrl/user/mypage');
-      
       final request = http.MultipartRequest('PATCH', uri);
       request.headers['Authorization'] = 'Bearer $token';
+      request.headers['Content-Type'] = 'application/json; charset=utf-8'; // 요청 헤더에 UTF-8 명시
 
-      // userData를 MultipartFile처럼 추가
       final userData = jsonEncode({"nickname": nickname});
       request.files.add(http.MultipartFile.fromString(
         'userData',
@@ -45,17 +44,15 @@ class MyPageService {
         contentType: MediaType('application', 'json'),
       ));
 
-      // 프로필 이미지 추가 (선택)
       if (profileImage != null) {
         final file = await http.MultipartFile.fromPath(
           'profileImage',
           profileImage.path,
-          contentType: MediaType('image', 'jpeg'), // png인 경우는 image/png
+          contentType: MediaType('image', 'jpeg'),
         );
         request.files.add(file);
       }
-      
-      // 요청 상세 로깅
+
       debugPrint('=============== REQUEST DETAILS ===============');
       debugPrint('URL: $uri');
       debugPrint('Method: PATCH');
@@ -66,27 +63,32 @@ class MyPageService {
       for (var file in request.files) {
         debugPrint('File: ${file.field} = ${file.filename} (${file.length} bytes)');
       }
-      
-      // 요청 전송
+
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
-      
-      // 응답 로깅
+
       debugPrint('=============== RESPONSE DETAILS ===============');
       debugPrint('Status Code: ${response.statusCode}');
       debugPrint('Headers: ${response.headers}');
-      debugPrint('Body: ${response.body}');
-      
+      debugPrint('Raw Body Bytes: ${response.bodyBytes}');
+      debugPrint('Raw Body: ${response.body}');
+
       if (response.statusCode == 200) {
-        final jsonData = jsonDecode(response.body);
+        // 응답 바이트를 UTF-8로 디코딩
+        final jsonString = utf8.decode(response.bodyBytes, allowMalformed: true);
+        debugPrint('UTF-8 Decoded Body: $jsonString');
+        final jsonData = jsonDecode(jsonString);
+        debugPrint('API Message: ${jsonData['message']}');
+        debugPrint('Nickname: ${jsonData['data']?['nickname']}');
         if (jsonData['status'] == true) {
           return User.fromJson(jsonData['data']);
         } else {
           throw Exception('API failed: ${jsonData['message']} (code: ${jsonData['code']})');
         }
       } else {
-        final decodedBody = utf8.decode(response.bodyBytes); 
-        throw Exception(decodedBody); 
+        final decodedBody = utf8.decode(response.bodyBytes, allowMalformed: true);
+        debugPrint('Error Body (UTF-8 Decoded): $decodedBody');
+        throw Exception(decodedBody);
       }
     } catch (e) {
       debugPrint('========= ERROR =========');
@@ -95,9 +97,128 @@ class MyPageService {
     }
   }
 
-  Future<void> changePassword(String token, String currentPassword, String newPassword) async {
-  // API 호출 로직
-  // 예: await http.post(...)
-  // 성공 시 아무것도 반환하지 않거나, 실패 시 예외 throw
-}
+  Future<User> updateUserAgreement(String token, bool isAgree) async {
+    try {
+      final uri = Uri.parse('$baseUrl/user/mypage');
+      final request = http.MultipartRequest('PATCH', uri);
+      request.headers['Authorization'] = 'Bearer $token';
+      request.headers['Content-Type'] = 'application/json; charset=utf-8'; 
+
+      final userData = jsonEncode({"isAgree": isAgree});
+      request.files.add(http.MultipartFile.fromString(
+        'userData',
+        userData,
+        contentType: MediaType('application', 'json'),
+      ));
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      debugPrint('=============== AGREEMENT UPDATE RESPONSE ===============');
+      debugPrint('Status Code: ${response.statusCode}');
+      debugPrint('Headers: ${response.headers}');
+      debugPrint('Body Bytes: ${response.bodyBytes}');
+      debugPrint('Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        // 응답 바이트를 UTF-8로 디코딩
+        final jsonString = utf8.decode(response.bodyBytes);
+        debugPrint('UTF-8 Decoded Body: $jsonString');
+        final jsonData = jsonDecode(jsonString);
+        if (jsonData['status'] == true) {
+          return User.fromJson(jsonData['data']);
+        } else {
+          throw Exception('API failed: ${jsonData['message']} (code: ${jsonData['code']})');
+        }
+      } else {
+        final decodedBody = utf8.decode(response.bodyBytes);
+        debugPrint('Error Body (UTF-8 Decoded): $decodedBody');
+        throw Exception(decodedBody);
+      }
+    } catch (e) {
+      debugPrint('========= AGREEMENT UPDATE ERROR =========');
+      debugPrint('$e');
+      rethrow;
+    }
+  }
+
+  Future withdrawUser(String token, bool social, {String? password}) async {
+    try {
+      final uri = Uri.parse('$baseUrl/user/withdraw');
+      final body = social ? {} : {'password': password};
+
+      final response = await http.delete(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(body),
+      );
+
+      debugPrint('=============== WITHDRAW REQUEST DETAILS ===============');
+      debugPrint('URL: $uri');
+      debugPrint('Method: DELETE');
+      debugPrint('Headers: {Authorization: Bearer $token, Content-Type: application/json}');
+      debugPrint('Body: $body');
+      debugPrint('=============== WITHDRAW RESPONSE DETAILS ===============');
+      debugPrint('Status Code: ${response.statusCode}');
+      debugPrint('Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final jsonData = jsonDecode(response.body);
+        if (jsonData['status'] == true) {
+          // 탈퇴 성공 후 로그아웃 호출
+          await logout(token);
+          return;
+        } else {
+          throw Exception('API failed: ${jsonData['message']} (code: ${jsonData['code']})');
+        }
+      } else {
+        final decodedBody = utf8.decode(response.bodyBytes);
+        throw Exception(decodedBody);
+      }
+    } catch (e) {
+      debugPrint('========= WITHDRAW ERROR =========');
+      debugPrint('$e');
+      rethrow;
+    }
+  }
+
+  Future logout(String token) async {
+    try {
+      final uri = Uri.parse('$baseUrl/auth/logout');
+      final response = await http.post(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({}),
+      );
+
+      debugPrint('=============== LOGOUT REQUEST DETAILS ===============');
+      debugPrint('URL: $uri');
+      debugPrint('Method: POST');
+      debugPrint('Headers: {Authorization: Bearer $token, Content-Type: application/json}');
+      debugPrint('=============== LOGOUT RESPONSE DETAILS ===============');
+      debugPrint('Status Code: ${response.statusCode}');
+      debugPrint('Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final jsonData = jsonDecode(response.body);
+        if (jsonData['status'] != true) {
+          debugPrint('Logout API failed: ${jsonData['message']}');
+        }
+      } else if (response.statusCode == 403) {
+        debugPrint('Session expired during logout');
+      } else {
+        debugPrint('Logout server error: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('========= LOGOUT ERROR =========');
+      debugPrint('$e');
+    }
+    // 서버 응답과 관계없이 클라이언트 인증 정보 초기화
+  }
 }
