@@ -102,7 +102,7 @@ class MyPageService {
       final uri = Uri.parse('$baseUrl/user/mypage');
       final request = http.MultipartRequest('PATCH', uri);
       request.headers['Authorization'] = 'Bearer $token';
-      request.headers['Content-Type'] = 'application/json; charset=utf-8'; // 요청 헤더에 UTF-8 명시
+      request.headers['Content-Type'] = 'application/json; charset=utf-8'; 
 
       final userData = jsonEncode({"isAgree": isAgree});
       request.files.add(http.MultipartFile.fromString(
