@@ -1,4 +1,4 @@
-package com.example.ollana.presentation.screen
+package com.c104.ollana.presentation.screen
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -13,7 +13,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ollana.R
+import com.c104.ollana.R
 import androidx.wear.compose.material.*
 import coil.compose.rememberAsyncImagePainter
 

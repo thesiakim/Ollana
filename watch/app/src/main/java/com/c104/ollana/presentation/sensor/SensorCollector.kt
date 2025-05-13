@@ -1,4 +1,4 @@
-package com.example.ollana.presentation.sensor
+package com.c104.ollana.presentation.sensor
 
 import android.content.Context
 import android.hardware.Sensor
@@ -6,7 +6,7 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.util.Log
-import com.example.ollana.presentation.data.MessageSender
+import com.c104.ollana.presentation.data.MessageSender
 import org.json.JSONObject
 
 class SensorCollector(private val context : Context) : SensorEventListener{
@@ -14,7 +14,7 @@ class SensorCollector(private val context : Context) : SensorEventListener{
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
 
     //사용자 센서 정의(심박수, 걸음수)
-    private val heartRateSensor : Sensor?=sensorManager.getDefaultSensor(Sensor.TYPE_HEART_RATE)
+    private val heartRateSensor : Sensor?=sensorManager.getDefaultSensor(69682)
     private val stepSensor : Sensor?=sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
 
     //최근 수집된 센서 값 저장
@@ -28,6 +28,13 @@ class SensorCollector(private val context : Context) : SensorEventListener{
 
     //센서 수집
     fun start(){
+        Log.d(TAG, "📦 센서 존재 여부 - HR: ${heartRateSensor != null}, Step: ${stepSensor != null}")
+        // 연결 가능한 센서 목록 출력 (디버깅용)
+        val sensors = sensorManager.getSensorList(Sensor.TYPE_ALL)
+        for (sensor in sensors) {
+            Log.d(TAG, "📦 사용 가능한 센서: ${sensor.name} (type: ${sensor.type})")
+        }
+
         heartRateSensor?.let {
             sensorManager.registerListener(this,it,SensorManager.SENSOR_DELAY_NORMAL)
         }
@@ -45,7 +52,7 @@ class SensorCollector(private val context : Context) : SensorEventListener{
 
     //센서 데이터가 들어왔을대 호출
     override fun onSensorChanged(event: SensorEvent?) {
-
+        Log.d(TAG, "✅ onSensorChanged 호출됨")
         if(event ==null) return
 
         when(event.sensor.type){

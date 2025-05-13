@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.ollana"
+    namespace = "com.c104.ollana"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.ollana"
+        applicationId = "com.c104.ollana"
         minSdk = 31
         targetSdk = 35
         versionCode = 1

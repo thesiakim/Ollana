@@ -1,4 +1,4 @@
-package com.example.ollana.presentation.data
+package com.c104.ollana.presentation.data
 
 import android.content.Context
 import android.util.Log

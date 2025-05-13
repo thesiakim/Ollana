@@ -1,4 +1,4 @@
-package com.example.ollana.presentation.screen
+package com.c104.ollana.presentation.screen
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
