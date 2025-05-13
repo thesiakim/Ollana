@@ -13,7 +13,6 @@ import com.ssafy.ollana.mountain.web.dto.OpenWeatherDto;
 import com.ssafy.ollana.mountain.web.dto.response.MountainDetailResponseDto;
 import com.ssafy.ollana.mountain.web.dto.response.MountainListResponseDto;
 import com.ssafy.ollana.mountain.web.dto.response.MountainMapResponseDto;
-import com.ssafy.ollana.mountain.web.dto.response.PathResponseDto;
 import com.ssafy.ollana.tracking.web.dto.response.PathForTrackingResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -126,6 +125,30 @@ public class MountainServiceImpl implements MountainService {
                         .toList())
                 .weather(weather)
                 .build();
+
+        return response;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MountainListResponseDto> searchMountain(String mountainName) {
+        List<Mountain> mountains = mountainRepository.findByMountainNameContaining(mountainName);
+
+        List<MountainListResponseDto> response = mountains.stream()
+                .map(mountain -> new MountainListResponseDto(
+                        mountain.getId(),
+                        mountain.getMountainName(),
+                        mountain.getMountainLatitude(),
+                        mountain.getMountainLongitude(),
+                        mountain.getMountainHeight(),
+                        mountain.getMountainLoc(),
+                        mountain.getLevel().name(),
+                        mountain.getMountainDescription(),
+                        mountain.getMountainImgs().stream()
+                                .map(MountainImg::getImage)
+                                .toList()
+                ))
+                .toList();
 
         return response;
     }
