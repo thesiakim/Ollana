@@ -10,12 +10,16 @@ import com.ssafy.ollana.footprint.persistent.repository.FootprintRepository;
 import com.ssafy.ollana.footprint.persistent.repository.HikingHistoryRepository;
 import com.ssafy.ollana.mountain.persistent.entity.Level;
 import com.ssafy.ollana.security.CustomUserDetails;
+import com.ssafy.ollana.security.jwt.JwtUtil;
 import com.ssafy.ollana.user.dto.LatestRecordDto;
 import com.ssafy.ollana.user.dto.request.MypageUpdateRequestDto;
 import com.ssafy.ollana.user.dto.request.WithdrawlRequest;
 import com.ssafy.ollana.user.dto.response.MypageResponseDto;
 import com.ssafy.ollana.user.dto.UserInfoDto;
 import com.ssafy.ollana.user.entity.User;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import com.ssafy.ollana.user.exception.NicknameAlreadyExistsException;
@@ -44,6 +48,7 @@ public class UserServiceImpl implements UserService {
     private final TokenService tokenService;
     private final PasswordEncoder passwordEncoder;
     private final KakaoService kakaoService;
+    private final JwtUtil jwtUtil;
 
     @Override
     @Transactional(readOnly = true)
@@ -108,13 +113,13 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public void withdraw(CustomUserDetails userDetails, WithdrawlRequest request) {
+    public void withdraw(HttpServletRequest request, HttpServletResponse response, CustomUserDetails userDetails, WithdrawlRequest withdrawlRequest) {
         User user = userDetails.getUser();
 
         // 소셜 회원이 아닐 경우에만 비밀번호 확인
         if (!user.isSocial()) {
             // 비밀번호 확인 절차
-            if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            if (!passwordEncoder.matches(withdrawlRequest.getPassword(), user.getPassword())) {
                 AuthenticationException.passwordMismatch();
             }
         }
@@ -125,17 +130,44 @@ public class UserServiceImpl implements UserService {
             log.info("kakao 소셜 회원 연결 끊기 완료: userId={}, kakaoId={}", user.getId(), user.getKakaoId());
         }
 
-        // refresh token 삭제
-        tokenService.deleteRefreshToken(user.getEmail());
-
         // S3 프로필 이미지 삭제 (기본 이미지가 아닐 때)
         if (!user.getProfileImage().equals(s3Service.getDefaultProfileImageUrl())) {
             s3Service.deleteFile(user.getProfileImage());
         }
 
+        // 토큰, 쿠키 처리
+        String accessToken = extractAccessTokenFromHeader(request);
+        if (accessToken != null) {
+            // 토큰 남은 유효시간
+            long tokenRemainingTime = jwtUtil.getTokenRemainingTime(accessToken);
+            if (tokenRemainingTime > 0) {
+                // 남은 유효시간 만큼 블랙리스트에 저장
+                tokenService.blacklistAccessToken(accessToken, tokenRemainingTime);
+            }
+        }
+
+        tokenService.deleteRefreshToken(user.getEmail());
+
+        // 리프레시 토큰 쿠키 삭제
+        Cookie cookie = new Cookie("refreshToken", "");
+        cookie.setHttpOnly(true);
+        cookie.setSecure(true);
+        cookie.setPath("/");
+        cookie.setMaxAge(0);        // 즉시 만료
+        response.addCookie(cookie); // 삭제용 쿠키를 응답에 추가
+
         // user 삭제
         userRepository.delete(user);
         log.info("사용자 탈퇴 완료: userId={}", user.getId());
+    }
+
+    // 헤더에서 액세스 토큰 추출
+    private String extractAccessTokenFromHeader(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        if (header != null && header.startsWith("Bearer ")) {
+            return header.substring(7);
+        }
+        return null;
     }
 
     @Override

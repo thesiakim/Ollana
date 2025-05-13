@@ -2,6 +2,7 @@ package com.ssafy.ollana.footprint.persistent.entity;
 
 import com.ssafy.ollana.common.BaseEntity;
 import com.ssafy.ollana.mountain.persistent.entity.Path;
+import com.ssafy.ollana.tracking.persistent.entity.HikingLiveRecords;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -36,6 +37,9 @@ public class HikingHistory extends BaseEntity {
 	private int hikingTime;
 	private double averageHeartRate;
 	private int maxHeartRate;
+
+	@OneToMany(mappedBy = "hikingHistory", cascade = CascadeType.REMOVE, orphanRemoval = true)
+	private List<HikingLiveRecords> hikingLiveRecords;
 
 	public static HikingHistory of(Footprint footprint, Path path, int hikingTime, List<Integer> heartRates) {
 		double avg = heartRates.stream().mapToInt(i -> i).average().orElse(0);

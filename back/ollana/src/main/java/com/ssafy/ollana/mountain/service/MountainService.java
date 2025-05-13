@@ -12,4 +12,5 @@ public interface MountainService {
     List<MountainMapResponseDto> getMountains();
     PageResponse<MountainListResponseDto> getMountainList(int page, int size);
     MountainDetailResponseDto getMountainDetail(int mountainId);
+    List<MountainListResponseDto> searchMountain(String mountainName);
 }
