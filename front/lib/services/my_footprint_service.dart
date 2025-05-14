@@ -3,6 +3,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import '../models/footprint_response.dart';
+import '../models/compare_response.dart';
 import '../models/footprint_detail_response.dart';
 import '../models/path_detail.dart';
 import '../../screens/footprint/footprint_detail_screen.dart'; // Import for CompareResponse

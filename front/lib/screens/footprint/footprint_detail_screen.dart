@@ -1,79 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../../models/compare_response.dart';
 import '../../models/path_detail.dart';
 import '../../services/my_footprint_service.dart';
-import 'dart:convert';
+import '../../utils/footprint_utils.dart';
+import '../../widgets/footprint/footprint_detail_widgets.dart';
 import '../../models/record.dart';
 import './date_picker_modal.dart';
-
-class CompareResponse {
-  final List<CompareRecord> records;
-  final CompareResult? result;
-
-  CompareResponse({required this.records, this.result});
-
-  factory CompareResponse.fromJson(Map<String, dynamic> json) {
-    final data = json['data'];
-    final records = (data['records'] as List)
-        .map((e) => CompareRecord.fromJson(e))
-        .toList();
-    final resultJson = data['result'];
-    return CompareResponse(
-      records: records,
-      result: resultJson != null ? CompareResult.fromJson(resultJson) : null,
-    );
-  }
-}
-
-class CompareRecord {
-  final int recordId;
-  final String date;
-  final int maxHeartRate;
-  final double averageHeartRate;
-  final int time;
-
-  CompareRecord({
-    required this.recordId,
-    required this.date,
-    required this.maxHeartRate,
-    required this.averageHeartRate,
-    required this.time,
-  });
-
-  factory CompareRecord.fromJson(Map<String, dynamic> json) {
-    return CompareRecord(
-      recordId: json['recordId'],
-      date: json['date'],
-      maxHeartRate: json['maxHeartRate'],
-      averageHeartRate: json['averageHeartRate'],
-      time: json['time'],
-    );
-  }
-}
-
-class CompareResult {
-  final String growthStatus;
-  final int maxHeartRateDiff;
-  final int avgHeartRateDiff;
-  final int timeDiff;
-
-  CompareResult({
-    required this.growthStatus,
-    required this.maxHeartRateDiff,
-    required this.avgHeartRateDiff,
-    required this.timeDiff,
-  });
-
-  factory CompareResult.fromJson(Map<String, dynamic> json) {
-    return CompareResult(
-      growthStatus: json['growthStatus'],
-      maxHeartRateDiff: json['maxHeartRateDiff'],
-      avgHeartRateDiff: json['avgHeartRateDiff'],
-      timeDiff: json['timeDiff'],
-    );
-  }
-}
 
 class FootprintDetailScreen extends StatefulWidget {
   final int footprintId;
@@ -99,30 +32,6 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
   Map<int, CompareResponse?> _compareDataByPath = {};
   Map<int, DateTime?> _startDatesByPath = {};
   Map<int, DateTime?> _endDatesByPath = {};
-
-  String formatDate(DateTime date) {
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-  }
-
-  String displayDate(DateTime? date) {
-    return date != null ? formatDate(date) : '선택';
-  }
-
-  double _getMaxValue(PathDetail path) {
-    double maxHeartRate = 0;
-    double maxTime = 0;
-
-    for (var record in path.records) {
-      if (record.maxHeartRate > maxHeartRate) {
-        maxHeartRate = record.maxHeartRate.toDouble();
-      }
-      if (record.time > maxTime) {
-        maxTime = record.time.toDouble();
-      }
-    }
-
-    return maxHeartRate > maxTime ? maxHeartRate : maxTime;
-  }
 
   @override
   void initState() {
@@ -326,11 +235,11 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _legendItem('최고 심박수', Colors.red),
+                legendItem('최고 심박수', Colors.red),
                 const SizedBox(width: 15),
-                _legendItem('평균 심박수', Colors.blue),
+                legendItem('평균 심박수', Colors.blue),
                 const SizedBox(width: 15),
-                _legendItem('소요 시간(분)', Colors.green),
+                legendItem('소요 시간(분)', Colors.green),
               ],
             ),
           ),
@@ -378,9 +287,9 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                                 minX: 0,
                                 maxX: path.records.isEmpty ? 0 : path.records.length - 1.0,
                                 minY: 0,
-                                maxY: path.records.isEmpty ? 100 : _getMaxValue(path) * 1.1,
+                                maxY: path.records.isEmpty ? 100 : getMaxValue(path) * 1.1,
                                 lineBarsData: [
-                                  _line(
+                                  line(
                                     path.records.isEmpty
                                         ? [FlSpot(0, 0)]
                                         : path.records.asMap().entries.map((entry) {
@@ -392,8 +301,9 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                                     '최고 심박수',
                                     path.records,
                                     path.pathId,
+                                    _selectedRecordIdsByPath,
                                   ),
-                                  _line(
+                                  line(
                                     path.records.isEmpty
                                         ? [FlSpot(0, 0)]
                                         : path.records.asMap().entries.map((entry) {
@@ -405,8 +315,9 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                                     '평균 심박수',
                                     path.records,
                                     path.pathId,
+                                    _selectedRecordIdsByPath,
                                   ),
-                                  _line(
+                                  line(
                                     path.records.isEmpty
                                         ? [FlSpot(0, 0)]
                                         : path.records.asMap().entries.map((entry) {
@@ -418,6 +329,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                                     '소요 시간',
                                     path.records,
                                     path.pathId,
+                                    _selectedRecordIdsByPath,
                                   ),
                                 ],
                                 titlesData: FlTitlesData(
@@ -560,7 +472,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                           children: [
                             ElevatedButton(
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Color(0xFF52A486),
+                                backgroundColor: const Color(0xFF52A486),
                                 foregroundColor: Colors.white,
                               ),
                               onPressed: () => _showDatePickerModal(path.pathId, true),
@@ -569,7 +481,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                             const SizedBox(width: 10),
                             ElevatedButton(
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Color(0xFF52A486),
+                                backgroundColor: const Color(0xFF52A486),
                                 foregroundColor: Colors.white,
                               ),
                               onPressed: _startDatesByPath[path.pathId] == null
@@ -580,7 +492,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                           ],
                         ),
                         if (compareData != null && compareData.records.isNotEmpty)
-                          _buildCompareResult(compareData),
+                          buildCompareResult(compareData),
                       ],
                     ),
                   );
@@ -589,373 +501,6 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildCompareResult(CompareResponse compareData) {
-    final records = compareData.records;
-    final result = compareData.result;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 16),
-        const Divider(thickness: 1),
-        Card(
-          elevation: 0,
-          margin: const EdgeInsets.symmetric(vertical: 8),
-          shape: RoundedRectangleBorder(
-            side: BorderSide(color: Colors.grey[300]!, width: 1),
-            borderRadius: BorderRadius.circular(15),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: records.map((record) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: Color(0xFF52A486),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          record.date,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          _buildMetricCard(
-                            '',
-                            '${record.maxHeartRate}',
-                            'bpm',
-                            Colors.red[100]!,
-                            Colors.red[700]!,
-                            Icons.favorite,
-                          ),
-                          _buildMetricCard(
-                            '',
-                            '${record.averageHeartRate.toStringAsFixed(1)}',
-                            'bpm',
-                            Colors.blue[100]!,
-                            Colors.blue[700]!,
-                            Icons.monitor_heart_outlined,
-                          ),
-                          _buildMetricCard(
-                            '',
-                            '${record.time}',
-                            '분',
-                            Colors.green[100]!,
-                            Colors.green[700]!,
-                            Icons.timer,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-        ),
-        if (result != null) ...[
-          const SizedBox(height: 12),
-          Card(
-            elevation: 0,
-            margin: const EdgeInsets.symmetric(vertical: 12),
-            shape: RoundedRectangleBorder(
-              side: BorderSide(color: Colors.grey[300]!, width: 1),
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  RichText(
-                    text: TextSpan(
-                      children: [
-                        TextSpan(
-                          text: '',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
-                        WidgetSpan(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  result.growthStatus == 'IMPROVING' ? Icons.emoji_events : Icons.trending_down,
-                                  size: 18,
-                                  color: Colors.black,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  _formatGrowthStatus(result.growthStatus),
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        TextSpan(
-                          text: '',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: result.growthStatus == 'IMPROVING' ? Colors.green[700] : Colors.red[700],
-                          ),
-                        ),
-                      ],
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-                  _buildComparisonItemCute('최고 심박수', result.maxHeartRateDiff, 'bpm', result.maxHeartRateDiff <= 0, Icons.favorite),
-                  const SizedBox(height: 16),
-                  _buildComparisonItemCute('평균 심박수', result.avgHeartRateDiff, 'bpm', result.avgHeartRateDiff <= 0, Icons.monitor_heart_outlined),
-                  const SizedBox(height: 16),
-                  _buildComparisonItemCute('소요 시간', result.timeDiff, '분', result.timeDiff <= 0, Icons.timer),
-                ],
-              ),
-            ),
-          ),
-        ],
-        const SizedBox(height: 16),
-        const Divider(thickness: 1),
-      ],
-    );
-  }
-
-  Widget _buildMetricCard(String label, String value, String unit, Color bgColor, Color textColor, IconData icon) {
-    return Container(
-      width: 100,
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
-            spreadRadius: 1,
-            blurRadius: 3,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: textColor, size: 22),
-          const SizedBox(height: 8),
-          if (label.isNotEmpty)
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: textColor,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          const SizedBox(height: 4),
-          RichText(
-            text: TextSpan(
-              children: [
-                TextSpan(
-                  text: value,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: textColor,
-                  ),
-                ),
-                TextSpan(
-                  text: ' $unit',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.normal,
-                    color: textColor.withOpacity(0.8),
-                  ),
-                ),
-              ],
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildComparisonItemCute(String label, int diff, String unit, bool isPositive, IconData icon) {
-    final sign = diff > 0 ? '+' : '';
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isPositive ? Colors.green[50] : Colors.red[50],
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.2),
-                  spreadRadius: 1,
-                  blurRadius: 3,
-                  offset: Offset(0, 1),
-                ),
-              ],
-            ),
-            child: Icon(
-              icon,
-              color: isPositive ? Colors.green[600] : Colors.red[600],
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey[800],
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '이전 기록 대비',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.2),
-                  spreadRadius: 1,
-                  blurRadius: 3,
-                  offset: Offset(0, 1),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  isPositive ? Icons.arrow_downward : Icons.arrow_upward,
-                  color: isPositive ? Colors.green[700] : Colors.red[700],
-                  size: 16,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '$sign$diff $unit',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: isPositive ? Colors.green[700] : Colors.red[700],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatGrowthStatus(String status) {
-    switch (status) {
-      case 'IMPROVING':
-        return '기록이 성장했어요!';
-      case 'DECLINING':
-        return '기록이 부진해요!';
-      case 'STABLE':
-        return '기록이 비슷해요!';
-      default:
-        return status;
-    }
-  }
-
-  Widget _legendItem(String label, Color color) {
-    return Row(
-      children: [
-        Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
-        ),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12),
-        ),
-      ],
-    );
-  }
-
-  LineChartBarData _line(List<FlSpot> spots, Color color, String label, List<Record> records, int pathId) {
-    final selectedRecordIds = _selectedRecordIdsByPath[pathId] ?? {};
-    return LineChartBarData(
-      spots: spots,
-      isCurved: true,
-      dotData: FlDotData(
-        show: true,
-        getDotPainter: (spot, percent, barData, index) {
-          final recordId = records[index].recordId;
-          return FlDotCirclePainter(
-            radius: selectedRecordIds.contains(recordId) ? 6 : 4,
-            color: selectedRecordIds.contains(recordId) ? Colors.orange : color,
-            strokeWidth: 2,
-            strokeColor: Colors.white,
-          );
-        },
-      ),
-      color: color,
-      barWidth: 2,
-      belowBarData: BarAreaData(
-        show: true,
-        color: color.withAlpha(25),
       ),
     );
   }
