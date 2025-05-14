@@ -18,7 +18,6 @@ public interface AuthService {
 //    LoginResponseDto saveKakaoUserAndLogin(KakaoSignupRequestDto request, HttpServletResponse response);
 
 
-    LoginResponseDto kakaoLogin(String accessCode, HttpServletResponse response);
     LoginResponseDto saveKakaoUserAndLogin(KakaoSignupRequestDto request, HttpServletResponse response);
     DeepLinkResponseDto processKakaoLogin(String accessCode, HttpServletResponse response);
 }

@@ -79,7 +79,7 @@ public class AuthController {
         } catch (IOException e) {
             log.error("딥링크 리다이렉트 중 오류 발생", e);
             try {
-                String errorLink = "ollana://auth/error?message=" + URLEncoder.encode("인증 처리 중 오류 발생", "UTF-8");
+                String errorLink = "ollana://auth/oauth/kakao/error?message=" + URLEncoder.encode("인증 처리 중 오류 발생", "UTF-8");
                 response.sendRedirect(errorLink);
             } catch (IOException ex) {
                 log.error("에러 리다이렉트 중 추가 오류 발생", ex);
@@ -95,8 +95,9 @@ public class AuthController {
             return ResponseEntity.ok(Response.success(tempUserResponse));
         } catch (InvalidTempTokenException e) {
             log.error("유효하지 않은 임시 토큰");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Response.fail("유효하지 않은 임시 토큰입니다.", e.getErrorCode()));
         }
-        return null;
     }
 
     // 카카오 회원가입 완료

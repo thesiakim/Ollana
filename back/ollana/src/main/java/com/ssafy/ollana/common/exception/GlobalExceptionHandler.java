@@ -57,21 +57,4 @@ public class GlobalExceptionHandler {
         log.error("Exception 발생 : ", e);
         return ResponseEntity.internalServerError().body(Response.fail("서버 내부 오류가 발생했습니다.", "E-000"));
     }
-
-    /*
-    * 추가 정보 입력 필요 예외 처리
-    * */
-    @ExceptionHandler(AdditionalInfoRequiredException.class)
-    public ResponseEntity<Response<Map<String, Object>>> handleAdditionalInfoRequiredException(AdditionalInfoRequiredException e) {
-        log.info("AdditionalInfoRequiredException 발생 : 추가 정보 입력 필요");
-
-        Map<String, Object> responseData = new HashMap<>();
-        responseData.put("tempUser", e.getTempUser());
-        responseData.put("message", e.getMessage());
-        responseData.put("code", "ADDITIONAL_INFO_REQUIRED");
-
-        Response<Map<String, Object>> response = Response.success(responseData);
-
-        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
-    }
 }

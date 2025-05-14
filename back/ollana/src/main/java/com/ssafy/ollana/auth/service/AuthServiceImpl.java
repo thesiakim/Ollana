@@ -213,10 +213,33 @@ public class AuthServiceImpl implements AuthService {
 
 
 
-
+    // 회원가입 || 로그인 분기점
     @Override
     @Transactional(readOnly = true)
-    public LoginResponseDto kakaoLogin(String accessCode, HttpServletResponse response) {
+    public DeepLinkResponseDto processKakaoLogin(String accessCode, HttpServletResponse response) {
+        try {
+            // 카카오 로그인 시도
+            kakaoLogin(accessCode, response);
+
+            // 로그인 하면 앱으로 돌아가기
+            return DeepLinkResponseDto.builder()
+                    .deepLink("ollana://auth/oauth/kakao?status=login")
+                    .isNewUser(false)
+                    .build();
+
+        // 회원이 아니면 추가 정보 입력 필요
+        } catch (AdditionalInfoRequiredException e) {
+            TempUserDto tempUser = e.getTempUser();
+            String tempToken = kakaoService.generateKakaoTempToken(tempUser);
+
+            return DeepLinkResponseDto.builder()
+                    .deepLink("ollana://auth/oauth/kakao?status=signup&temp_token=" + tempToken)
+                    .isNewUser(true)
+                    .build();
+        }
+    }
+
+    private LoginResponseDto kakaoLogin(String accessCode, HttpServletResponse response) {
         // kakao에 access token 요청
         KakaoTokenDto kakaoTokenDto = kakaoService.getAccessToken(accessCode);
         // kakao에 사용자 정보 요청
@@ -277,27 +300,4 @@ public class AuthServiceImpl implements AuthService {
         return generateAuthTokensAndResponse(newUser, response);
     }
 
-    @Override
-    public DeepLinkResponseDto processKakaoLogin(String accessCode, HttpServletResponse response) {
-        try {
-            // 카카오 로그인 시도
-            kakaoLogin(accessCode, response);
-
-            // 로그인 하면 앱으로 돌아가기
-            return DeepLinkResponseDto.builder()
-                    .deepLink("ollana://auth/oauth/kakao?status=login")
-                    .isNewUser(false)
-                    .build();
-
-        // 회원이 아니면 추가 정보 입력 필요
-        } catch (AdditionalInfoRequiredException e) {
-            TempUserDto tempUser = e.getTempUser();
-            String tempToken = kakaoService.generateKakaoTempToken(tempUser);
-
-            return DeepLinkResponseDto.builder()
-                    .deepLink("ollana://auth/oauth/kakao?status=signup&temp_token=" + tempToken)
-                    .isNewUser(true)
-                    .build();
-        }
-    }
 }
