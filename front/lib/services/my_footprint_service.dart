@@ -6,6 +6,7 @@ import '../models/footprint_response.dart';
 import '../models/footprint_detail_response.dart';
 import '../models/path_detail.dart';
 import '../models/compare_response.dart';
+import '../models/battle_result.dart';
 import '../utils/footprint_utils.dart';
 
 class MyFootprintService {
@@ -112,6 +113,33 @@ class MyFootprintService {
       return CompareResponse.fromJson(jsonData);
     } else {
       throw Exception('비교 데이터 로드 실패: ${res.statusCode}');
+    }
+  }
+
+  Future<Map<String, dynamic>> getBattleResults(String token, {int page = 0}) async {
+    final uri = Uri.parse('$_baseUrl/footprint/battle?page=$page');
+
+    final headers = {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    };
+
+    debugPrint('대결 결과 API 호출 URI: $uri');
+    final res = await _client.get(uri, headers: headers);
+    debugPrint('대결 결과 API 응답 코드: ${res.statusCode}');
+    debugPrint('대결 결과 API 응답 본문: ${res.body}');
+
+    final decoded = utf8.decode(res.bodyBytes);
+    final jsonData = jsonDecode(decoded);
+
+    if (res.statusCode == 200) {
+      return {
+        'battleResults': (jsonData['data']['list'] as List).map((e) => BattleResult.fromJson(e)).toList(),
+        'isLast': jsonData['data']['last'] as bool,
+        'totalElements': jsonData['data']['totalElements'] as int,
+      };
+    } else {
+      throw Exception('대결 결과 API 호출 실패: ${res.statusCode}');
     }
   }
 }

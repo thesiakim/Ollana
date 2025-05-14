@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import '../../models/app_state.dart';
 import 'package:provider/provider.dart';
+import '../../models/app_state.dart';
 import '../../models/battle_result.dart';
-import 'dart:convert';
+import '../../services/my_footprint_service.dart';
 
 class FootprintBattleScreen extends StatefulWidget {
   final String token;
@@ -21,10 +19,13 @@ class _FootprintBattleScreenState extends State<FootprintBattleScreen> {
   int _currentPage = 0;
   bool _isLoading = false;
   bool _lastPage = false;
+  int totalElements = 0;
+  late final MyFootprintService _footprintService;
 
   @override
   void initState() {
     super.initState();
+    _footprintService = MyFootprintService();
     _fetchBattleResults();
     _scrollController.addListener(() {
       if (_scrollController.position.pixels >=
@@ -48,38 +49,19 @@ class _FootprintBattleScreenState extends State<FootprintBattleScreen> {
       _isLoading = true;
     });
 
-    final baseUrl = dotenv.get('BASE_URL');
-    final uri = Uri.parse('$baseUrl/footprint/battle?page=$page');
-
     try {
-      final res = await http.get(
-        uri,
-        headers: {
-          'Authorization': 'Bearer ${widget.token}',
-          'Content-Type': 'application/json',
-        },
-      );
-
-      debugPrint('대결 결과 API 응답 코드: ${res.statusCode}');
-      debugPrint('대결 결과 API 응답 본문: ${res.body}');
-      final decoded = utf8.decode(res.bodyBytes);
-
-      if (res.statusCode == 200) {
-        final jsonData = jsonDecode(decoded);
-        final data = jsonData['data'];
-        final List<dynamic> list = data['list'];
-        final bool isLast = data['last'];
-
-        setState(() {
-          if (page == 0) {
-            _battleResults = list.map((e) => BattleResult.fromJson(e)).toList();
-          } else {
-            _battleResults.addAll(list.map((e) => BattleResult.fromJson(e)));
-          }
-          _currentPage = page;
-          _lastPage = isLast;
-        });
-      }
+      final result = await _footprintService.getBattleResults(widget.token, page: page);
+      
+      setState(() {
+        if (page == 0) {
+          _battleResults = result['battleResults'] as List<BattleResult>;
+        } else {
+          _battleResults.addAll(result['battleResults'] as List<BattleResult>);
+        }
+        _currentPage = page;
+        _lastPage = result['isLast'] as bool;
+        totalElements = result['totalElements'] as int;
+      });
     } catch (e) {
       debugPrint('대결 결과 API 호출 에러: $e');
     } finally {
@@ -112,7 +94,7 @@ class _FootprintBattleScreenState extends State<FootprintBattleScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final myProfile = context.watch<AppState>().profileImageUrl;
+    final profileImageUrl = context.watch<AppState>().profileImageUrl;
     final nickname = context.watch<AppState>().nickname;
 
     return Scaffold(
@@ -192,7 +174,7 @@ class _FootprintBattleScreenState extends State<FootprintBattleScreen> {
                           ),
                         ),
                         Text(
-                          '${_battleResults.length}개',
+                          '$totalElements개',
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.grey[600],
@@ -233,23 +215,16 @@ class _FootprintBattleScreenState extends State<FootprintBattleScreen> {
                                 );
                               }
                               final result = _battleResults[index];
-                              return _buildBattleCard(result, myProfile, nickname);
+                              return _buildBattleCard(result, profileImageUrl, nickname);
                             },
                           ),
                   ),
                 ),
                 
-                // 하단 메시지
+                // at the bottom message
                 if (_battleResults.isNotEmpty && _lastPage)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12.0),
-                    // child: Text(
-                    //   '모든 대결 결과를 불러왔습니다',
-                    //   style: TextStyle(
-                    //     color: Colors.grey[600],
-                    //     fontSize: 14,
-                    //   ),
-                    // ),
                   ),
               ],
             ),
