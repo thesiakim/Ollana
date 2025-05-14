@@ -385,15 +385,15 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                                           if (touchedSpot.barIndex == 0) {
                                             title =
                                                 '최고 심박수: ${touchedSpot.y.toInt()}';
-                                            textColor = Colors.red;
+                                            textColor = Colors.black;
                                           } else if (touchedSpot.barIndex == 1) {
                                             title =
                                                 '평균 심박수: ${touchedSpot.y.toInt()}';
-                                            textColor = Colors.blue;
+                                            textColor = Colors.black;
                                           } else {
                                             title =
                                                 '소요 시간: ${touchedSpot.y.toInt()}분';
-                                            textColor = Colors.green;
+                                            textColor = Colors.black;
                                           }
 
                                           return LineTooltipItem(

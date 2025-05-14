@@ -214,17 +214,37 @@ Widget buildMetricCard(String label, String value, String unit, Color bgColor, C
           textAlign: TextAlign.center,
         ),
       ],
-    ),
+    )
   );
 }
 
 Widget buildComparisonItemCute(String label, int diff, String unit, bool isPositive, IconData icon) {
   final sign = diff > 0 ? '+' : '';
+  // Determine colors based on the metric label
+  Color bgColor;
+  Color metricColor;
+  switch (label) {
+    case '최고 심박수':
+      bgColor = Colors.red[50]!;
+      metricColor = Colors.red[600]!;
+      break;
+    case '평균 심박수':
+      bgColor = Colors.blue[50]!;
+      metricColor = Colors.blue[600]!;
+      break;
+    case '소요 시간':
+      bgColor = Colors.green[50]!;
+      metricColor = Colors.green[600]!;
+      break;
+    default:
+      bgColor = Colors.grey[50]!;
+      metricColor = Colors.grey[600]!;
+  }
 
   return Container(
     padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
-      color: isPositive ? Colors.green[50] : Colors.red[50],
+      color: bgColor,
       borderRadius: BorderRadius.circular(15),
     ),
     child: Row(
@@ -245,7 +265,7 @@ Widget buildComparisonItemCute(String label, int diff, String unit, bool isPosit
           ),
           child: Icon(
             icon,
-            color: isPositive ? Colors.green[600] : Colors.red[600],
+            color: metricColor,
             size: 20,
           ),
         ),
@@ -292,7 +312,7 @@ Widget buildComparisonItemCute(String label, int diff, String unit, bool isPosit
             children: [
               Icon(
                 isPositive ? Icons.arrow_downward : Icons.arrow_upward,
-                color: isPositive ? Colors.green[700] : Colors.red[700],
+                color: metricColor,
                 size: 16,
               ),
               const SizedBox(width: 4),
@@ -301,7 +321,7 @@ Widget buildComparisonItemCute(String label, int diff, String unit, bool isPosit
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
-                  color: isPositive ? Colors.green[700] : Colors.red[700],
+                  color: metricColor,
                 ),
               ),
             ],
