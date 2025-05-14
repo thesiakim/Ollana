@@ -59,6 +59,7 @@ public class AuthController {
     @GetMapping("/oauth/kakao")
     public ResponseEntity<Response<LoginResponseDto>> kakaoLogin(@RequestParam("code") String accessCode, HttpServletResponse response) {
         LoginResponseDto loginResponse = authService.kakaoLogin(accessCode, response);
+        String deepLink = "ollana://auth/oauth/kakao";
         return ResponseEntity.ok(Response.success(loginResponse));
     }
 
