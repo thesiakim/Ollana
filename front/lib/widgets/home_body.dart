@@ -7,6 +7,7 @@ import '../widgets/status_container.dart';
 import '../screens/recommend/ai_recommendation_screen.dart';
 import '../screens/recommend/theme_recommendation_screen.dart';
 import '../screens/recommend/location_recommendation_screen.dart';
+import '../screens/user/survey_screen.dart';
 
 class HomeBody extends StatefulWidget {
   const HomeBody({super.key});
@@ -20,6 +21,14 @@ class _HomeBodyState extends State<HomeBody> {
   int _currentStatusPage = 0;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AppState>().fetchSurveyStatus();
+    });
+  }
+
+  @override
   void dispose() {
     _pageController.dispose();
     super.dispose();
@@ -28,8 +37,6 @@ class _HomeBodyState extends State<HomeBody> {
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
-
-    // 은은한 연두빛 계열 그라데이션 (모든 카테고리 동일)
     final softGreenGradient = const LinearGradient(
       colors: [Color(0xFFE8F5E9), Color(0xFFFFFFFF)],
       begin: Alignment.topCenter,
@@ -51,13 +58,81 @@ class _HomeBodyState extends State<HomeBody> {
             CategoryFrame(
               label: '내 맞춤 AI 산 추천',
               imagePath: 'lib/assets/images/ai_recommend.png',
-              gradient: softGreenGradient, // 은은한 연두 그라데이션
+              gradient: softGreenGradient,
               borderColor: Colors.grey.withOpacity(0.3),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => const AiRecommendationScreen()),
-              ),
+              onTap: () {
+                if (!appState.surveyCompleted) {
+                  showDialog(
+                    context: context,
+                    builder: (dialogContext) => AlertDialog(
+                      // ▶ 수정: 아이콘과 타이틀 추가
+                      title: Row(
+                        children: const [
+                          Icon(Icons.edit, color: Color(0xFF52A486)),
+                          SizedBox(width: 8),
+                          Text(
+                            '설문 작성 안내',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF333333),
+                            ),
+                          ),
+                        ],
+                      ),
+                      // ▶ 수정: 배경색, 그림자, 테두리
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      backgroundColor: Colors.white,
+                      content: const Text(
+                        '설문을 작성하고 AI 추천을 받아보세요 !',
+                        style: TextStyle(fontSize: 16, height: 1.4),
+                      ),
+                      actionsPadding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      // ▶ 수정: 버튼 스타일
+                      actions: [
+                        TextButton(
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.grey[600],
+                            textStyle: const TextStyle(fontSize: 14),
+                          ),
+                          onPressed: () => Navigator.of(dialogContext).pop(),
+                          child: const Text('취소'),
+                        ),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF52A486),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 12),
+                            textStyle: const TextStyle(
+                                fontSize: 14, fontWeight: FontWeight.bold),
+                          ),
+                          onPressed: () {
+                            Navigator.of(dialogContext).pop();
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const SurveyScreen()),
+                            );
+                          },
+                          child: const Text('설문하기'),
+                        ),
+                      ],
+                    ),
+                  );
+                } else {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const AiRecommendationScreen()),
+                  );
+                }
+              },
             ),
           ] else ...[
             Container(
@@ -83,11 +158,11 @@ class _HomeBodyState extends State<HomeBody> {
             ),
           ],
 
-          // 테마별 등산 추천 (항상 표시)
+          // 테마별 등산 추천
           CategoryFrame(
             label: '테마별 등산 추천',
             imagePath: 'lib/assets/images/theme_recommend.png',
-            gradient: softGreenGradient, // 동일한 은은한 연두 그라데이션
+            gradient: softGreenGradient,
             borderColor: Colors.grey.withOpacity(0.3),
             onTap: () => Navigator.push(
               context,
@@ -96,7 +171,7 @@ class _HomeBodyState extends State<HomeBody> {
             ),
           ),
 
-          // 현재 위치 등산 추천 (항상 표시)
+          // 현재 위치 등산 추천
           CategoryFrame(
             label: '현재 위치 등산 추천',
             imagePath: 'lib/assets/images/location_recommend.png',
@@ -140,8 +215,7 @@ class CategoryFrame extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: gradient,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: borderColor, width: 1.2), // 테두리만
-          // 그림자 제거
+          border: Border.all(color: borderColor, width: 1.2),
         ),
         child: Row(
           children: [
@@ -151,7 +225,7 @@ class CategoryFrame extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black, // 텍스트 검정
+                  color: Colors.black,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
