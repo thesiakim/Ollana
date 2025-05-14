@@ -78,7 +78,6 @@ async def submit_suervey(user_id: str, user_input:UserInput, db:Session = Depend
         return JSONResponse(status_code=400, content={"message": "유효한 user_id를 query 파라미터로 전달해주세요."})
     
     user = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
-    print("📁 DB 실제 경로:", SessionLocal().bind.url)
     if user:
         user.theme = user_input.theme
         user.experience = user_input.experience
@@ -96,6 +95,12 @@ async def submit_suervey(user_id: str, user_input:UserInput, db:Session = Depend
     db.commit()
     return JSONResponse({"message": "설문이 성공적으로 저장되었습니다."})
     
+@app.get("/has_survey/{user_id}")
+async def has_survey(user_id: str, db: Session = Depends(get_db)):
+    user = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
+    return {"has_survey": bool(user)}
+
+
 # 유저 설문 기반 추천(클러스터링)
 @app.post("/recommend/{user_id}")
 async def recommend(user_id:str, db: Session = Depends(get_db)):
