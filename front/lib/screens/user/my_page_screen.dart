@@ -558,7 +558,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Icon(
-                                    Icons.delete_outline, // 이모지 대신 아이콘 사용
+                                    Icons.exit_to_app, 
                                     color: Colors.red.shade400,
                                     size: 20, // 기존 이모지 크기와 유사하게 조정
                                   ),
