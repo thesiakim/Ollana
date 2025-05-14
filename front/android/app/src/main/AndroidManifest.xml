@@ -9,6 +9,8 @@
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />
+    <!-- 워치 연결 위한 권한 추가 -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application
         android:label="Ollana"
@@ -47,6 +49,17 @@
                     android:pathPrefix="/oauth/kakao" />
             </intent-filter>
         </activity>
+        
+        <!-- 워치 메시지 백그라운드 수신을 위한 서비스 등록 -->
+        <service
+            android:name="dev.rexios.watch_connectivity.WearableListenerService"
+            android:exported="true"
+            android:permission="com.google.android.gms.permission.BIND_LISTENER">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.BIND_LISTENER"/>
+            </intent-filter>
+        </service>
+        
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

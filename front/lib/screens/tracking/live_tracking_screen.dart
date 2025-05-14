@@ -112,6 +112,17 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   double _currentAltitude = 120;
   double _distance = 3.7;
 
+  // 토스트 메시지 관련 변수 추가
+  bool _showToast = false;
+  String _toastMessage = '';
+  Color _toastColor = Colors.green;
+  Timer? _toastTimer;
+
+  // 위치 초기화 및 거리 계산 관련 변수
+  bool _isFirstLocationUpdate = true;
+  DateTime? _lastLocationUpdateTime;
+  static const double _maxReasonableSpeed = 5.0; // 최대 합리적 속도 (m/s), 약 18km/h
+
   // WatchConnectivity 인스턴스 추가
   final WatchConnectivity _watch = WatchConnectivity();
   bool _isWatchPaired = false;
@@ -222,6 +233,36 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
     // 워치 연결 상태 초기 확인
     _checkWatchConnection();
 
+    // (1) 워치 메시지 수신 리스너 등록
+    _watch.messageStream.listen((Map<String, dynamic> message) {
+      debugPrint('수신된 메시지 path: ${message['path']}, data: ${message['data']}');
+      final dynamic raw = message['data'];
+      if (raw is Uint8List) {
+        // 1) 바이트 배열 → 문자열
+        final jsonString = utf8.decode(raw);
+        debugPrint('받은 JSON 문자열: $jsonString');
+
+        try {
+          // 2) JSON → Map
+          final Map<String, dynamic> payload = json.decode(jsonString);
+          debugPrint('파싱된 Map: $payload');
+
+          // 이후 payload['heartRate'], payload['steps'] 등 사용
+          if (payload.containsKey('heartRate')) {
+            setState(() {
+              _avgHeartRate = payload['heartRate'] as int;
+            });
+          }
+        } catch (e) {
+          debugPrint('JSON 파싱 오류: $e');
+        }
+      } else {
+        debugPrint('알 수 없는 메시지 데이터 타입: ${raw.runtimeType}');
+      }
+    }, onError: (err) {
+      debugPrint('메시지 수신 오류: $err');
+    });
+
     // AppState에서 데이터 가져오기
     final appState = Provider.of<AppState>(context, listen: false);
 
@@ -292,6 +333,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
     _compassStream?.cancel(); // 나침반 센서 구독 해제
     _locationOverlayTimer?.cancel();
     _recordTimer?.cancel(); // 기록 타이머 해제
+    _toastTimer?.cancel(); // 토스트 타이머 해제
     _sheetController.removeListener(_onSheetChanged);
     _sheetController.dispose();
     _mapController = null;
@@ -348,22 +390,28 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
     });
   }
 
-  // 심박수 업데이트 (목데이터 사용)
+  // 심박수 업데이트 (실제 데이터 사용 또는 목데이터 백업)
   void _updateHeartRate() {
-    // 현재 심박수 (80~140 사이 랜덤값)
-    int currentHeartRate = 80 + math.Random().nextInt(60);
+    // 워치에서 최근 5초 이내에 받은 심박수 데이터가 있는지 확인
+    // 없으면 목데이터 사용 (테스트용)
+    bool useRealData = false;
 
-    // 최고 심박수 업데이트
-    if (currentHeartRate > _maxHeartRate) {
-      _maxHeartRate = currentHeartRate;
+    if (!useRealData) {
+      // 목데이터 사용 (실제 워치 연동 전 테스트용)
+      int currentHeartRate = 80 + math.Random().nextInt(60);
+
+      // 최고 심박수 업데이트
+      if (currentHeartRate > _maxHeartRate) {
+        _maxHeartRate = currentHeartRate;
+      }
+
+      // 평균 심박수 업데이트 (간단한 시뮬레이션)
+      _avgHeartRate = ((_avgHeartRate * 9) + currentHeartRate) ~/ 10; // 가중 평균
+
+      // 목데이터 디버그 로그 출력
+      debugPrint(
+          '현재 심박수 (목데이터): $currentHeartRate, 최고: $_maxHeartRate, 평균: $_avgHeartRate');
     }
-
-    // 평균 심박수 업데이트 (간단한 시뮬레이션)
-    _avgHeartRate = ((_avgHeartRate * 9) + currentHeartRate) ~/ 10; // 가중 평균
-
-    // 목데이터 디버그 로그 출력
-    debugPrint(
-        '현재 심박수 (목데이터): $currentHeartRate, 최고: $_maxHeartRate, 평균: $_avgHeartRate');
 
     // AppState 업데이트
     if (mounted) {
@@ -690,6 +738,36 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
       }).then((distance) {
         if (!mounted) return;
 
+        final now = DateTime.now();
+        bool shouldUpdatePath = true;
+
+        // 비현실적인 위치 변화 필터링
+        if (_isFirstLocationUpdate) {
+          // 첫 번째 위치 업데이트는 거리 계산에서 제외하되, 위치는 업데이트
+          shouldUpdatePath = false;
+          _isFirstLocationUpdate = false;
+          debugPrint('첫 번째 위치 업데이트: 거리 계산에서 제외');
+        } else if (_lastLocationUpdateTime != null) {
+          // 이전 위치 업데이트와의 시간 차이 계산 (밀리초)
+          final timeDiff =
+              now.difference(_lastLocationUpdateTime!).inMilliseconds;
+
+          if (timeDiff > 0) {
+            // 속도 계산 (미터/초)
+            final speed = distance / (timeDiff / 1000);
+
+            // 비현실적으로 빠른 속도(예: 18km/h 이상)로 움직인 경우 필터링
+            if (speed > _maxReasonableSpeed) {
+              shouldUpdatePath = false;
+              debugPrint(
+                  '비현실적인 위치 변화 감지: ${speed.toStringAsFixed(2)} m/s, 거리: ${distance.toStringAsFixed(2)}m');
+            }
+          }
+        }
+
+        // 위치 업데이트 시간 기록
+        _lastLocationUpdateTime = now;
+
         // 현재 위치와 충분히 차이가 있을 때만 업데이트 (5미터 이상)
         if (distance > 5.0) {
           setState(() {
@@ -697,15 +775,12 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
             _currentLng = position.longitude;
             _currentAltitude = position.altitude;
 
-            // 사용자 이동 경로에 현재 위치 추가
-            final newPoint = NLatLng(_currentLat, _currentLng);
-            _userPath.add(newPoint);
-
-            // 이동 거리 누적 (테스트용 코드 대체)
-            // _distance += distance / 1000; // 미터 -> 킬로미터
+            // 사용자 이동 경로에 현재 위치 추가 (필터링 조건 적용)
+            if (shouldUpdatePath) {
+              final newPoint = NLatLng(_currentLat, _currentLng);
+              _userPath.add(newPoint);
+            }
           });
-
-          // 경로 업데이트와 베어링은 UI 상태 변경 후에 수행
 
           // 네비게이션 모드일 경우에만 카메라 위치 업데이트
           // 전체 맵 보기 모드에서는 카메라를 자동으로 이동시키지 않음
@@ -726,7 +801,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                 currentLat: _currentLat,
                 currentLng: _currentLng,
                 currentAltitude: _currentAltitude,
-                newUserPathPoint: NLatLng(_currentLat, _currentLng),
+                newUserPathPoint:
+                    shouldUpdatePath ? NLatLng(_currentLat, _currentLng) : null,
                 deviceHeading: _deviceHeading);
           }
         }
@@ -896,6 +972,39 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
 
           // 워치 연결 버튼 추가 (좌측 상단)
           _buildWatchButton(),
+
+          // 토스트 메시지 (지도 상단 가운데)
+          if (_showToast)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 20,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: _toastColor,
+                    borderRadius: BorderRadius.circular(25),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 5,
+                        spreadRadius: 0,
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    _toastMessage,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ),
 
           // 드래그 가능한 바텀 시트
           _buildDraggableBottomSheet(),
@@ -1095,7 +1204,9 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
           '기록 비교: 현재=${_currentTotalDistance.toStringAsFixed(2)}km, 이전=${_pastDistanceAtCurrentTime.toStringAsFixed(2)}km, 차이=${_distanceDifference.toStringAsFixed(2)}km');
 
       // 앞서거나 뒤처진 상태가 변경되었을 때 또는 sendNotification이 true일 때(30분 주기) 워치에 알림 전송
-      if (_isAheadOfRecord != oldAheadState || sendNotification) {
+      if ((_isAheadOfRecord != oldAheadState || sendNotification) &&
+          _isWatchPaired) {
+        // 기존 알림
         if (_isAheadOfRecord) {
           _notifyWatch('ahead');
           _hasNotifiedWatchForAhead = true;
@@ -1104,6 +1215,33 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
           _notifyWatch('behind');
           _hasNotifiedWatchForAhead = false;
           _hasNotifiedWatchForBehind = true;
+        }
+
+        // 사용자가 요청한 새로운 형식의 메시지 전송
+        // 차이 값 계산 (미터 단위의 절대값)
+        int differenceInMeters = (_distanceDifference.abs() * 1000).toInt();
+
+        // 앞서는지 뒤처지는지에 따라 메시지 타입 결정
+        String progressType = _isAheadOfRecord ? "FAST" : "SLOW";
+
+        // 토스트 메시지 표시
+        String toastMessage = _isAheadOfRecord
+            ? "이전 기록보다 ${differenceInMeters}m 앞서고 있습니다!"
+            : "이전 기록보다 ${differenceInMeters}m 뒤처지고 있습니다!";
+        _showToastMessage(toastMessage, isAhead: _isAheadOfRecord);
+
+        // 새로운 형식으로 워치에 메시지 전송
+        try {
+          await _watch.sendMessage({
+            'path': '/PROGRESS',
+            'type': progressType,
+            'difference': differenceInMeters
+          });
+
+          debugPrint(
+              '진행 상황 워치 메시지 전송 완료: $progressType, 차이: $differenceInMeters 미터');
+        } catch (e) {
+          debugPrint('진행 상황 워치 메시지 전송 실패: $e');
         }
       }
 
@@ -1131,28 +1269,34 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
     try {
       double total = 0.0;
 
-      // 각 경로 지점 간의 거리를 순차적으로 계산
-      for (int i = 1; i < _userPath.length; i++) {
+      // 처음부터 모든 경로 포인트 간의 거리를 계산
+      // 최적화: 마지막 계산 이후 추가된 포인트만 계산
+      if (_userPath.length > 2 && _currentTotalDistance > 0) {
+        // 마지막 두 포인트 간의 거리만 계산해서 기존 총 거리에 더함
+        final lastIndex = _userPath.length - 1;
         final params = {
-          'lat1': _userPath[i - 1].latitude,
-          'lng1': _userPath[i - 1].longitude,
-          'lat2': _userPath[i].latitude,
-          'lng2': _userPath[i].longitude,
+          'lat1': _userPath[lastIndex - 1].latitude,
+          'lng1': _userPath[lastIndex - 1].longitude,
+          'lat2': _userPath[lastIndex].latitude,
+          'lng2': _userPath[lastIndex].longitude,
         };
-
-        // 성능 최적화: 마지막 포인트와 그 이전 포인트만 계산
-        // 이전에 계산된 거리는 _currentTotalDistance에 이미 포함되어 있음
-        if (i == _userPath.length - 1) {
+        final distance = _calculateDistanceSync(params);
+        total = _currentTotalDistance * 1000 + distance; // 미터 단위로 변환 후 계산
+        total = total / 1000; // 다시 킬로미터로 변환
+      } else {
+        // 처음 계산이거나 경로 포인트가 2개뿐인 경우, 모든 구간 계산
+        for (int i = 1; i < _userPath.length; i++) {
+          final params = {
+            'lat1': _userPath[i - 1].latitude,
+            'lng1': _userPath[i - 1].longitude,
+            'lat2': _userPath[i].latitude,
+            'lng2': _userPath[i].longitude,
+          };
           final distance = _calculateDistanceSync(params);
-          total = _currentTotalDistance * 1000 + distance; // 미터 단위로 변환 후 계산
-          total = total / 1000; // 다시 킬로미터로 변환
+          total += distance; // 미터 단위로 더함
         }
+        total = total / 1000; // 미터를 킬로미터로 변환
       }
-
-      // 목데이터로 거리 조정 (실제 데이터를 쓸 때는 제거)
-      // 시간에 따라 약간의 랜덤성 추가하여 자연스럽게
-      final randomFactor = 1.0 + (math.Random().nextDouble() * 0.02); // 불규칙성 감소
-      total = total * randomFactor;
 
       if (_elapsedSeconds % 10 == 0) {
         debugPrint('현재 이동 거리: ${total.toStringAsFixed(2)}km');
@@ -1189,7 +1333,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
         // 10초마다 현재 위치와 목적지 간 거리 로그 출력 (디버깅용)
         if (_elapsedSeconds % 10 == 0) {
           debugPrint(
-              '목적지까지 남은 거리 (목데이터): ${distance.toStringAsFixed(2)}m, 도착 반경: ${_destinationRadius}m');
+              '목적지까지 남은 거리: ${distance.toStringAsFixed(2)}m, 도착 반경: ${_destinationRadius}m');
         }
 
         // 목적지 반경 내에 있는지 확인
@@ -2451,16 +2595,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
       debugPrint('워치에 메시지 전송 시도...');
 
       // 테스트 메시지 전송
-      await _watch.sendMessage({
-        'type': 'tracking_update',
-        'data': {
-          'elapsedTime': _formattedTime,
-          'distance': _currentTotalDistance.toStringAsFixed(2),
-          'remainingDistance': _remainingDistance.toStringAsFixed(2),
-          'altitude': _currentAltitude.toStringAsFixed(1),
-          'heartRate': _avgHeartRate,
-        }
-      });
+      await _watch.sendMessage({'path': '/REACHED'});
 
       debugPrint('워치에 메시지 전송 완료');
 
@@ -2520,5 +2655,26 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
         ],
       ),
     );
+  }
+
+  // 토스트 메시지 표시 함수
+  void _showToastMessage(String message, {bool isAhead = true}) {
+    setState(() {
+      _showToast = true;
+      _toastMessage = message;
+      _toastColor = isAhead ? Colors.green.shade700 : Colors.red.shade700;
+    });
+
+    // 이전 타이머 취소
+    _toastTimer?.cancel();
+
+    // 3초 후 토스트 메시지 숨기기
+    _toastTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() {
+          _showToast = false;
+        });
+      }
+    });
   }
 }
