@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../models/path_detail.dart';
 import '../../services/my_footprint_service.dart';
@@ -156,10 +155,8 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
           if (index != -1) {
             debugPrint('Updating path at index: $index, isExceed: ${detailResponse.isExceed}, records: ${detailResponse.records.length}');
             if (detailResponse.records.isEmpty) {
-              // records가 비어 있으면 기존 records 유지
               debugPrint('Empty records, keeping existing records');
             } else {
-              // records가 있으면 업데이트
               paths[index] = PathDetail(
                 pathId: pathId,
                 pathName: paths[index].pathName,
@@ -177,7 +174,6 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
           }
         });
 
-        // isExceed가 true인 경우
         if (detailResponse.isExceed) {
           ScaffoldMessenger.of(context).removeCurrentSnackBar();
           ScaffoldMessenger.of(context).showSnackBar(
@@ -187,9 +183,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
               duration: Duration(seconds: 3),
             ),
           );
-        }
-        // records가 비어 있는 경우
-        else if (detailResponse.records.isEmpty) {
+        } else if (detailResponse.records.isEmpty) {
           ScaffoldMessenger.of(context).removeCurrentSnackBar();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -240,35 +234,17 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
       return;
     }
 
-    final baseUrl = dotenv.get('BASE_URL');
-    final recordIdsQuery = selectedRecordIds
-        .map((id) => 'recordIds=$id')
-        .join('&');
-    final uri = Uri.parse('$baseUrl/footprint/${widget.footprintId}/compare?$recordIdsQuery');
-
     try {
-      debugPrint('API 호출 URI: $uri');
-      final res = await http.get(
-        uri,
-        headers: {
-          'Authorization': 'Bearer ${widget.token}',
-          'Content-Type': 'application/json',
-        },
+      final service = MyFootprintService();
+      final compareResponse = await service.getCompareData(
+        widget.token,
+        widget.footprintId,
+        selectedRecordIds,
       );
 
-      debugPrint('비교 API 응답 코드: ${res.statusCode}');
-      debugPrint('비교 API 응답 본문: ${res.body}');
-      final decoded = utf8.decode(res.bodyBytes);
-
-      if (res.statusCode == 200) {
-        final jsonData = jsonDecode(decoded);
-        debugPrint('비교 API 응답 데이터: ${jsonData.toString()}');
-        setState(() {
-          _compareDataByPath[pathId] = CompareResponse.fromJson(jsonData);
-        });
-      } else {
-        throw Exception('비교 데이터 로드 실패: ${res.statusCode}');
-      }
+      setState(() {
+        _compareDataByPath[pathId] = compareResponse;
+      });
     } catch (e) {
       debugPrint('비교 API 호출 에러: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -308,7 +284,6 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
       setState(() {
         if (isStartDate) {
           _startDatesByPath[pathId] = selectedDate;
-          // 종료일이 시작일보다 빠르면 초기화
           if (_endDatesByPath[pathId] != null &&
               _endDatesByPath[pathId]!.isBefore(selectedDate)) {
             _endDatesByPath[pathId] = null;
@@ -330,7 +305,6 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
         }
       });
 
-      // 시작일과 종료일이 모두 선택된 경우에만 API 호출
       if (_startDatesByPath[pathId] != null && _endDatesByPath[pathId] != null) {
         await _fetchFootprintDetail(pathId: pathId);
       }
@@ -340,7 +314,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: false, // SnackBar로 인한 레이아웃 이동 방지
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         title: Text(mountainName != null ? '$mountainName 발자취' : '발자취'),
       ),
@@ -408,7 +382,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                                 lineBarsData: [
                                   _line(
                                     path.records.isEmpty
-                                        ? [FlSpot(0, 0)] // 빈 데이터일 때 기본 점
+                                        ? [FlSpot(0, 0)]
                                         : path.records.asMap().entries.map((entry) {
                                             final idx = entry.key;
                                             final record = entry.value;
@@ -628,12 +602,11 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
       children: [
         const SizedBox(height: 16),
         const Divider(thickness: 1),
-        // 상세 데이터를 하나의 카드에 통합 (텍스트 레이블 제거)
         Card(
-          elevation: 0, // 그림자 제거
+          elevation: 0,
           margin: const EdgeInsets.symmetric(vertical: 8),
           shape: RoundedRectangleBorder(
-            side: BorderSide(color: Colors.grey[300]!, width: 1), // 외곽선 추가
+            side: BorderSide(color: Colors.grey[300]!, width: 1),
             borderRadius: BorderRadius.circular(15),
           ),
           child: Padding(
@@ -656,7 +629,6 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                           record.date,
                           style: TextStyle(
                             fontSize: 14,
-                            //fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
                         ),
@@ -666,7 +638,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
                           _buildMetricCard(
-                            '', // 텍스트 레이블 제거
+                            '',
                             '${record.maxHeartRate}',
                             'bpm',
                             Colors.red[100]!,
@@ -674,7 +646,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                             Icons.favorite,
                           ),
                           _buildMetricCard(
-                            '', // 텍스트 레이블 제거
+                            '',
                             '${record.averageHeartRate.toStringAsFixed(1)}',
                             'bpm',
                             Colors.blue[100]!,
@@ -682,7 +654,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                             Icons.monitor_heart_outlined,
                           ),
                           _buildMetricCard(
-                            '', // 텍스트 레이블 제거
+                            '',
                             '${record.time}',
                             '분',
                             Colors.green[100]!,
@@ -698,14 +670,13 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
             ),
           ),
         ),
-        // 비교 결과를 별도의 카드에 렌더링
         if (result != null) ...[
           const SizedBox(height: 12),
           Card(
-            elevation: 0, // 그림자 제거
+            elevation: 0,
             margin: const EdgeInsets.symmetric(vertical: 12),
             shape: RoundedRectangleBorder(
-              side: BorderSide(color: Colors.grey[300]!, width: 1), // 외곽선 추가
+              side: BorderSide(color: Colors.grey[300]!, width: 1),
               borderRadius: BorderRadius.circular(18),
             ),
             child: Padding(
@@ -797,7 +768,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
         children: [
           Icon(icon, color: textColor, size: 22),
           const SizedBox(height: 8),
-          if (label.isNotEmpty) // 레이블이 비어있을 경우 텍스트 생략
+          if (label.isNotEmpty)
             Text(
               label,
               style: TextStyle(
@@ -835,10 +806,10 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
       ),
     );
   }
-  
+
   Widget _buildComparisonItemCute(String label, int diff, String unit, bool isPositive, IconData icon) {
     final sign = diff > 0 ? '+' : '';
-    
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -929,7 +900,6 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
       ),
     );
   }
-
 
   String _formatGrowthStatus(String status) {
     switch (status) {
