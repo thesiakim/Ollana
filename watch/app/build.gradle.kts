@@ -14,18 +14,40 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
+    }
 
+    signingConfigs {
+        // 기존에 있는 debug 설정에 접근해서 수정
+        getByName("debug") {
+            storeFile = file("${rootProject.rootDir}/app/debug.keystore");
+            storePassword = "ssafy1234";
+            keyAlias = "ollanadebugkey";
+            keyPassword = "ssafy1234";
+        }
+
+        // release는 새로 생성
+        create("release") {
+            storeFile = file("${rootProject.rootDir}/app/my-release-key.jks")
+            storePassword = "ssafy1234"
+            keyAlias = "ollana"
+            keyPassword = "ssafy1234"
+        }
     }
 
     buildTypes {
-        release {
-            isMinifyEnabled = false
+        getByName("debug") {
+            signingConfig = signingConfigs.getByName("debug")
+        }
+        getByName("release") {
+            isMinifyEnabled = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -39,7 +61,6 @@ android {
 }
 
 dependencies {
-
     implementation(libs.play.services.wearable)
     implementation(platform(libs.compose.bom))
     implementation(libs.ui)
@@ -51,8 +72,11 @@ dependencies {
     implementation(libs.activity.compose)
     implementation(libs.core.splashscreen)
     implementation(libs.material3.android)
+    implementation("com.google.code.gson:gson:2.10.1")
+
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.ui.test.junit4)
+
     debugImplementation(libs.ui.tooling)
     debugImplementation(libs.ui.test.manifest)
     implementation(libs.coil.compose)

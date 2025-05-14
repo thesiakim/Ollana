@@ -42,6 +42,7 @@ class SensorCollector(private val context : Context) : SensorEventListener{
             sensorManager.registerListener(this,it,SensorManager.SENSOR_DELAY_NORMAL)
         }
         Log.d(TAG,"센서수집 시작")
+        Log.d(TAG, "심박수 센서: ${heartRateSensor?.name}, 걸음 수 센서: ${stepSensor?.name}")
     }
 
     //센서 수집 중단
@@ -50,9 +51,9 @@ class SensorCollector(private val context : Context) : SensorEventListener{
         Log.d(TAG,"센서 수집 중단")
     }
 
-    //센서 데이터가 들어왔을대 호출
+    //센서 데이터가 들어왔을때 호출
     override fun onSensorChanged(event: SensorEvent?) {
-        Log.d(TAG, "✅ onSensorChanged 호출됨")
+        Log.d(TAG, "onSensorChanged 호출됨")
         if(event ==null) return
 
         when(event.sensor.type){
@@ -94,6 +95,18 @@ class SensorCollector(private val context : Context) : SensorEventListener{
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
        //정확도 변경
+    }
+    fun sendTestDataManually() {
+        val json = JSONObject().apply {
+            put("heartRate", lastHeartRate ?: 72) // 기본값 72
+            put("steps", lastStepCount ?: 1000)   // 기본값 1000
+        }
+        MessageSender.send(
+            path = "/SENSOR_DATA",
+            message = json.toString(),
+            context = context
+        )
+        Log.d("SensorCollector", "✅ 테스트 센서 데이터 전송: $json")
     }
 
 }
