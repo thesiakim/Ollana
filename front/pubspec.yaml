@@ -96,6 +96,7 @@ flutter:
     - lib/assets/images/location_recommend.png
     - lib/assets/images/theme_recommend.png
     - lib/assets/images/mountain.png
+    - lib/assets/images/logo.png
     - .env
 
   # An image asset can refer to one or more resolution-specific "variants", see

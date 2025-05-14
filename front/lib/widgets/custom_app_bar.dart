@@ -128,6 +128,16 @@ class _CustomAppBarState extends State<CustomAppBar> {
     final isLoggedIn = context.watch<AppState>().isLoggedIn;
 
     return AppBar(
+      // ▶ leading에 로고 추가
+      leading: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Image.asset(
+          'lib/assets/images/logo.png', // 로고 파일 경로
+          width: 32,
+          height: 32,
+          fit: BoxFit.contain,
+        ),
+      ),
       backgroundColor: Theme.of(context).colorScheme.primary,
       centerTitle: true,
       elevation: 0,
