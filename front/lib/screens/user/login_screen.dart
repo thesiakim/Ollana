@@ -5,11 +5,13 @@ import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:jwt_decode/jwt_decode.dart'; // 🔥 JWT 디코딩 패키지
+
 import '../../models/app_state.dart';
 import './sign_up_screen.dart';
 import './password_reset_screen.dart';
 import './password_change_screen.dart'; // 🔥 비밀번호 변경 페이지 import
 import '../home_screen.dart'; // 🔥 홈 화면 import
+import '../../widgets/custom_app_bar.dart'; // 🔥 CustomAppBar import
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -63,10 +65,13 @@ class _LoginScreenState extends State<LoginScreen> {
         final nickname = data['data']['user']['nickname'];
         final social = data['data']['user']['social'] as bool;
         final payloadA = Jwt.parseJwt(accessToken);
+        final userId = payloadA['userId']?.toString() ?? '';
         final expA = payloadA['exp'] as int;
         final expiryA = DateTime.fromMillisecondsSinceEpoch(expA * 1000);
+        // ▶ setToken 호출 시 userId 전달
         await context.read<AppState>().setToken(
               accessToken,
+              userId: userId,
               profileImageUrl: profileImageUrl,
               nickname: nickname,
               social: social,
@@ -152,7 +157,15 @@ class _LoginScreenState extends State<LoginScreen> {
     final primaryColor = Theme.of(context).primaryColor;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('로그인'), centerTitle: true),
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        centerTitle: true,
+        elevation: 0,
+        title: const Text(
+          '로그인',
+          style: TextStyle(fontSize: 25, fontWeight: FontWeight.w600),
+        ),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -214,13 +227,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 height: 48,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _handleLogin,
-                  child: _isLoading
-                      ? const CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation(Colors.white))
-                      : const Text('로그인'),
                   style: ElevatedButton.styleFrom(
                     minimumSize: const Size.fromWidth(double.infinity),
                   ),
+                  child: _isLoading
+                      ? const CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation(Colors.white))
+                      : const Text(
+                          '로그인',
+                          style: TextStyle(fontSize: 18),
+                        ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -233,7 +249,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     // TODO: 카카오톡 로그인 기능 구현
                   },
                   icon: const Icon(Icons.chat),
-                  label: const Text('카카오톡으로 시작하기'),
+                  label: const Text('카카오 로그인'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFEE500),
                     foregroundColor: Colors.black,

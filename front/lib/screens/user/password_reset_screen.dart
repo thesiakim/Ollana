@@ -61,7 +61,15 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('비밀번호 찾기')),
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        centerTitle: true,
+        elevation: 0,
+        title: const Text(
+          '임시 비밀번호 발급',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+        ),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -73,9 +81,15 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
             ],
             TextField(
               controller: _emailController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Email',
+                // 기본 border도 명시해 줍니다.
                 border: OutlineInputBorder(),
+                // 포커스가 없을 때 회색 테두리
+                enabledBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.grey, width: 1.5),
+                  borderRadius: BorderRadius.circular(4),
+                ),
               ),
               keyboardType: TextInputType.emailAddress,
             ),

@@ -222,8 +222,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('회원가입'),
+        backgroundColor: Theme.of(context).colorScheme.primary,
         centerTitle: true,
+        elevation: 0,
+        title: const Text(
+          '회원가입',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
