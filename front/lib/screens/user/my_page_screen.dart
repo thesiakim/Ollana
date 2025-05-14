@@ -51,23 +51,40 @@ class _MyPageScreenState extends State<MyPageScreen> {
         context: context,
         barrierDismissible: false,
         builder: (ctx) => AlertDialog(
-          title: const Text('회원 탈퇴하기'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            '회원 탈퇴하기',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              const Text(
+                '정말로 탈퇴하시겠습니까? 계정 확인을 위해 비밀번호를 입력해주세요.',
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
               const SizedBox(height: 16),
               TextField(
                 controller: passwordController,
                 obscureText: true,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: '비밀번호',
-                  border: OutlineInputBorder(),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.grey, width: 1.0),
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade300, width: 1.0),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Color(0xFF52A486), width: 2.0),
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF52A486), width: 2.0),
                   ),
+                  prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF52A486)),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
                 ),
               ),
             ],
@@ -75,11 +92,17 @@ class _MyPageScreenState extends State<MyPageScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('취소'),
+              child: Text('취소', style: TextStyle(color: Colors.grey.shade700)),
             ),
-            TextButton(
+            ElevatedButton(
               onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('확인'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.shade400,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text('탈퇴하기', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -94,11 +117,17 @@ class _MyPageScreenState extends State<MyPageScreen> {
           password: passwordController.text,
         );
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('회원 탈퇴가 완료되었습니다.')),
+          const SnackBar(
+            content: Text('회원 탈퇴가 완료되었습니다.'),
+            backgroundColor: Color(0xFF52A486),
+          ),
         );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('탈퇴 실패: $e')),
+          SnackBar(
+            content: Text('탈퇴 실패: $e'),
+            backgroundColor: Colors.red.shade400,
+          ),
         );
         return;
       }
@@ -107,16 +136,31 @@ class _MyPageScreenState extends State<MyPageScreen> {
         context: context,
         barrierDismissible: false,
         builder: (ctx) => AlertDialog(
-          title: const Text('회원 탈퇴'),
-          content: const Text('정말로 회원 탈퇴하시겠습니까?'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            '회원 탈퇴',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: const Text(
+            '정말로 회원 탈퇴하시겠습니까?\n모든 데이터가 삭제되며 복구할 수 없습니다.',
+            style: TextStyle(fontSize: 14),
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('취소'),
+              child: Text('취소', style: TextStyle(color: Colors.grey.shade700)),
             ),
-            TextButton(
+            ElevatedButton(
               onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('확인'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.shade400,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text('탈퇴하기', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -130,11 +174,17 @@ class _MyPageScreenState extends State<MyPageScreen> {
           social,
         );
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('회원 탈퇴가 완료되었습니다.')),
+          const SnackBar(
+            content: Text('회원 탈퇴가 완료되었습니다.'),
+            backgroundColor: Color(0xFF52A486),
+          ),
         );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('탈퇴 실패: $e')),
+          SnackBar(
+            content: Text('탈퇴 실패: $e'),
+            backgroundColor: Colors.red.shade400,
+          ),
         );
         return;
       }
@@ -150,191 +200,408 @@ class _MyPageScreenState extends State<MyPageScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: const Text('마이페이지'),
+        elevation: 0,
+        backgroundColor: Colors.white,
+        title: const Text(
+          '마이페이지',
+          style: TextStyle(
+            fontWeight: FontWeight.bold, 
+            color: Color(0xFF52A486)
+          ),
+        ),
         centerTitle: true,
+        iconTheme: const IconThemeData(color: Color(0xFF52A486)),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: FutureBuilder(
-          future: userFuture,
-          builder: (context, AsyncSnapshot snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting && _isAgree == null) {
-              return const Center(child: CircularProgressIndicator());
-            } else if (snapshot.hasError) {
-              return Center(child: Text('Error: ${snapshot.error}'));
-            } else if (!snapshot.hasData) {
-              return const Center(child: Text('No user data available'));
-            }
+      body: FutureBuilder(
+        future: userFuture,
+        builder: (context, AsyncSnapshot snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting && _isAgree == null) {
+            return const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF52A486)),
+              ),
+            );
+          } else if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 60, color: Colors.red.shade300),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Error: ${snapshot.error}',
+                    style: TextStyle(color: Colors.grey.shade700),
+                  ),
+                ],
+              ),
+            );
+          } else if (!snapshot.hasData) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.person_off, size: 60, color: Colors.grey.shade400),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No user data available',
+                    style: TextStyle(color: Colors.grey.shade700),
+                  ),
+                ],
+              ),
+            );
+          }
 
-            final user = snapshot.data as User;
-            _isAgree ??= user.agree;
+          final user = snapshot.data as User;
+          _isAgree ??= user.agree;
 
-            return Column(
+          return SingleChildScrollView(
+            child: Column(
               children: [
-                Card(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 2,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 28,
-                          backgroundImage: NetworkImage(user.imageUrl),
-                          onBackgroundImageError: (_, __) =>
-                              const AssetImage('lib/assets/images/alps.jpg'),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                user.nickname,
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                user.email,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey.shade700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () async {
-                            final updatedUser = await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => EditProfileScreen(
-                                  nickname: user.nickname,
-                                  imageUrl: user.imageUrl,
-                                ),
-                              ),
-                            );
-                            if (updatedUser != null) {
-                              setState(() {
-                                userFuture = Future.value(updatedUser);
-                                _isAgree = updatedUser.agree;
-                              });
-                            }
-                          },
-                          child: const Text('수정하기'),
-                        ),
-                      ],
+                // 프로필 섹션
+                Container(
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(24),
+                      bottomRight: Radius.circular(24),
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0x0D000000),
+                        blurRadius: 10,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 30),
+                  child: Column(
+                    children: [
+                      Stack(
+                        clipBehavior: Clip.none,
                         children: [
-                          const Text(
-                            '등산기록 제공 동의',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
+                          Container(
+                            margin: const EdgeInsets.only(top: 16, bottom: 16),
+                            width: 100,
+                            height: 100,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: const Color(0xFF52A486),
+                                width: 3,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: ClipOval(
+                              child: Image.network(
+                                user.imageUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Image.asset(
+                                    'lib/assets/images/alps.jpg',
+                                    fit: BoxFit.cover,
+                                  );
+                                },
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '친구가 대결할 수 있도록 해주세요!',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey.shade600,
+                          Positioned(
+                            bottom: 12,
+                            right: -4,
+                            child: GestureDetector(
+                              onTap: () async {
+                                final updatedUser = await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => EditProfileScreen(
+                                      nickname: user.nickname,
+                                      imageUrl: user.imageUrl,
+                                    ),
+                                  ),
+                                );
+                                if (updatedUser != null) {
+                                  setState(() {
+                                    userFuture = Future.value(updatedUser);
+                                    _isAgree = updatedUser.agree;
+                                  });
+                                }
+                              },
+                              child: Container(
+                                width: 36,
+                                height: 36,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF52A486),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 2),
+                                ),
+                                child: const Icon(
+                                  Icons.edit,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                              ),
                             ),
                           ),
                         ],
                       ),
-                    ),
-                    Switch(
-                      value: _isAgree!,
-                      onChanged: (value) async {
-                        setState(() {
-                          _isAgree = value;
-                        });
-
-                        final appState = context.read<AppState>();
-                        final userService = MyPageService();
-
-                        try {
-                          final updatedUser = await userService.updateUserAgreement(
-                            appState.accessToken ?? '',
-                            value,
-                          );
-                          setState(() {
-                            userFuture = Future.value(updatedUser);
-                            _isAgree = updatedUser.agree;
-                          });
-                        } catch (e) {
-                          setState(() {
-                            _isAgree = user.agree;
-                          });
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('설정 변경 실패: $e')),
-                          );
-                        }
-                      },
-                      activeColor: const Color(0xFF52A486),
-                      activeTrackColor: const Color(0xFF52A486).withOpacity(0.5),
-                      inactiveThumbColor: Colors.grey.shade400,
-                      inactiveTrackColor: Colors.grey.shade300,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => PasswordChangeScreen(
-                          accessToken: context.read<AppState>().accessToken ?? '',
+                      Text(
+                        user.nickname,
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF333333),
                         ),
                       ),
-                    );
-                  },
-                  icon: const Icon(Icons.lock_outline),
-                  label: const Text('비밀번호 변경하기'),
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(48),
-                    backgroundColor: const Color(0xFF52A486),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                      const SizedBox(height: 4),
+                      Text(
+                        user.email,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: _handleWithdraw,
-                  icon: const Text('🥲', style: TextStyle(fontSize: 24)),
-                  label: const Text('회원 탈퇴하기'),
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(48),
-                    backgroundColor: Colors.grey.shade300,
-                    foregroundColor: Colors.red,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                
+                // 설정 섹션
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.only(left: 8, bottom: 8),
+                      ),
+                      
+                      // 등산기록 제공 동의 카드
+                      Card(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 0,
+                        color: Colors.white,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF52A486).withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: const Icon(
+                                            Icons.hiking,
+                                            color: Color(0xFF52A486),
+                                            size: 20,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        const Text(
+                                          '등산기록 제공 동의',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFF333333),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Padding(
+                                      padding: const EdgeInsets.only(left: 50),
+                                      child: Text(
+                                        '친구가 대결할 수 있도록 해주세요!',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Switch(
+                                value: _isAgree!,
+                                onChanged: (value) async {
+                                  setState(() {
+                                    _isAgree = value;
+                                  });
+
+                                  final appState = context.read<AppState>();
+                                  final userService = MyPageService();
+
+                                  try {
+                                    final updatedUser = await userService.updateUserAgreement(
+                                      appState.accessToken ?? '',
+                                      value,
+                                    );
+                                    setState(() {
+                                      userFuture = Future.value(updatedUser);
+                                      _isAgree = updatedUser.agree;
+                                    });
+                                  } catch (e) {
+                                    setState(() {
+                                      _isAgree = user.agree;
+                                    });
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('설정 변경 실패: $e'),
+                                        backgroundColor: Colors.red.shade400,
+                                      ),
+                                    );
+                                  }
+                                },
+                                activeColor: Colors.white,
+                                activeTrackColor: const Color(0xFF52A486),
+                                inactiveThumbColor: Colors.white,
+                                inactiveTrackColor: Colors.grey.shade300,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 16),
+                      
+                      // 비밀번호 변경 버튼
+                      Card(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 0,
+                        color: Colors.white,
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => PasswordChangeScreen(
+                                  accessToken: context.read<AppState>().accessToken ?? '',
+                                ),
+                              ),
+                            );
+                          },
+                          borderRadius: BorderRadius.circular(16),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF52A486).withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(
+                                    Icons.lock_outline,
+                                    color: Color(0xFF52A486),
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                const Text(
+                                  '비밀번호 변경하기',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF333333),
+                                  ),
+                                ),
+                                const Spacer(),
+                                const Icon(
+                                  Icons.chevron_right,
+                                  color: Colors.grey,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 16),
+                      
+                      // 회원 탈퇴 버튼
+                      Card(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 0,
+                        color: Colors.white,
+                        child: InkWell(
+                          onTap: _handleWithdraw,
+                          borderRadius: BorderRadius.circular(16),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.shade50,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(
+                                    Icons.delete_outline, // 이모지 대신 아이콘 사용
+                                    color: Colors.red.shade400,
+                                    size: 20, // 기존 이모지 크기와 유사하게 조정
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  '회원 탈퇴하기',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.red.shade400,
+                                  ),
+                                ),
+                                const Spacer(),
+                                Icon(
+                                  Icons.chevron_right,
+                                  color: Colors.red.shade200,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 24),
+                      
+                      // 버전 정보
+                      Center(
+                        child: Text(
+                          'App Version 1.0.0',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade500,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }
