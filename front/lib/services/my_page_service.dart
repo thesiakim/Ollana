@@ -35,7 +35,7 @@ class MyPageService {
       final uri = Uri.parse('$baseUrl/user/mypage');
       final request = http.MultipartRequest('PATCH', uri);
       request.headers['Authorization'] = 'Bearer $token';
-      request.headers['Content-Type'] = 'application/json; charset=utf-8'; // 요청 헤더에 UTF-8 명시
+      request.headers['Content-Type'] = 'application/json; charset=utf-8';
 
       final userData = jsonEncode({"nickname": nickname});
       request.files.add(http.MultipartFile.fromString(
@@ -74,7 +74,6 @@ class MyPageService {
       debugPrint('Raw Body: ${response.body}');
 
       if (response.statusCode == 200) {
-        // 응답 바이트를 UTF-8로 디코딩
         final jsonString = utf8.decode(response.bodyBytes, allowMalformed: true);
         debugPrint('UTF-8 Decoded Body: $jsonString');
         final jsonData = jsonDecode(jsonString);
@@ -102,7 +101,7 @@ class MyPageService {
       final uri = Uri.parse('$baseUrl/user/mypage');
       final request = http.MultipartRequest('PATCH', uri);
       request.headers['Authorization'] = 'Bearer $token';
-      request.headers['Content-Type'] = 'application/json; charset=utf-8'; 
+      request.headers['Content-Type'] = 'application/json; charset=utf-8';
 
       final userData = jsonEncode({"isAgree": isAgree});
       request.files.add(http.MultipartFile.fromString(
@@ -121,7 +120,6 @@ class MyPageService {
       debugPrint('Body: ${response.body}');
 
       if (response.statusCode == 200) {
-        // 응답 바이트를 UTF-8로 디코딩
         final jsonString = utf8.decode(response.bodyBytes);
         debugPrint('UTF-8 Decoded Body: $jsonString');
         final jsonData = jsonDecode(jsonString);
@@ -168,8 +166,6 @@ class MyPageService {
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
         if (jsonData['status'] == true) {
-          // 탈퇴 성공 후 로그아웃 호출
-          await logout(token);
           return;
         } else {
           throw Exception('API failed: ${jsonData['message']} (code: ${jsonData['code']})');
@@ -183,42 +179,5 @@ class MyPageService {
       debugPrint('$e');
       rethrow;
     }
-  }
-
-  Future logout(String token) async {
-    try {
-      final uri = Uri.parse('$baseUrl/auth/logout');
-      final response = await http.post(
-        uri,
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({}),
-      );
-
-      debugPrint('=============== LOGOUT REQUEST DETAILS ===============');
-      debugPrint('URL: $uri');
-      debugPrint('Method: POST');
-      debugPrint('Headers: {Authorization: Bearer $token, Content-Type: application/json}');
-      debugPrint('=============== LOGOUT RESPONSE DETAILS ===============');
-      debugPrint('Status Code: ${response.statusCode}');
-      debugPrint('Body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final jsonData = jsonDecode(response.body);
-        if (jsonData['status'] != true) {
-          debugPrint('Logout API failed: ${jsonData['message']}');
-        }
-      } else if (response.statusCode == 403) {
-        debugPrint('Session expired during logout');
-      } else {
-        debugPrint('Logout server error: ${response.statusCode}');
-      }
-    } catch (e) {
-      debugPrint('========= LOGOUT ERROR =========');
-      debugPrint('$e');
-    }
-    // 서버 응답과 관계없이 클라이언트 인증 정보 초기화
   }
 }

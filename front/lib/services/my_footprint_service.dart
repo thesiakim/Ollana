@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import '../models/footprint_response.dart';
 import '../models/footprint_detail_response.dart';
 import '../models/path_detail.dart';
+import '../models/compare_response.dart';
+import '../utils/footprint_utils.dart';
 
 class MyFootprintService {
   final String _baseUrl = dotenv.get('BASE_URL');
@@ -58,12 +60,12 @@ class MyFootprintService {
     String token,
     int footprintId,
     int pathId, {
-    String? start,
-    String? end,
+    DateTime? start,
+    DateTime? end,
   }) async {
     final query = <String, String>{};
-    if (start != null) query['start'] = start;
-    if (end != null) query['end'] = end;
+    if (start != null) query['start'] = formatDateForApi(start);
+    if (end != null) query['end'] = formatDateForApi(end);
     final uri = Uri.parse('$_baseUrl/footprint/$footprintId/path/$pathId').replace(queryParameters: query);
 
     debugPrint('Calling API: $uri');
@@ -87,6 +89,29 @@ class MyFootprintService {
       return PathDetail.fromJson(jsonData['data'], pathId: pathId);
     } else {
       throw Exception('Failed to load path detail: ${response.statusCode}');
+    }
+  }
+
+  Future<CompareResponse> getCompareData(String token, int footprintId, Set<int> recordIds) async {
+    final recordIdsQuery = recordIds.map((id) => 'recordIds=$id').join('&');
+    final uri = Uri.parse('$_baseUrl/footprint/$footprintId/compare?$recordIdsQuery');
+
+    final headers = {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    };
+
+    debugPrint('비교 API 호출 URI: $uri');
+    final res = await _client.get(uri, headers: headers);
+    debugPrint('비교 API 응답 코드: ${res.statusCode}');
+    debugPrint('비교 API 응답 본문: ${res.body}');
+
+    if (res.statusCode == 200) {
+      final jsonData = jsonDecode(utf8.decode(res.bodyBytes));
+      debugPrint('비교 API 응답 데이터: ${jsonData.toString()}');
+      return CompareResponse.fromJson(jsonData);
+    } else {
+      throw Exception('비교 데이터 로드 실패: ${res.statusCode}');
     }
   }
 }
