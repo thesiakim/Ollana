@@ -40,9 +40,6 @@ public class TokenService {
     public void deleteRefreshToken(String userEmail) {
         String key = "RT:" + userEmail;
         redisTemplate.delete(key);
-
-        int userId = jwtUtil.getUserIdFromToken(userEmail);
-        log.info("Refresh token deleted: userId={}", userId);
     }
 
     // 리프레시 토큰이 redis에 저장된 토큰과 일치하는지 검사
