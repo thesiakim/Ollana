@@ -65,10 +65,13 @@ class _LoginScreenState extends State<LoginScreen> {
         final nickname = data['data']['user']['nickname'];
         final social = data['data']['user']['social'] as bool;
         final payloadA = Jwt.parseJwt(accessToken);
+        final userId = payloadA['userId']?.toString() ?? '';
         final expA = payloadA['exp'] as int;
         final expiryA = DateTime.fromMillisecondsSinceEpoch(expA * 1000);
+        // ▶ setToken 호출 시 userId 전달
         await context.read<AppState>().setToken(
               accessToken,
+              userId: userId,
               profileImageUrl: profileImageUrl,
               nickname: nickname,
               social: social,
