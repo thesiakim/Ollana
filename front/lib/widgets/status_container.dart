@@ -21,11 +21,18 @@ class StatusContainer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
-      margin: const EdgeInsets.only(top: 10.0),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      margin: const EdgeInsets.only(top: 12.0),
       decoration: BoxDecoration(
-        color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -33,18 +40,35 @@ class StatusContainer extends StatelessWidget {
           // 왼쪽 영역 (상태 타이틀, 캐릭터, 경험치)
           Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // 캐릭터 이미지
               Container(
-                width: 70, // 크기 축소
-                height: 70, // 크기 축소
+                width: 80,
+                height: 80,
                 decoration: BoxDecoration(
-                  color: Colors.orange[300],
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Colors.orange[300]!, Colors.orange[100]!],
+                  ),
                   shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.orange.withOpacity(0.3),
+                      blurRadius: 10,
+                      spreadRadius: 1,
+                    ),
+                  ],
                 ),
                 child: Center(
-                  child: Image.asset('lib/assets/images/seed.png'),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Image.asset(
+                      'lib/assets/images/seed.png',
+                      fit: BoxFit.contain,
+                    ),
+                  ),
                 ),
               ),
 
@@ -52,39 +76,56 @@ class StatusContainer extends StatelessWidget {
 
               // 경험치 바
               SizedBox(
-                width: 70, // 캐릭터 이미지와 동일한 너비
+                width: 80,
                 child: Column(
                   children: [
-                    const Text('경험치', style: TextStyle(fontSize: 12)),
-                    const SizedBox(height: 4),
-                    Container(
-                      height: 10, // 높이 줄임
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(5),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 35, // 경험치 바 크기 조정
-                            height: 10, // 높이 줄임
-                            decoration: BoxDecoration(
-                              color: Colors.yellow[300],
-                              borderRadius: BorderRadius.circular(5),
-                            ),
+                    const SizedBox(height: 6),
+                    Stack(
+                      children: [
+                        // 배경 바
+                        Container(
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[200],
+                            borderRadius: BorderRadius.circular(4),
                           ),
-                        ],
+                        ),
+                        // 채워진 바
+                        Container(
+                          width: 40, // 경험치 50% 가정
+                          height: 8,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Colors.amber[300]!, Colors.amber[500]!],
+                            ),
+                            borderRadius: BorderRadius.circular(4),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.amber.withOpacity(0.3),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      '100/200 XP',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black54,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    const Text('100xp', style: TextStyle(fontSize: 12)),
                   ],
                 ),
               ),
             ],
           ),
 
-          const SizedBox(width: 12), // 좌우 간격 줄임
+          const SizedBox(width: 20),
 
           // 오른쪽 영역 (스와이프 정보)
           Expanded(
@@ -94,7 +135,7 @@ class StatusContainer extends StatelessWidget {
               children: [
                 // 고정 높이 SizedBox 사용하여 PageView 높이 명시적 지정
                 SizedBox(
-                  height: 160, // 높이 줄임
+                  height: 155,
                   child: PageView(
                     controller: pageController,
                     onPageChanged: onPageChanged,
@@ -105,32 +146,34 @@ class StatusContainer extends StatelessWidget {
                   ),
                 ),
 
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
 
-                // 페이지 인디케이터
+                // 페이지 인디케이터 개선
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 2),
-                      width: 8,
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      width: currentStatusPage == 0 ? 18 : 8,
                       height: 8,
                       decoration: BoxDecoration(
-                        color: currentStatusPage == 0
-                            ? Colors.black
+                        color: currentStatusPage == 0 
+                            ? Theme.of(context).primaryColor
                             : Colors.grey[300],
-                        shape: BoxShape.circle,
+                        borderRadius: BorderRadius.circular(4),
                       ),
                     ),
-                    Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 2),
-                      width: 8,
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      width: currentStatusPage == 1 ? 18 : 8,
                       height: 8,
                       decoration: BoxDecoration(
                         color: currentStatusPage == 1
-                            ? Colors.black
+                            ? Theme.of(context).primaryColor
                             : Colors.grey[300],
-                        shape: BoxShape.circle,
+                        borderRadius: BorderRadius.circular(4),
                       ),
                     ),
                   ],
