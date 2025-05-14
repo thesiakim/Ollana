@@ -228,8 +228,11 @@ public class TrackingService {
                                   .orElseThrow(NotFoundException::new);
         Mountain mountain = mountainRepository.findById(request.getMountainId())
                                               .orElseThrow(NotFoundException::new);
-        User opponent = userRepository.findById(request.getOpponentId())
-                                      .orElseThrow(NotFoundException::new);
+        User opponent = null;
+        if (request.getOpponentId() != null) {
+            opponent = userRepository.findById(request.getOpponentId())
+                    .orElseThrow(NotFoundException::new);
+        }
 
         // 거리 측정
         Coordinate end = path.getRoute().getEndPoint().getCoordinate();
@@ -265,7 +268,9 @@ public class TrackingService {
         }
 
         // 대결 결과 저장
-        battleHistoryService.saveBattleHistoryAfterTracking(user, opponent, mountain, path, request.getRecordId(), request.getFinalTime());
+        if (opponent != null) {
+            battleHistoryService.saveBattleHistoryAfterTracking(user, opponent, mountain, path, request.getRecordId(), request.getFinalTime());
+        }
 
         // 사용자 거리 및 경험치 갱신
         userService.updateUserInfoAfterTracking(user, request.getFinalDistance(), mountain.getLevel());

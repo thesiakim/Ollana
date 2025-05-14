@@ -78,11 +78,11 @@ public class HikingHistoryService {
                                 .build();
                     }
 
+                    // 오래된 순서로 정렬 유지, 상위 5개 제한
                     List<TodayHikingResultResponseDto> recordDtos = records.stream()
-                            .sorted(Comparator.comparing(HikingHistory::getCreatedAt).reversed()) // 최신순 정렬
+                            .sorted(Comparator.comparing(HikingHistory::getCreatedAt)) // 오래된 순서 정렬
                             .limit(5)
                             .map(TodayHikingResultResponseDto::from)
-                            .sorted(Comparator.comparing(TodayHikingResultResponseDto::getDate)) // 날짜순
                             .toList();
 
                     return HikingHistoryWithPathResponseDto.builder()
