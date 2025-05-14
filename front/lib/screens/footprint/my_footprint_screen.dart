@@ -60,7 +60,6 @@ class _MyFootprintScreenState extends State<MyFootprintScreen> {
             footprints.addAll(newResponse.mountains);
             totalDistance = newResponse.totalDistance;
             totalElements = newResponse.totalElements;
-
           }
 
           _hasNextPage = !newResponse.last;
@@ -94,8 +93,9 @@ class _MyFootprintScreenState extends State<MyFootprintScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF9F9F9),
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.white, // Fixed background color
         elevation: 0,
+        scrolledUnderElevation: 0, // Prevent elevation change on scroll
         title: const Text(
           '나의 발자취',
           style: TextStyle(
@@ -199,7 +199,6 @@ class _MyFootprintScreenState extends State<MyFootprintScreen> {
                                             color: Color(0xFF52A486),
                                           ),
                                         ),
-
                                       ],
                                     ),
                                 ],
@@ -250,9 +249,7 @@ class _MyFootprintScreenState extends State<MyFootprintScreen> {
                       ),
                     ),
                   ),
-                  
                   const SizedBox(height: 20),
-                  
                   // 발자취 목록 타이틀
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -274,9 +271,7 @@ class _MyFootprintScreenState extends State<MyFootprintScreen> {
                       ),
                     ],
                   ),
-                  
                   const SizedBox(height: 12),
-                  
                   // 그리드 부분
                   Expanded(
                     child: NotificationListener<ScrollNotification>(
@@ -467,7 +462,7 @@ class _MyFootprintScreenState extends State<MyFootprintScreen> {
                       left: 10,
                       right: 10,
                       child: Stack(
-                        alignment: Alignment.center, // Add this line
+                        alignment: Alignment.center,
                         children: [
                           // Stroke (outline) text
                           Text(

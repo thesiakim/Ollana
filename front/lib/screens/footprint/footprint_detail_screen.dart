@@ -326,7 +326,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                   return Card(
                     margin:
                         const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-                    elevation: 2,
+                    elevation: 0.5,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
