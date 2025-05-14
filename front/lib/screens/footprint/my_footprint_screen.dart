@@ -22,6 +22,7 @@ class _MyFootprintScreenState extends State<MyFootprintScreen> {
   bool _isFetching = false;
   bool _hasNextPage = true;
   double totalDistance = 0;
+  int totalElements = 0;
 
   @override
   void initState() {
@@ -54,9 +55,12 @@ class _MyFootprintScreenState extends State<MyFootprintScreen> {
           if (_currentPage == 0) {
             footprints = newResponse.mountains;
             totalDistance = newResponse.totalDistance;
+            totalElements = newResponse.totalElements;
           } else {
             footprints.addAll(newResponse.mountains);
             totalDistance = newResponse.totalDistance;
+            totalElements = newResponse.totalElements;
+
           }
 
           _hasNextPage = !newResponse.last;
@@ -262,7 +266,7 @@ class _MyFootprintScreenState extends State<MyFootprintScreen> {
                         ),
                       ),
                       Text(
-                        '${footprints.length}개',
+                        '$totalElements개',
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey[600],
