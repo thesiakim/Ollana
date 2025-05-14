@@ -5,7 +5,6 @@ import '../../models/path_detail.dart';
 import '../../services/my_footprint_service.dart';
 import '../../utils/footprint_utils.dart';
 import '../../widgets/footprint/footprint_detail_widgets.dart';
-import '../../models/record.dart';
 import './date_picker_modal.dart';
 
 class FootprintDetailScreen extends StatefulWidget {
@@ -42,13 +41,11 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
   Future<void> _fetchFootprintDetail({int? pathId}) async {
     if (_isFetching || (!_hasNextPage && pathId == null)) return;
 
-    debugPrint('Fetching footprint detail for pathId: $pathId');
     setState(() => _isFetching = true);
 
     try {
       final service = MyFootprintService();
       if (pathId != null) {
-        debugPrint('Fetching path detail for pathId: $pathId');
         final startDate = _startDatesByPath[pathId];
         final endDate = _endDatesByPath[pathId];
         final detailResponse = await service.getFootprintPathDetail(
@@ -62,10 +59,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
         setState(() {
           final index = paths.indexWhere((p) => p.pathId == pathId);
           if (index != -1) {
-            debugPrint('Updating path at index: $index, isExceed: ${detailResponse.isExceed}, records: ${detailResponse.records.length}');
-            if (detailResponse.records.isEmpty) {
-              debugPrint('Empty records, keeping existing records');
-            } else {
+            if (detailResponse.records.isNotEmpty) {
               paths[index] = PathDetail(
                 pathId: pathId,
                 pathName: paths[index].pathName,
@@ -75,32 +69,15 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
               _selectedRecordIdsByPath[pathId] = {};
               _compareDataByPath[pathId] = null;
             }
-          } else {
-            debugPrint('Path with pathId $pathId not found, adding new path, isExceed: ${detailResponse.isExceed}, records: ${detailResponse.records.length}');
-            if (!detailResponse.records.isEmpty) {
-              paths.add(detailResponse);
-            }
+          } else if (!detailResponse.records.isEmpty) {
+            paths.add(detailResponse);
           }
         });
 
         if (detailResponse.isExceed) {
-          ScaffoldMessenger.of(context).removeCurrentSnackBar();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              key: Key('isExceed_$pathId'),
-              content: Text('설정하신 기간의 등산 기록이 5개를 초과하여 최근 5개만 확인 가능합니다'),
-              duration: Duration(seconds: 3),
-            ),
-          );
+          _showSnackBar('설정하신 기간의 등산 기록이 5개를 초과하여 최근 5개만 확인 가능합니다');
         } else if (detailResponse.records.isEmpty) {
-          ScaffoldMessenger.of(context).removeCurrentSnackBar();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              key: Key('emptyRecords_$pathId'),
-              content: Text('설정하신 기간의 등산 기록이 존재하지 않습니다'),
-              duration: Duration(seconds: 3),
-            ),
-          );
+          _showSnackBar('설정하신 기간의 등산 기록이 존재하지 않습니다');
         }
       } else {
         final detailResponse = await service.getFootprintDetail(
@@ -112,7 +89,6 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
         setState(() {
           mountainName ??= detailResponse.mountainName;
           paths.addAll(detailResponse.paths);
-          debugPrint('Fetched paths: ${paths.length}');
           for (var path in detailResponse.paths) {
             _selectedRecordIdsByPath[path.pathId] ??= {};
             _compareDataByPath[path.pathId] ??= null;
@@ -124,14 +100,23 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
         });
       }
     } catch (e) {
-      debugPrint('상세 조회 에러: $e');
-      ScaffoldMessenger.of(context).removeCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('등산 상세 결과를 불러오지 못했습니다.')),
-      );
+      _showSnackBar('등산 상세 결과를 불러오지 못했습니다.');
     } finally {
       setState(() => _isFetching = false);
     }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).removeCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        margin: EdgeInsets.all(16),
+      ),
+    );
   }
 
   Future<void> _fetchCompareData(int pathId) async {
@@ -155,10 +140,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
         _compareDataByPath[pathId] = compareResponse;
       });
     } catch (e) {
-      debugPrint('비교 API 호출 에러: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('비교 데이터를 불러오지 못했습니다.')),
-      );
+      _showSnackBar('비교 데이터를 불러오지 못했습니다.');
       setState(() {
         _compareDataByPath[pathId] = null;
       });
@@ -174,7 +156,6 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
         selectedRecordIds.add(recordId);
       }
       _selectedRecordIdsByPath[pathId] = selectedRecordIds;
-      debugPrint('Path $pathId selected recordIds: $selectedRecordIds');
     });
     _fetchCompareData(pathId);
   }
@@ -199,15 +180,11 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
           }
         } else {
           if (_startDatesByPath[pathId] == null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('시작일을 선택해주세요.')),
-            );
+            _showSnackBar('시작일을 선택해주세요.');
             return;
           }
           if (selectedDate.isBefore(_startDatesByPath[pathId]!)) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('종료일은 시작일 이후여야 합니다.')),
-            );
+            _showSnackBar('종료일은 시작일 이후여야 합니다.');
             return;
           }
           _endDatesByPath[pathId] = selectedDate;
@@ -220,30 +197,102 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
     }
   }
 
+  // 레전드 아이템 위젯
+  Widget _buildLegendItem(String label, Color color) {
+    return Row(
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(3),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: Colors.black87,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // 라인 차트용 LineChartBarData 생성
+  LineChartBarData _buildLineChartBarData(
+    List<FlSpot> spots,
+    Color color,
+    double strokeWidth,
+  ) {
+    return LineChartBarData(
+      spots: spots,
+      isCurved: true,
+      barWidth: strokeWidth,
+      color: color,
+      dotData: FlDotData(
+        show: true,
+        getDotPainter: (spot, percent, barData, index) {
+          return FlDotCirclePainter(
+            radius: 4,
+            color: color,
+            strokeWidth: 1,
+            strokeColor: Colors.white,
+          );
+        },
+      ),
+      belowBarData: BarAreaData(
+        show: true,
+        color: color.withOpacity(0.15),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: false,
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: Text(mountainName != null ? '$mountainName 발자취' : '발자취'),
+        elevation: 0,
+        backgroundColor: const Color(0xFF52A486),
+        title: Text(
+          mountainName != null ? '$mountainName 발자취' : '발자취',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        centerTitle: true,
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 16.0),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 5,
+                  offset: Offset(0, 3),
+                ),
+              ],
+            ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                legendItem('최고 심박수', Colors.red),
-                const SizedBox(width: 15),
-                legendItem('평균 심박수', Colors.blue),
-                const SizedBox(width: 15),
-                legendItem('소요 시간(분)', Colors.green),
+                _buildLegendItem('최고 심박수', Colors.red),
+                const SizedBox(width: 20),
+                _buildLegendItem('평균 심박수', Colors.blue),
+                const SizedBox(width: 20),
+                _buildLegendItem('소요 시간(분)', Colors.green),
               ],
             ),
           ),
-          const SizedBox(height: 24),
           Expanded(
             child: NotificationListener<ScrollNotification>(
               onNotification: (scrollInfo) {
@@ -255,242 +304,292 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                 return false;
               },
               child: ListView.builder(
+                padding: const EdgeInsets.only(top: 16),
                 itemCount: paths.length + (_isFetching ? 1 : 0),
                 itemBuilder: (context, index) {
                   if (index >= paths.length) {
                     return const Center(
                       child: Padding(
                         padding: EdgeInsets.all(16),
-                        child: CircularProgressIndicator(),
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF52A486),
+                        ),
                       ),
                     );
                   }
 
                   final path = paths[index];
                   final compareData = _compareDataByPath[path.pathId];
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          path.pathName,
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 20),
-                        Padding(
-                          padding: const EdgeInsets.only(right: 24.0),
-                          child: SizedBox(
-                            height: 250,
-                            child: LineChart(
-                              LineChartData(
-                                minX: 0,
-                                maxX: path.records.isEmpty ? 0 : path.records.length - 1.0,
-                                minY: 0,
-                                maxY: path.records.isEmpty ? 100 : getMaxValue(path) * 1.1,
-                                lineBarsData: [
-                                  line(
-                                    path.records.isEmpty
-                                        ? [FlSpot(0, 0)]
-                                        : path.records.asMap().entries.map((entry) {
-                                            final idx = entry.key;
-                                            final record = entry.value;
-                                            return FlSpot(idx.toDouble(), record.maxHeartRate.toDouble());
-                                          }).toList(),
-                                    Colors.red,
-                                    '최고 심박수',
-                                    path.records,
-                                    path.pathId,
-                                    _selectedRecordIdsByPath,
-                                  ),
-                                  line(
-                                    path.records.isEmpty
-                                        ? [FlSpot(0, 0)]
-                                        : path.records.asMap().entries.map((entry) {
-                                            final idx = entry.key;
-                                            final record = entry.value;
-                                            return FlSpot(idx.toDouble(), record.averageHeartRate);
-                                          }).toList(),
-                                    Colors.blue,
-                                    '평균 심박수',
-                                    path.records,
-                                    path.pathId,
-                                    _selectedRecordIdsByPath,
-                                  ),
-                                  line(
-                                    path.records.isEmpty
-                                        ? [FlSpot(0, 0)]
-                                        : path.records.asMap().entries.map((entry) {
-                                            final idx = entry.key;
-                                            final record = entry.value;
-                                            return FlSpot(idx.toDouble(), record.time.toDouble());
-                                          }).toList(),
-                                    Colors.green,
-                                    '소요 시간',
-                                    path.records,
-                                    path.pathId,
-                                    _selectedRecordIdsByPath,
-                                  ),
-                                ],
-                                titlesData: FlTitlesData(
-                                  show: true,
-                                  bottomTitles: AxisTitles(
-                                    sideTitles: SideTitles(
-                                      showTitles: true,
-                                      reservedSize: 35,
-                                      interval: 1,
-                                      getTitlesWidget: (value, meta) {
-                                        final index = value.toInt();
-                                        if (index >= 0 && index < path.records.length) {
-                                          final date = path.records[index].date;
-                                          final recordId = path.records[index].recordId;
-                                          final selectedRecordIds = _selectedRecordIdsByPath[path.pathId] ?? {};
-                                          final isSelected = selectedRecordIds.contains(recordId);
-                                          return GestureDetector(
-                                            onTap: () {
-                                              debugPrint('Tapped date: ${formatDate(date)}, recordId: $recordId, pathId: ${path.pathId}');
-                                              _toggleRecordSelection(path.pathId, recordId);
-                                            },
-                                            child: Padding(
-                                              padding: const EdgeInsets.only(top: 8.0),
-                                              child: Text(
-                                                formatDate(date),
-                                                textAlign: TextAlign.center,
-                                                style: TextStyle(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: isSelected ? Colors.orange : Colors.black,
-                                                ),
-                                              ),
-                                            ),
-                                          );
-                                        }
-                                        return const SizedBox.shrink();
-                                      },
-                                    ),
-                                    axisNameWidget: const Padding(
-                                      padding: EdgeInsets.only(top: 15),
-                                      child: Text(
-                                        '날짜',
-                                        style: TextStyle(fontWeight: FontWeight.bold),
-                                      ),
-                                    ),
-                                  ),
-                                  leftTitles: AxisTitles(
-                                    sideTitles: SideTitles(
-                                      showTitles: true,
-                                      reservedSize: 35,
-                                      getTitlesWidget: (value, meta) {
-                                        if (value == 0) {
-                                          return const SizedBox.shrink();
-                                        }
-                                        return Text(
-                                          value.toInt().toString(),
-                                          style: const TextStyle(fontSize: 10),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                  rightTitles: const AxisTitles(
-                                    sideTitles: SideTitles(showTitles: false),
-                                  ),
-                                  topTitles: const AxisTitles(
-                                    sideTitles: SideTitles(showTitles: false),
+                  
+                  return Card(
+                    margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.route,
+                                color: Color(0xFF52A486),
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  path.pathName,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF333333),
                                   ),
                                 ),
-                                gridData: const FlGridData(show: true),
-                                borderData: FlBorderData(show: true),
-                                lineTouchData: LineTouchData(
-                                  enabled: true,
-                                  touchTooltipData: LineTouchTooltipData(
-                                    getTooltipItems: (touchedSpots) {
-                                      return touchedSpots.map((touchedSpot) {
-                                        final String title;
-                                        final Color textColor;
+                              ),
+                            ],
+                          ),
+                          const Divider(height: 24),
+                          AspectRatio(
+                            aspectRatio: 1.7,
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 16.0, top: 8.0, bottom: 8.0),
+                              child: LineChart(
+                                LineChartData(
+                                  minX: 0,
+                                  maxX: path.records.isEmpty ? 0 : path.records.length - 1.0,
+                                  minY: 0,
+                                  maxY: path.records.isEmpty ? 100 : getMaxValue(path) * 1.1,
+                                  lineTouchData: LineTouchData(
+                                    enabled: true,
+                                    touchTooltipData: LineTouchTooltipData(
+                                      tooltipBgColor: Colors.white.withOpacity(0.8),
+                                      tooltipRoundedRadius: 8,
+                                      getTooltipItems: (touchedSpots) {
+                                        return touchedSpots.map((touchedSpot) {
+                                          final String title;
+                                          final Color textColor;
 
-                                        if (touchedSpot.barIndex == 0) {
-                                          title = '최고 심박수: ${touchedSpot.y.toInt()}';
-                                          textColor = Colors.red;
-                                        } else if (touchedSpot.barIndex == 1) {
-                                          title = '평균 심박수: ${touchedSpot.y.toInt()}';
-                                          textColor = Colors.blue;
-                                        } else {
-                                          title = '소요 시간: ${touchedSpot.y.toInt()}분';
-                                          textColor = Colors.green;
+                                          if (touchedSpot.barIndex == 0) {
+                                            title = '최고 심박수: ${touchedSpot.y.toInt()}';
+                                            textColor = Colors.red;
+                                          } else if (touchedSpot.barIndex == 1) {
+                                            title = '평균 심박수: ${touchedSpot.y.toInt()}';
+                                            textColor = Colors.blue;
+                                          } else {
+                                            title = '소요 시간: ${touchedSpot.y.toInt()}분';
+                                            textColor = Colors.green;
+                                          }
+
+                                          return LineTooltipItem(
+                                            title,
+                                            TextStyle(
+                                              color: textColor,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 12,
+                                            ),
+                                          );
+                                        }).toList();
+                                      },
+                                    ),
+                                    touchCallback: (FlTouchEvent event, LineTouchResponse? touchResponse) {
+                                      if (event is FlTapUpEvent && touchResponse != null && touchResponse.lineBarSpots != null) {
+                                        final spot = touchResponse.lineBarSpots!.first;
+                                        final index = spot.x.toInt();
+                                        if (index >= 0 && index < path.records.length) {
+                                          final recordId = path.records[index].recordId;
+                                          _toggleRecordSelection(path.pathId, recordId);
                                         }
-
-                                        return LineTooltipItem(
-                                          title,
-                                          TextStyle(color: textColor, fontWeight: FontWeight.bold),
+                                      }
+                                    },
+                                    getTouchedSpotIndicator: (barData, spotIndexes) {
+                                      return spotIndexes.map((index) {
+                                        return TouchedSpotIndicatorData(
+                                          FlLine(color: Colors.orange, strokeWidth: 2),
+                                          FlDotData(
+                                            show: true,
+                                            getDotPainter: (spot, percent, barData, index) {
+                                              return FlDotCirclePainter(
+                                                radius: 6,
+                                                color: Colors.orange,
+                                                strokeWidth: 2,
+                                                strokeColor: Colors.white,
+                                              );
+                                            },
+                                          ),
                                         );
                                       }).toList();
                                     },
                                   ),
-                                  touchCallback: (FlTouchEvent event, LineTouchResponse? touchResponse) {
-                                    debugPrint('Touch event: $event, Response: $touchResponse');
-                                    if (event is FlTapUpEvent && touchResponse != null && touchResponse.lineBarSpots != null) {
-                                      final spot = touchResponse.lineBarSpots!.first;
-                                      final index = spot.x.toInt();
-                                      debugPrint('Tapped spot: index=$index, x=${spot.x}, y=${spot.y}, pathId: ${path.pathId}');
-                                      if (index >= 0 && index < path.records.length) {
-                                        final recordId = path.records[index].recordId;
-                                        debugPrint('Selected recordId: $recordId');
-                                        _toggleRecordSelection(path.pathId, recordId);
-                                      }
-                                    }
-                                  },
-                                  getTouchedSpotIndicator: (barData, spotIndexes) {
-                                    return spotIndexes.map((index) {
-                                      return TouchedSpotIndicatorData(
-                                        FlLine(color: Colors.orange, strokeWidth: 2),
-                                        FlDotData(
-                                          show: true,
-                                          getDotPainter: (spot, percent, barData, index) {
-                                            return FlDotCirclePainter(
-                                              radius: 6,
-                                              color: Colors.orange,
-                                              strokeWidth: 2,
-                                              strokeColor: Colors.white,
-                                            );
-                                          },
-                                        ),
+                                  gridData: FlGridData(
+                                    show: true,
+                                    drawVerticalLine: true,
+                                    getDrawingHorizontalLine: (value) {
+                                      return FlLine(
+                                        color: Colors.grey.withOpacity(0.3),
+                                        strokeWidth: 1,
                                       );
-                                    }).toList();
-                                  },
+                                    },
+                                    getDrawingVerticalLine: (value) {
+                                      return FlLine(
+                                        color: Colors.grey.withOpacity(0.3),
+                                        strokeWidth: 1,
+                                      );
+                                    },
+                                  ),
+                                  titlesData: FlTitlesData(
+                                    show: true,
+                                    bottomTitles: AxisTitles(
+                                      sideTitles: SideTitles(
+                                        showTitles: true,
+                                        reservedSize: 35,
+                                        interval: 1,
+                                        getTitlesWidget: (value, meta) {
+                                          final index = value.toInt();
+                                          if (index >= 0 && index < path.records.length) {
+                                            final date = path.records[index].date;
+                                            final recordId = path.records[index].recordId;
+                                            final selectedRecordIds = _selectedRecordIdsByPath[path.pathId] ?? {};
+                                            final isSelected = selectedRecordIds.contains(recordId);
+                                            
+                                            return GestureDetector(
+                                              onTap: () {
+                                                _toggleRecordSelection(path.pathId, recordId);
+                                              },
+                                              child: Padding(
+                                                padding: const EdgeInsets.only(top: 8.0),
+                                                child: Text(
+                                                  formatDate(date),
+                                                  textAlign: TextAlign.center,
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: isSelected ? Colors.orange : Colors.black,
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                          return const SizedBox.shrink();
+                                        },
+                                      ),
+                                      axisNameWidget: const Padding(
+                                        padding: EdgeInsets.only(top: 15),
+                                        child: Text(
+                                          '날짜',
+                                          style: TextStyle(fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    ),
+                                    leftTitles: AxisTitles(
+                                      sideTitles: SideTitles(
+                                        showTitles: true,
+                                        reservedSize: 35,
+                                        getTitlesWidget: (value, meta) {
+                                          if (value == 0) {
+                                            return const SizedBox.shrink();
+                                          }
+                                          return Padding(
+                                            padding: const EdgeInsets.only(right: 4),
+                                            child: Text(
+                                              value.toInt().toString(),
+                                              style: const TextStyle(
+                                                fontSize: 10,
+                                                color: Colors.black54,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                    rightTitles: const AxisTitles(
+                                      sideTitles: SideTitles(showTitles: false),
+                                    ),
+                                    topTitles: const AxisTitles(
+                                      sideTitles: SideTitles(showTitles: false),
+                                    ),
+                                  ),
+                                  borderData: FlBorderData(
+                                    show: true,
+                                    border: Border.all(color: Colors.grey.withOpacity(0.5), width: 1),
+                                  ),
+                                  lineBarsData: [
+                                    // 최고 심박수 라인
+                                    _buildLineChartBarData(
+                                      path.records.isEmpty
+                                          ? [FlSpot(0, 0)]
+                                          : path.records.asMap().entries.map((entry) {
+                                              final idx = entry.key;
+                                              final record = entry.value;
+                                              return FlSpot(idx.toDouble(), record.maxHeartRate.toDouble());
+                                            }).toList(),
+                                      Colors.red,
+                                      2.5,
+                                    ),
+                                    // 평균 심박수 라인
+                                    _buildLineChartBarData(
+                                      path.records.isEmpty
+                                          ? [FlSpot(0, 0)]
+                                          : path.records.asMap().entries.map((entry) {
+                                              final idx = entry.key;
+                                              final record = entry.value;
+                                              return FlSpot(idx.toDouble(), record.averageHeartRate);
+                                            }).toList(),
+                                      Colors.blue,
+                                      2.5,
+                                    ),
+                                    // 소요 시간 라인
+                                    _buildLineChartBarData(
+                                      path.records.isEmpty
+                                          ? [FlSpot(0, 0)]
+                                          : path.records.asMap().entries.map((entry) {
+                                              final idx = entry.key;
+                                              final record = entry.value;
+                                              return FlSpot(idx.toDouble(), record.time.toDouble());
+                                            }).toList(),
+                                      Colors.green,
+                                      2.5,
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF52A486),
-                                foregroundColor: Colors.white,
+                          const SizedBox(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF52A486),
+                                  foregroundColor: Colors.white,
+                                ),
+                                onPressed: () => _showDatePickerModal(path.pathId, true),
+                                child: Text('시작일 ${displayDate(_startDatesByPath[path.pathId])}'),
                               ),
-                              onPressed: () => _showDatePickerModal(path.pathId, true),
-                              child: Text('시작일 ${displayDate(_startDatesByPath[path.pathId])}'),
-                            ),
-                            const SizedBox(width: 10),
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF52A486),
-                                foregroundColor: Colors.white,
+                              const SizedBox(width: 10),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF52A486),
+                                  foregroundColor: Colors.white,
+                                ),
+                                onPressed: _startDatesByPath[path.pathId] == null
+                                    ? null
+                                    : () => _showDatePickerModal(path.pathId, false),
+                                child: Text('종료일 ${displayDate(_endDatesByPath[path.pathId])}'),
                               ),
-                              onPressed: _startDatesByPath[path.pathId] == null
-                                  ? null
-                                  : () => _showDatePickerModal(path.pathId, false),
-                              child: Text('종료일 ${displayDate(_endDatesByPath[path.pathId])}'),
-                            ),
+                            ],
+                          ),
+                          if (compareData != null && compareData.records.isNotEmpty) ...[
+                            const SizedBox(height: 20),
+                            buildCompareResult(compareData),
                           ],
-                        ),
-                        if (compareData != null && compareData.records.isNotEmpty)
-                          buildCompareResult(compareData),
-                      ],
+                        ],
+                      ),
                     ),
                   );
                 },
