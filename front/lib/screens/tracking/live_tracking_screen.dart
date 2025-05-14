@@ -19,6 +19,7 @@ import 'package:flutter_compass/flutter_compass.dart';
 import '../../models/mode_data.dart';
 import '../../services/mode_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:watch_connectivity/watch_connectivity.dart';
 
 // 네이버 지도 라이브러리 임포트
 import 'package:flutter_naver_map/flutter_naver_map.dart';
@@ -110,6 +111,12 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   int _elapsedMinutes = 0;
   double _currentAltitude = 120;
   double _distance = 3.7;
+
+  // WatchConnectivity 인스턴스 추가
+  final WatchConnectivity _watch = WatchConnectivity();
+  bool _isWatchPaired = false;
+  bool _isCheckingWatch = false;
+  String _watchStatus = '워치 연결 확인이 필요합니다';
 
   // 현재 위치 (처음 지도 로드 위치)
   double _currentLat = 37.5665;
@@ -211,6 +218,9 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
 
     // 블루투스 권한 요청
     _requestBluetoothPermissions();
+
+    // 워치 연결 상태 초기 확인
+    _checkWatchConnection();
 
     // AppState에서 데이터 가져오기
     final appState = Provider.of<AppState>(context, listen: false);
@@ -884,6 +894,9 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
           // 커스텀 위치 버튼 (좌측 하단)
           _buildLocationButton(),
 
+          // 워치 연결 버튼 추가 (좌측 상단)
+          _buildWatchButton(),
+
           // 드래그 가능한 바텀 시트
           _buildDraggableBottomSheet(),
         ],
@@ -1282,27 +1295,20 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
     }
   }
 
-  // 워치 앱에 알림 전송 메소드 (실제 구현)
+  // 워치 알림 전송 메소드 (watch_connectivity 라이브러리 사용)
   void _sendWatchNotification(String title, String messageBody) async {
     try {
       debugPrint('워치 알림 전송 시작: $title - $messageBody');
 
-      // 블루투스 지원 및 활성화 여부 확인
-      if (!await FlutterBluePlus.isSupported) {
-        debugPrint('이 기기는 블루투스를 지원하지 않습니다.');
+      // 워치가 연결되어 있는지 확인
+      if (!await _watch.isPaired) {
+        debugPrint('워치가 연결되어 있지 않습니다.');
         return;
       }
 
-      // adapterState를 확인하여 블루투스가 켜져 있는지 확인
-      final BluetoothAdapterState adapterState =
-          await FlutterBluePlus.adapterState.first;
-      if (adapterState != BluetoothAdapterState.on) {
-        debugPrint('블루투스가 비활성화되어 있습니다.');
-        return;
-      }
-
-      // 블루투스를 통한 워치 알림 데이터 준비
+      // 워치에 전송할 알림 데이터
       final notificationData = {
+        'type': 'notification',
         'title': title,
         'body': messageBody,
         'data': {
@@ -1314,16 +1320,10 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
         }
       };
 
-      // 실제 연결된 워치 앱에서는 다음 로직을 구현해야 합니다:
-      // 1. 연결된 워치 디바이스 찾기
-      // 2. 워치 디바이스에 알림 데이터 전송
+      // watch_connectivity를 사용하여 워치에 메시지 전송
+      await _watch.sendMessage(notificationData);
 
-      // 디버깅용 로그만 출력 (실제 구현 필요)
-      debugPrint('워치에 전송할 데이터 (목업): ${jsonEncode(notificationData)}');
-      debugPrint('실제 블루투스 구현 필요 - 현재는 디버깅 모드');
-
-      // 알림 완료 메시지
-      debugPrint('워치 알림 전송 완료 (mock)');
+      debugPrint('워치 알림 전송 완료');
     } catch (e) {
       debugPrint('워치 알림 전송 실패: $e');
     }
@@ -2406,5 +2406,119 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
     } catch (e) {
       debugPrint('블루투스 권한 요청 오류: $e');
     }
+  }
+
+  // 워치 연결 상태 확인
+  Future<void> _checkWatchConnection() async {
+    if (_isCheckingWatch) return;
+
+    setState(() {
+      _isCheckingWatch = true;
+      _watchStatus = '워치 연결 확인 중...';
+    });
+
+    try {
+      // watch_connectivity 라이브러리를 사용해 워치 연결 상태 확인
+      final isPaired = await _watch.isPaired;
+
+      setState(() {
+        _isWatchPaired = isPaired;
+        _watchStatus = isPaired ? '워치가 연결되어 있습니다' : '워치가 연결되어 있지 않습니다';
+        _isCheckingWatch = false;
+      });
+
+      debugPrint('워치 연결 상태: ${isPaired ? '연결됨' : '연결되지 않음'}');
+    } catch (e) {
+      setState(() {
+        _isWatchPaired = false;
+        _watchStatus = '워치 연결 확인 중 오류 발생: $e';
+        _isCheckingWatch = false;
+      });
+      debugPrint('워치 연결 확인 중 오류: $e');
+    }
+  }
+
+  // 워치에 메시지 전송 (watch_connectivity 사용)
+  Future<void> _sendMessageToWatch() async {
+    if (!_isWatchPaired) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('워치가 연결되어 있지 않습니다.')),
+      );
+      return;
+    }
+
+    try {
+      debugPrint('워치에 메시지 전송 시도...');
+
+      // 테스트 메시지 전송
+      await _watch.sendMessage({
+        'type': 'tracking_update',
+        'data': {
+          'elapsedTime': _formattedTime,
+          'distance': _currentTotalDistance.toStringAsFixed(2),
+          'remainingDistance': _remainingDistance.toStringAsFixed(2),
+          'altitude': _currentAltitude.toStringAsFixed(1),
+          'heartRate': _avgHeartRate,
+        }
+      });
+
+      debugPrint('워치에 메시지 전송 완료');
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('워치에 메시지를 전송했습니다.')),
+      );
+    } catch (e) {
+      debugPrint('워치 메시지 전송 오류: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('워치 메시지 전송 실패: $e')),
+      );
+    }
+  }
+
+  // 워치 연결 버튼 위젯
+  Widget _buildWatchButton() {
+    return Positioned(
+      top: MediaQuery.of(context).padding.top + 10,
+      left: 10,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          FloatingActionButton(
+            heroTag: 'watchConnect',
+            onPressed: _isCheckingWatch
+                ? null
+                : () async {
+                    await _checkWatchConnection();
+                    if (_isWatchPaired) {
+                      _sendMessageToWatch();
+                    }
+                  },
+            mini: true,
+            backgroundColor: _isWatchPaired ? Colors.green : Colors.grey,
+            child: Icon(
+              _isWatchPaired ? Icons.watch : Icons.watch_outlined,
+              color: Colors.white,
+            ),
+          ),
+          // 워치 상태 표시
+          if (_isCheckingWatch || _watchStatus.isNotEmpty)
+            Container(
+              margin: const EdgeInsets.only(top: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.6),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                _isCheckingWatch ? '확인 중...' : _watchStatus,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }
