@@ -21,6 +21,7 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +31,7 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
@@ -77,6 +79,7 @@ public class AuthServiceImpl implements AuthService {
                 .build();
 
         userRepository.save(user);
+        log.info("new user: userId={}", user.getId());
     }
 
     @Override
@@ -90,6 +93,7 @@ public class AuthServiceImpl implements AuthService {
             throw AuthenticationException.passwordMismatch();
         }
 
+        log.info("user login: userId={}", user.getId());
         return generateAuthTokensAndResponse(user, response);
     }
 
@@ -150,13 +154,14 @@ public class AuthServiceImpl implements AuthService {
                 .isSocial(request.isSocial())
                 .build();
         userRepository.save(newUser);
+        log.info("new user(kakao): userId={}", newUser.getId());
 
         return generateAuthTokensAndResponse(newUser, response);
     }
 
     @Override
     public void logout(HttpServletRequest request, HttpServletResponse response) {
-        String refreshToken = extractRefreshTokenFromCookie(request);
+        String refreshToken = tokenService.extractRefreshTokenFromCookie(request);
 
         if (refreshToken != null) {
             String userEmail = jwtUtil.getUserEmailFromToken(refreshToken);
@@ -166,7 +171,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         // 액세스 토큰 블랙리스트에 추가
-        String accessToken = extractAccessTokenFromHeader(request);
+        String accessToken = tokenService.extractAccessTokenFromHeader(request);
         if (accessToken != null) {
             // 토큰 남은 유효시간
             long tokenRemainingTime = jwtUtil.getTokenRemainingTime(accessToken);
@@ -178,54 +183,22 @@ public class AuthServiceImpl implements AuthService {
         }
 
         // 리프레시 토큰 쿠키 삭제
-        Cookie cookie = new Cookie("refreshToken", "");
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true);
-        cookie.setPath("/");
-        cookie.setMaxAge(0);        // 즉시 만료
+        Cookie cookie = tokenService.createExpiredRefreshTokenCookie();
         response.addCookie(cookie); // 삭제용 쿠키를 응답에 추가
     }
 
 
-
-
-    // 쿠키에서 리프레시 토큰 추출
-    private String extractRefreshTokenFromCookie(HttpServletRequest request) {
-        Cookie[] cookies = request.getCookies();
-        if (cookies != null) {
-            for (Cookie cookie : cookies) {
-                if (cookie.getName().equals("refreshToken")) {
-                    return cookie.getValue();
-                }
-            }
-        }
-        return null;
-    }
-
-    // 헤더에서 액세스 토큰 추출
-    private String extractAccessTokenFromHeader(HttpServletRequest request) {
-        String header = request.getHeader("Authorization");
-        if (header != null && header.startsWith("Bearer ")) {
-            return header.substring(7);
-        }
-        return null;
-    }
-
     // 로그인
     private LoginResponseDto generateAuthTokensAndResponse(User user, HttpServletResponse response) {
         // JWT 토큰 생성
-        String accessToken = jwtUtil.createAccessToken(user.getEmail());
-        String refreshToken = jwtUtil.createRefreshToken(user.getEmail());
+        String accessToken = jwtUtil.createAccessToken(user.getEmail(), user.getId());
+        String refreshToken = jwtUtil.createRefreshToken(user.getEmail(), user.getId());
 
         // 리프레시 토큰 레디스 저장
         tokenService.saveRefreshToken(user.getEmail(), refreshToken);
 
         // refreshToken을 HTTP-only 쿠키로 설정
-        Cookie refreshCookie = new Cookie("refreshToken", refreshToken);
-        refreshCookie.setHttpOnly(true);  // JavaScript에서 접근 불가
-        refreshCookie.setSecure(true);    // HTTPS에서만 전송
-        refreshCookie.setPath("/");       // 모든 경로에서 접근 가능
-        refreshCookie.setMaxAge((int) (jwtUtil.getRefreshTokenExpiration() / 1000)); // 초 단위로 변환
+        Cookie refreshCookie = tokenService.createRefreshTokenCookie(refreshToken);
         response.addCookie(refreshCookie); // 쿠키를 응답에 추가
 
         LoginResponseDto loginResponse = LoginResponseDto.builder()

@@ -12,6 +12,7 @@ import '../widgets/home_body.dart';
 import './tracking/tracking_screen.dart';
 import './footprint/my_footprint_screen.dart';
 import './user/my_page_screen.dart';
+import './mountain/mountain_map_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -21,7 +22,7 @@ class HomeScreen extends StatelessWidget {
     return Consumer<AppState>(
       builder: (context, appState, child) {
         return Scaffold(
-          appBar: const CustomAppBar(), 
+          appBar: const CustomAppBar(),
           body: Stack(
             children: [
               // 현재 선택된 탭에 따라 화면 표시
@@ -32,9 +33,9 @@ class HomeScreen extends StatelessWidget {
                   case 1:
                     return const TrackingScreen();
                   case 2:
-                    return const Center(child: Text('산 정보 페이지'));
+                    return const MountainMapScreen();
                   case 3:
-                    return const MyFootprintScreen(); 
+                    return const MyFootprintScreen();
                   case 4:
                     return MyPageScreen();
                   default:

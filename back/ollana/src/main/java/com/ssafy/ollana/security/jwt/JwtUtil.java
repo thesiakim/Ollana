@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 
+// 토큰 생성, 검증, 파싱
 @Slf4j
 @Component
 @Getter
@@ -33,23 +34,24 @@ public class JwtUtil {
         this.passwordResetTokenExpiration = passwordResetTokenExpiration;
     }
 
-    // accessToken 생성
-    public String createAccessToken(String userEmail) {
-        return createAccessToken(userEmail, accessTokenExpiration);
+    // access token 생성
+    public String createAccessToken(String userEmail, int userId) {
+        return createAccessToken(userEmail, userId, accessTokenExpiration);
     }
 
-    // refreshToken 생성
-    public String createRefreshToken(String userEmail) {
-        return createAccessToken(userEmail, refreshTokenExpiration);
+    // refresh token 생성
+    public String createRefreshToken(String userEmail, int userId) {
+        return createAccessToken(userEmail, userId, refreshTokenExpiration);
     }
 
-    // token 생성
-    private String createAccessToken(String userEmail, long tokenExpiration) {
+    // token 생성 공통 메서드
+    private String createAccessToken(String userEmail, int userId, long tokenExpiration) {
         Date now = new Date();
         Date expiration = new Date(now.getTime() + tokenExpiration);
 
         return Jwts.builder()
                 .setSubject(userEmail)                         // 사용자 식별자값
+                .claim("userId", userId)
                 .setIssuedAt(now)                              // 발급일
                 .setExpiration(expiration)                     // 만료 시간
                 .signWith(key, SignatureAlgorithm.HS256)       // 암호화 알고리즘
@@ -99,8 +101,14 @@ public class JwtUtil {
                 .getBody();
     }
 
-    // 사용자 이메일 가져오기
+    // 토큰에서 사용자 이메일 가져오기
     public String getUserEmailFromToken(String token) {
         return getClaims(token).getSubject();
+    }
+
+    // 토큰에서 userId 가져오기
+    public int getUserIdFromToken(String token) {
+        Claims claims = getClaims(token);
+        return claims.get("userId", Integer.class);
     }
 }
