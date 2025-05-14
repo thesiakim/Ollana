@@ -246,7 +246,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     // TODO: 카카오톡 로그인 기능 구현
                   },
                   icon: const Icon(Icons.chat),
-                  label: const Text('카카오톡으로 시작하기'),
+                  label: const Text('카카오 로그인'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFEE500),
                     foregroundColor: Colors.black,
