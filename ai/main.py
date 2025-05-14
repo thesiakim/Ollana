@@ -1,11 +1,12 @@
 import pickle
 from contextlib import asynccontextmanager
 
+import numpy as np
 import pandas as pd
 import requests
 from scipy import cluster
 import uvicorn
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Body
@@ -16,6 +17,8 @@ from methods import method
 from models.models import UserProfile
 from models.database import init_db, SessionLocal
 
+import tensorflow as tf
+import joblib
 
 ###############입력데이터 모델 정리하는 곳
 class UserInput(BaseModel):
@@ -53,8 +56,7 @@ with open("./datas/K_means/scaler.pkl", "rb") as f:
     scaler = pickle.load(f)
 
 with open("./datas/K_means/kmeans_model.pkl", "rb") as f:
-    kmeans = pickle.load(f)
-
+    kmeans = pickle.load(f)    
 
 # 등산지수 API
 @app.post("/weather")
@@ -69,6 +71,31 @@ async def weather():
 
     return JSONResponse({"score": score})
 
+# 유저 설문 제출 API
+@app.post("/submit_survey/{user_id}")
+async def submit_suervey(user_id: str, user_input:UserInput, db:Session = Depends(get_db)):
+    if not user_id:
+        return JSONResponse(status_code=400, content={"message": "유효한 user_id를 query 파라미터로 전달해주세요."})
+    
+    user = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
+    print("📁 DB 실제 경로:", SessionLocal().bind.url)
+    if user:
+        user.theme = user_input.theme
+        user.experience = user_input.experience
+        user.region = user_input.region
+    else:
+        user = UserProfile(
+            user_id=user_id,
+            theme=user_input.theme,
+            experience=user_input.experience,
+            region=user_input.region
+        )
+        db.add(user)
+        db.flush()
+        
+    db.commit()
+    return JSONResponse({"message": "설문이 성공적으로 저장되었습니다."})
+    
 # 유저 설문 기반 추천(클러스터링)
 @app.post("/recommend/{user_id}")
 async def recommend(user_id:str, db: Session = Depends(get_db)):
@@ -141,5 +168,30 @@ async def recommend_by_keyword(keyword: str = Body(..., embed=True)):
         "recommendations": recommendations
     })
 
+# 지역 기반 검색 API
+@app.post("/recommend_by_region")
+async def recommend_by_region(region: str = Body(..., embed=True)):
+    matched = k_means_df[k_means_df["region"] == region]
+    
+    if matched.empty:
+        return JSONResponse(
+            status_code=404,
+            content={"message": f"'{region}' 지역의 산 정보를 찾을 수 없습니다."}
+        )
+    
+    recommendations = matched.sample(n=min(3, len(matched)))[
+        ["mountain_name", "mountain_description"]
+    ].to_dict(orient="records")
+    
+    for rec_data in recommendations:
+        image_url = method.get_image_by_mountain_name(rec_data["mountain_name"])
+        rec_data["image_url"] = image_url or "https://image.ytn.co.kr/general/jpg/2020/0924/202009241540389154_d.jpg"
+
+    return JSONResponse({
+        "region": region,
+        "recommendations": recommendations
+    })
+
+
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8001)

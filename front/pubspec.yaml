@@ -93,6 +93,9 @@ flutter:
     - lib/assets/images/up-arrow.png
     - lib/assets/images/basic_profile.png
     - lib/assets/images/crown.png
+    - lib/assets/images/ai_recommend.png
+    - lib/assets/images/location_recommend.png
+    - lib/assets/images/theme_recommend.png
     - .env
 
   # An image asset can refer to one or more resolution-specific "variants", see
@@ -106,10 +109,14 @@ flutter:
   # "family" key with the font family name, and a "fonts" key with a
   # list giving the asset and other descriptors for the font. For
   # example:
-  # fonts:
-  #   - family: Schyler
-  #     fonts:
-  #       - asset: fonts/Schyler-Regular.ttf
+  fonts:
+    - family: GmarketSans
+      fonts:
+        - asset: assets/fonts/GmarketSansTTFMedium.ttf
+    - family: Dovemayo
+      fonts:
+        - asset: assets/fonts/Dovemayo_wild.ttf
+              # weight: 500
   #       - asset: fonts/Schyler-Italic.ttf
   #         style: italic
   #   - family: Trajan Pro

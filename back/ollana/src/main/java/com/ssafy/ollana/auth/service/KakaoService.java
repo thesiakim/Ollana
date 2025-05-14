@@ -37,6 +37,7 @@ public class KakaoService {
 
     // 카카오 인가 코드로 토큰 받아오기
     public KakaoTokenDto getAccessToken(String accessCode) {
+        System.out.println("redirect = " + redirect);
         // 헤더
         HttpHeaders headers = new HttpHeaders();
         headers.add("Content-Type", "application/x-www-form-urlencoded;charset=UTF-8");
