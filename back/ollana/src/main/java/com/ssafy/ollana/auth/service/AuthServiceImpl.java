@@ -226,7 +226,7 @@ public class AuthServiceImpl implements AuthService {
         Optional<User> userOpt = userRepository.findByEmail(kakaoProfileDto.getKakaoAccount().getEmail());
 
         // 이미 가입된 유저 => 로그인
-        if (!userOpt.isPresent()) {
+        if (userOpt.isPresent()) {
             User user = userOpt.get();
             return generateAuthTokensAndResponse(user, response);
         } else {
@@ -281,7 +281,7 @@ public class AuthServiceImpl implements AuthService {
     public DeepLinkResponseDto processKakaoLogin(String accessCode, HttpServletResponse response) {
         try {
             // 카카오 로그인 시도
-            LoginResponseDto loginResponse = kakaoLogin(accessCode, response);
+            kakaoLogin(accessCode, response);
 
             // 로그인 하면 앱으로 돌아가기
             return DeepLinkResponseDto.builder()
@@ -289,14 +289,14 @@ public class AuthServiceImpl implements AuthService {
                     .isNewUser(false)
                     .build();
 
+        // 회원이 아니면 추가 정보 입력 필요
         } catch (AdditionalInfoRequiredException e) {
-            // 회원이 아니면 추가 정보 입력 필요
             TempUserDto tempUser = e.getTempUser();
-            String tempToken = tokenService.getTempUserByToken(tempUser);
+            String tempToken = kakaoService.generateKakaoTempToken(tempUser);
 
             return DeepLinkResponseDto.builder()
                     .deepLink("ollana://auth/oauth/kakao?status=signup&temp_token=" + tempToken)
-                    .isNewUser(false)
+                    .isNewUser(true)
                     .build();
         }
     }

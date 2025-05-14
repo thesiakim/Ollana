@@ -4,6 +4,7 @@ import com.ssafy.ollana.auth.dto.TempUserDto;
 import com.ssafy.ollana.auth.dto.request.*;
 import com.ssafy.ollana.auth.dto.response.AccessTokenResponseDto;
 import com.ssafy.ollana.auth.dto.response.DeepLinkResponseDto;
+import com.ssafy.ollana.auth.exception.InvalidTempTokenException;
 import com.ssafy.ollana.auth.service.MailService;
 import com.ssafy.ollana.auth.service.TokenService;
 import com.ssafy.ollana.common.util.Response;
@@ -95,6 +96,7 @@ public class AuthController {
         } catch (InvalidTempTokenException e) {
             log.error("유효하지 않은 임시 토큰");
         }
+        return null;
     }
 
     // 카카오 회원가입 완료
@@ -102,7 +104,7 @@ public class AuthController {
     public ResponseEntity<Response<LoginResponseDto>> completeKakaoSignup(@RequestBody KakaoSignupRequestDto request,
                                                                           HttpServletResponse response) {
         LoginResponseDto loginResponse = authService.saveKakaoUserAndLogin(request, response);
-        tokenService.deleteTempToken(request.getTempToken);
+        tokenService.deleteTempUserByToken(request.getTempToken());
         return ResponseEntity.ok(Response.success(loginResponse));
     }
 

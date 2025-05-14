@@ -13,4 +13,5 @@ public class KakaoSignupRequestDto {
     private String birth;
     private String gender;
     private boolean isSocial;
+    private String tempToken;
 }
