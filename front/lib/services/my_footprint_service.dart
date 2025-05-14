@@ -3,10 +3,10 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import '../models/footprint_response.dart';
-import '../models/compare_response.dart';
 import '../models/footprint_detail_response.dart';
 import '../models/path_detail.dart';
-import '../../screens/footprint/footprint_detail_screen.dart'; // Import for CompareResponse
+import '../models/compare_response.dart';
+import '../utils/footprint_utils.dart';
 
 class MyFootprintService {
   final String _baseUrl = dotenv.get('BASE_URL');
@@ -60,12 +60,12 @@ class MyFootprintService {
     String token,
     int footprintId,
     int pathId, {
-    String? start,
-    String? end,
+    DateTime? start,
+    DateTime? end,
   }) async {
     final query = <String, String>{};
-    if (start != null) query['start'] = start;
-    if (end != null) query['end'] = end;
+    if (start != null) query['start'] = formatDateForApi(start);
+    if (end != null) query['end'] = formatDateForApi(end);
     final uri = Uri.parse('$_baseUrl/footprint/$footprintId/path/$pathId').replace(queryParameters: query);
 
     debugPrint('Calling API: $uri');

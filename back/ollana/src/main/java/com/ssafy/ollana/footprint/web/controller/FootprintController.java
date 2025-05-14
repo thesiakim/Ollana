@@ -3,6 +3,7 @@ package com.ssafy.ollana.footprint.web.controller;
 import com.ssafy.ollana.common.util.PageResponse;
 import com.ssafy.ollana.common.util.Response;
 import com.ssafy.ollana.footprint.service.FootprintService;
+import com.ssafy.ollana.footprint.web.dto.response.FootprintListResponseDto;
 import com.ssafy.ollana.footprint.web.dto.response.FootprintResponseDto;
 import com.ssafy.ollana.security.CustomUserDetails;
 import org.springframework.data.domain.Pageable;
@@ -26,11 +27,11 @@ public class FootprintController {
      * 발자취 목록 조회
      */
     @GetMapping
-    public ResponseEntity<Response<PageResponse<FootprintResponseDto>>> getFootprintList(
-                                                    @AuthenticationPrincipal CustomUserDetails userDetails,
-                                                    @PageableDefault(size = 9) Pageable pageable) {
+    public ResponseEntity<Response<FootprintListResponseDto>> getFootprintList(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PageableDefault(size = 9) Pageable pageable) {
 
-        PageResponse<FootprintResponseDto> response = footprintService.getFootprintList(userDetails.getUser().getId(), pageable);
+        FootprintListResponseDto response = footprintService.getFootprintList(userDetails.getUser().getId(), pageable);
         return ResponseEntity.ok(Response.success(response));
     }
 

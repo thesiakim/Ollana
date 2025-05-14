@@ -55,8 +55,8 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
           widget.token,
           widget.footprintId,
           pathId,
-          start: startDate != null ? formatDate(startDate) : null,
-          end: endDate != null ? formatDate(endDate) : null,
+          start: startDate,
+          end: endDate,
         );
 
         setState(() {
@@ -243,6 +243,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
               ],
             ),
           ),
+          const SizedBox(height: 24),
           Expanded(
             child: NotificationListener<ScrollNotification>(
               onNotification: (scrollInfo) {
@@ -277,7 +278,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                           path.pathName,
                           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 20),
                         Padding(
                           padding: const EdgeInsets.only(right: 24.0),
                           child: SizedBox(
@@ -381,18 +382,14 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                                       showTitles: true,
                                       reservedSize: 35,
                                       getTitlesWidget: (value, meta) {
+                                        if (value == 0) {
+                                          return const SizedBox.shrink();
+                                        }
                                         return Text(
                                           value.toInt().toString(),
                                           style: const TextStyle(fontSize: 10),
                                         );
                                       },
-                                    ),
-                                    axisNameWidget: const Padding(
-                                      padding: EdgeInsets.only(bottom: 10),
-                                      child: Text(
-                                        '심박수/시간',
-                                        style: TextStyle(fontWeight: FontWeight.bold),
-                                      ),
                                     ),
                                   ),
                                   rightTitles: const AxisTitles(

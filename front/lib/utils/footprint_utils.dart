@@ -1,11 +1,15 @@
 import '../../models/path_detail.dart';
 
 String formatDate(DateTime date) {
+  return '${date.year % 100}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}';
+}
+
+String formatDateForApi(DateTime date) {
   return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 }
 
 String displayDate(DateTime? date) {
-  return date != null ? formatDate(date) : '선택';
+  return date != null ? formatDateForApi(date) : '선택';
 }
 
 double getMaxValue(PathDetail path) {

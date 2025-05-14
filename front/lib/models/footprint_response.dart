@@ -5,7 +5,7 @@ class FootprintResponse {
   final int totalPages;
   final int totalElements;
   final bool last;
-  final String totalDistance;
+  final double totalDistance;
   final List<footprintMountain> mountains;
 
   FootprintResponse({
@@ -24,7 +24,7 @@ class FootprintResponse {
       totalPages: data['totalPages'],
       totalElements: data['totalElements'],
       last: data['last'],
-      totalDistance: data['totalDistance'].toString(),
+      totalDistance: double.parse(data['totalDistance']?.toString() ?? '0'),
       mountains: (data['mountains'] as List)
           .map((item) => footprintMountain.fromJson(item))
           .toList(),
