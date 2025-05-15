@@ -1,3 +1,4 @@
+import json
 import pickle
 from contextlib import asynccontextmanager
 
@@ -19,6 +20,18 @@ from models.database import init_db, SessionLocal
 
 import tensorflow as tf
 import joblib
+import logging
+
+# 로그 기본 설정
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.StreamHandler(),  # 콘솔 로그
+    ]
+)
+
+logger = logging.getLogger(__name__)
 
 ###############입력데이터 모델 정리하는 곳
 class UserInput(BaseModel):
@@ -196,6 +209,16 @@ async def recommend_by_region(region: str = Body(..., embed=True)):
         "region": region,
         "recommendations": recommendations
     })
+
+from typing import Dict, Any
+@app.post("/data_collection")
+async def data_collection(data: Dict[str, Any]):
+    print(data)
+    logger.info(f"📥 생체 데이터 수신: {data}")
+    return {"received": data}
+
+
+
 
 
 if __name__ == "__main__":
