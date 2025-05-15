@@ -1,3 +1,4 @@
+import json
 import pickle
 from contextlib import asynccontextmanager
 
@@ -196,6 +197,14 @@ async def recommend_by_region(region: str = Body(..., embed=True)):
         "region": region,
         "recommendations": recommendations
     })
+
+from typing import Dict, Any
+@app.post("/data_collection")
+async def data_collection(data: Dict[str, Any]):
+    return {"received": data}
+
+
+
 
 
 if __name__ == "__main__":
