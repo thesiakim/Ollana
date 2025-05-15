@@ -267,7 +267,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           '내 정보 수정',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: Color(0xFF52A486),
+            color: Colors.black,
           ),
         ),
         centerTitle: true,
