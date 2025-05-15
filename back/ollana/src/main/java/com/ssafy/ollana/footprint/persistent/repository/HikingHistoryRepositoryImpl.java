@@ -3,6 +3,8 @@ package com.ssafy.ollana.footprint.persistent.repository;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.ssafy.ollana.footprint.persistent.entity.HikingHistory;
 import com.ssafy.ollana.footprint.persistent.entity.QFootprint;
+import com.ssafy.ollana.mountain.persistent.entity.QMountain;
+import com.ssafy.ollana.mountain.persistent.entity.QPath;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
@@ -12,6 +14,8 @@ import java.util.Optional;
 
 import static com.ssafy.ollana.footprint.persistent.entity.QFootprint.footprint;
 import static com.ssafy.ollana.footprint.persistent.entity.QHikingHistory.hikingHistory;
+import static com.ssafy.ollana.mountain.persistent.entity.QMountain.mountain;
+import static com.ssafy.ollana.mountain.persistent.entity.QPath.path;
 
 @Repository
 @RequiredArgsConstructor
@@ -59,5 +63,16 @@ public class HikingHistoryRepositoryImpl implements HikingHistoryRepositoryCusto
                 )
                 .orderBy(hikingHistory.createdAt.desc())
                 .fetch();
+    }
+
+    @Override
+    public List<HikingHistory> findAllByUserIdOrderByCreatedAtDesc(Integer userId) {
+        return queryFactory.selectFrom(hikingHistory)
+                            .join(hikingHistory.footprint, footprint).fetchJoin()
+                            .join(footprint.mountain, mountain).fetchJoin()
+                            .join(hikingHistory.path, path).fetchJoin()
+                            .where(footprint.user.id.eq(userId))
+                            .orderBy(hikingHistory.createdAt.desc())
+                            .fetch();
     }
 }
