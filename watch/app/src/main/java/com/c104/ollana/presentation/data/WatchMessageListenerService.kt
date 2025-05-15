@@ -10,7 +10,9 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.c104.ollana.presentation.MainActivity
+import com.c104.ollana.presentation.sensor.SensorCollectorService
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.WearableListenerService
 import com.google.gson.Gson
@@ -18,124 +20,129 @@ import org.json.JSONObject
 import java.io.ByteArrayInputStream
 import java.io.ObjectInputStream
 
-//앱이 실행되고있지않거나 화면이 꺼져 있을때도 메시지를 수신하고 알림표시
-class WatchMessageListenerService : WearableListenerService(){
+class WatchMessageListenerService : WearableListenerService() {
 
-    private val TAG="WatchMessageService"
+    private val TAG = "WatchMessageService"
 
     override fun onMessageReceived(event: MessageEvent) {
         super.onMessageReceived(event)
 
-        val gson= Gson()
-        val path =event.path
-        val sender=event.sourceNodeId
+        Log.d(TAG, "📩 백그라운드 메시지 수신: ${event.path}")
 
-        try{
-            //객체 역직렬화
-            val bais=ByteArrayInputStream(event.data)
-            val ois=ObjectInputStream(bais)
-            val map=ois.readObject() as HashMap<*,*>
+        try {
+            // 메시지 payload 역직렬화 (ByteArray → Map)
+            val bais = ByteArrayInputStream(event.data)
+            val ois = ObjectInputStream(bais)
+            val map = ois.readObject() as HashMap<*, *>
             ois.close()
 
-            val jsonString = gson.toJson(map)
-            Log.d(TAG,"수신된 메시지 : path=${path},from=${sender}, data=${jsonString}")
+            // JSON 파싱
+            val jsonString = Gson().toJson(map)
+            val json = JSONObject(jsonString)
 
-            handleIncomingMessage(jsonString)
-        }catch (e:Exception){
-            Log.e(TAG,"메시지 파싱 실패",e)
-        }
-    }
-    //받은 메시지를 타입별로 분기 처리
-    //UI 호출 없이도 알림 + 진동만 처리 가능
-    private fun handleIncomingMessage(jsonStr:String){
-        Log.d(TAG,"handleMessage:${jsonStr}")
-        try{
-            val obj=JSONObject(jsonStr)
-            val path=obj.optString("path","")
-            val payload=obj.optString("data","")
+            val path = json.optString("path", "")
 
-            Log.d(TAG,"handleMessage : path=${path} payload=${payload}")
+            Log.d(TAG,"백그라운드 path=${path}")
 
-            when(path){
+            when (path) {
+
+                "/START_TRACKING" -> {
+                    // 트래킹 시작 → 센서 수집 서비스 실행 (심박수)
+                    Log.d(TAG, "📡 트래킹 시작 요청 수신 → 센서 수집 서비스 시작")
+                    val intent = Intent(this, SensorCollectorService::class.java)
+                    ContextCompat.startForegroundService(this, intent)
+                }
+
+                "/STOP_TRACKING" -> {
+                    // 트래킹 종료 → 센서 수집 서비스 종료
+                    Log.d(TAG, "🛑 트래킹 종료 요청 수신 → 센서 수집 중지")
+                    stopService(Intent(this, SensorCollectorService::class.java))
+                }
+
                 "/REACHED" -> {
+                    // 정상 부근 도착 → 진동 + 화면 띄우기
                     vibrate()
-                    showNotification("정상 도착!", "트래킹을 종료하시겠습니까?")
-                    launchMainActivity()
-                    Log.d(TAG, "🔔 알림 처리: /REACHED → 정상 도착 알림 표시")
+                    showNotification("정상 도착!", "트래킹 종료를 눌러 기록을 저장하세요")
+
+                    val intent = Intent(this, MainActivity::class.java).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                        putExtra("trigger", "reached") // 이걸 통해 MainActivity에서 분기 가능
+                    }
+                    startActivity(intent)
+                    Log.d(TAG, "📢 정상 도착 화면 실행 시도")
                 }
+
                 "/PROGRESS" -> {
-                    val data = JSONObject(payload)
-                    val type = data.getString("type")
-                    val diff = data.getDouble("difference") / 1000
-                    val formatted = String.format("%.1fkm", diff)
-
-                    val emoji = if (type == "FAST") "🐇" else "🐢"
-                    val title = if (type == "FAST") "더 빨라요" else "천천히 가고 있어요"
 
                     vibrate()
-                    showNotification(title, "$emoji $formatted")
-                    launchMainActivity()
-                    Log.d(TAG, "🔔 알림 처리: /PROGRESS → $type | $formatted")
-                }
-                "/BADGE" -> {
-                    vibrate()
-                    showNotification("뱃지 획득!", "새로운 뱃지를 받았어요.")
-                    launchMainActivity()
-                    Log.d(TAG, "🔔 알림 처리: /BADGE → 뱃지 알림 표시")
-                }
-                else->{
-                    Log.w(TAG,"알수없는 경로:${path}")
+
+                    // 30분마다 나와의 비교 결과 수신
+                    val type = json.optString("type","")
+                    val diff = json.optInt("difference",0)
+                    Log.d(TAG,"PROGRESS : type=${type}, diff=${diff}")
+                    val title = if (type == "FAST") "🐇 더 빠르게 이동 중" else "🐢 느리게 이동 중"
+                    Log.d(TAG,"title=${title}")
+                    val message = "이전 기록보다 %.1f 미터 차이".format(diff.toDouble())
+                    Log.d(TAG,"message=${message}")
+                    showNotification(title, message)
+                    Log.d(TAG, "🔥 실시간 비교 인텐트 생성 시작")
+                    val intent = Intent(this, MainActivity::class.java).apply {
+                        addFlags(
+                            Intent.FLAG_ACTIVITY_NEW_TASK or
+                                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                                    Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                        putExtra("trigger", "progress")
+                        putExtra("type", type)
+                        putExtra("difference", diff)
+                    }
+                    Log.d(TAG, "✅ 인텐트 생성 완료 → startActivity 호출 직전")
+                    startActivity(intent)
+                    Log.d(TAG, "📢 실시간 비교 화면 실행 시도")
                 }
 
+                // 추후 페이스메이커, 도착 예상 시간 등 추가 예정
             }
-        }catch (e:Exception){
-            Log.e(TAG,"handleIncomingMessage 파싱오류",e)
+
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ 메시지 처리 실패", e)
         }
     }
-    //워치에 진동 발생
-    private fun vibrate(){
-        val vibrator=getSystemService(VIBRATOR_SERVICE) as Vibrator
-        if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.O){
-            vibrator.vibrate(VibrationEffect.createOneShot(800,VibrationEffect.DEFAULT_AMPLITUDE))
-        }else{
-            vibrator.vibrate(800)
+
+    // 진동 처리
+    private fun vibrate() {
+        val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            vibrator.vibrate(VibrationEffect.createOneShot(1000, VibrationEffect.DEFAULT_AMPLITUDE))
+        } else {
+            vibrator.vibrate(1000)
         }
     }
-    //시스템 알림
-    private fun showNotification(title :String,content:String){
-        val channelId="ollana_channel"
-        val manager=getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+
+    // 알림 표시
+    private fun showNotification(title: String, message: String) {
+        val channelId = "ollana_channel"
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(channelId, "Ollana 알림", NotificationManager.IMPORTANCE_HIGH)
             manager.createNotificationChannel(channel)
         }
-        val intent= Intent(this,MainActivity::class.java).apply{
-            flags=Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-        }
-        val pendingIntent=PendingIntent.getActivity(
-            this,
-            0,
-            intent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+
+        val pendingIntent = PendingIntent.getActivity(
+            this, 0,
+            Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_IMMUTABLE
         )
 
         val notification = NotificationCompat.Builder(this, channelId)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(title)
-            .setContentText(content)
+            .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
             .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
             .build()
 
         manager.notify(System.currentTimeMillis().toInt(), notification)
     }
-    private fun launchMainActivity(){
-        val intent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-        }
-        startActivity(intent)
-    }
-
 }
