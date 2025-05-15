@@ -87,6 +87,13 @@ public class AuthController {
         }
     }
 
+    @GetMapping("/oauth/kakao/login")
+    public ResponseEntity<Response<LoginResponseDto>> getLoginResponse(@RequestParam("token") String token) {
+        // 토큰으로 로그인 정보 조회
+        LoginResponseDto loginResponse = tokenService.getKakaoLoginResponse(token);
+        return ResponseEntity.ok(Response.success(loginResponse));
+    }
+
     // 임시 토큰으로 임시 사용자 정보 조회
     @GetMapping("/oauth/kakao/temp-user")
     public ResponseEntity<Response<TempUserDto>> getTempUser(@RequestParam("token") String token) {
