@@ -1,14 +1,12 @@
 package com.ssafy.ollana.tracking.web.dto.request;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@ToString
 public class CoordinateDto {
     private double latitude;
     private double longitude;

@@ -10,4 +10,5 @@ public interface HikingHistoryRepositoryCustom {
     List<HikingHistory> findHistories(Integer footprintId, Integer pathId, LocalDateTime start, LocalDateTime end);
     Optional<HikingHistory> findLatestRecord(Integer userId, Integer mountainId, Integer pathId);
     List<HikingHistory> findOpponentHistories(Integer userId, Integer mountainId, Integer pathId);
+    List<HikingHistory> findAllByUserIdOrderByCreatedAtDesc(Integer userId);
 }

@@ -123,20 +123,25 @@ public class TrackingController {
      * 트래킹 종료 요청
      */
     @PostMapping("/finish")
-    public ResponseEntity<Response<Void>> manageTrackingFinish(@AuthenticationPrincipal CustomUserDetails userDetails,
+    public ResponseEntity<Response<TrackingFinishResponseDto>> manageTrackingFinish(@AuthenticationPrincipal CustomUserDetails userDetails,
                                                                  @RequestBody TrackingFinishRequestDto request) {
-        trackingService.manageTrackingFinish(userDetails.getUser().getId(), request);
-        return ResponseEntity.ok(Response.success());
+        TrackingFinishResponseDto response = trackingService.manageTrackingFinish(userDetails.getUser().getId(), request);
+        return ResponseEntity.ok(Response.success(response));
     }
 
+    //------------------------------------------------------------------------------------------------------------------------------
     private final MountainRepository mountainRepository;
     private final PathRepository pathRepository;
 
+    /*
+     * 테스트용 가상 등산로 좌표 저장 API
+     */
     @PostMapping("/ssafy")
     public ResponseEntity<Response<String>> saveSSAFY(@RequestBody CoordinateRequestDto request) {
 
         List<CoordinateDto> coords = request.getCoordinates();
-        log.info("ssafy 산 coords : {}", coords);
+        log.info("싸피산 API 호출");
+        log.info("싸피산 요청 데이터 coords : {}", coords);
 
         if (coords == null || coords.isEmpty()) {
             return ResponseEntity.ok(Response.success("저장 실패"));
@@ -145,10 +150,12 @@ public class TrackingController {
         CoordinateDto first = coords.get(0);
 
         // geom 생성
+        log.info("싸피산 Mountain geom 생성");
         GeometryFactory gf = new GeometryFactory(new PrecisionModel(), 4326);
         Point geom = gf.createPoint(new Coordinate(first.getLongitude(), first.getLatitude()));
 
         // Mountain 저장
+        log.info("싸피산 Mountain 저장 또는 반환");
         Optional<Mountain> optionalMountain = mountainRepository.findByMntnCode("3000");
 
         Mountain mountain;
@@ -172,6 +179,7 @@ public class TrackingController {
             mountainRepository.save(mountain);
         }
 
+        log.info("싸피산 : Path 저장을 위해 LineString 생성 시작");
         // LineString 생성
         Coordinate[] lineCoords = coords.stream()
                 .map(c -> new Coordinate(c.getLongitude(), c.getLatitude()))
@@ -183,6 +191,7 @@ public class TrackingController {
         Coordinate center = getCenterCoordinate(lineCoords);
         Point centerPoint = gf.createPoint(center);
 
+        log.info("싸피산 : Path 저장 시작");
         // Path 저장
         Path path = Path.builder()
                 .mountain(mountain)
@@ -196,6 +205,7 @@ public class TrackingController {
 
         pathRepository.save(path);
 
+        log.info("싸피산 API 정상 응답 완료");
         return ResponseEntity.ok(Response.success("저장 완료"));
     }
 
