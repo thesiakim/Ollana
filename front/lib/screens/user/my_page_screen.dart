@@ -203,12 +203,13 @@ class _MyPageScreenState extends State<MyPageScreen> {
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.white, // 고정된 배경색
+        scrolledUnderElevation: 0, // 스크롤 시 엘리베이션 변화 방지
         title: const Text(
           '마이페이지',
           style: TextStyle(
-            fontWeight: FontWeight.bold, 
-            color: Color(0xFF52A486)
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
           ),
         ),
         centerTitle: true,

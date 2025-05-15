@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
 import '../../models/compare_response.dart';
 import '../../models/path_detail.dart';
 import '../../services/my_footprint_service.dart';
@@ -298,7 +299,8 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
               onNotification: (scrollInfo) {
                 if (!_isFetching &&
                     _hasNextPage &&
-                    scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent * 0.8) {
+                    scrollInfo.metrics.pixels >=
+                        scrollInfo.metrics.maxScrollExtent * 0.8) {
                   _fetchFootprintDetail();
                 }
                 return false;
@@ -320,10 +322,11 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
 
                   final path = paths[index];
                   final compareData = _compareDataByPath[path.pathId];
-                  
+
                   return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-                    elevation: 2,
+                    margin:
+                        const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                    elevation: 0.5,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -357,13 +360,18 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                           AspectRatio(
                             aspectRatio: 1.7,
                             child: Padding(
-                              padding: const EdgeInsets.only(right: 16.0, top: 8.0, bottom: 8.0),
+                              padding: const EdgeInsets.only(
+                                  right: 16.0, top: 8.0, bottom: 8.0),
                               child: LineChart(
                                 LineChartData(
                                   minX: 0,
-                                  maxX: path.records.isEmpty ? 0 : path.records.length - 1.0,
+                                  maxX: path.records.isEmpty
+                                      ? 0
+                                      : path.records.length - 1.0,
                                   minY: 0,
-                                  maxY: path.records.isEmpty ? 100 : getMaxValue(path) * 1.1,
+                                  maxY: path.records.isEmpty
+                                      ? 100
+                                      : getMaxValue(path) * 1.1,
                                   lineTouchData: LineTouchData(
                                     enabled: true,
                                     touchTooltipData: LineTouchTooltipData(
@@ -375,14 +383,17 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                                           final Color textColor;
 
                                           if (touchedSpot.barIndex == 0) {
-                                            title = '최고 심박수: ${touchedSpot.y.toInt()}';
-                                            textColor = Colors.red;
+                                            title =
+                                                '최고 심박수: ${touchedSpot.y.toInt()}';
+                                            textColor = Colors.black;
                                           } else if (touchedSpot.barIndex == 1) {
-                                            title = '평균 심박수: ${touchedSpot.y.toInt()}';
-                                            textColor = Colors.blue;
+                                            title =
+                                                '평균 심박수: ${touchedSpot.y.toInt()}';
+                                            textColor = Colors.black;
                                           } else {
-                                            title = '소요 시간: ${touchedSpot.y.toInt()}분';
-                                            textColor = Colors.green;
+                                            title =
+                                                '소요 시간: ${touchedSpot.y.toInt()}분';
+                                            textColor = Colors.black;
                                           }
 
                                           return LineTooltipItem(
@@ -396,23 +407,31 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                                         }).toList();
                                       },
                                     ),
-                                    touchCallback: (FlTouchEvent event, LineTouchResponse? touchResponse) {
-                                      if (event is FlTapUpEvent && touchResponse != null && touchResponse.lineBarSpots != null) {
+                                    touchCallback:
+                                        (FlTouchEvent event, LineTouchResponse? touchResponse) {
+                                      if (event is FlTapUpEvent &&
+                                          touchResponse != null &&
+                                          touchResponse.lineBarSpots != null) {
                                         final spot = touchResponse.lineBarSpots!.first;
                                         final index = spot.x.toInt();
-                                        if (index >= 0 && index < path.records.length) {
-                                          final recordId = path.records[index].recordId;
-                                          _toggleRecordSelection(path.pathId, recordId);
+                                        if (index >= 0 &&
+                                            index < path.records.length) {
+                                          final recordId =
+                                              path.records[index].recordId;
+                                          _toggleRecordSelection(
+                                              path.pathId, recordId);
                                         }
                                       }
                                     },
-                                    getTouchedSpotIndicator: (barData, spotIndexes) {
+                                    getTouchedSpotIndicator:
+                                        (barData, spotIndexes) {
                                       return spotIndexes.map((index) {
                                         return TouchedSpotIndicatorData(
                                           FlLine(color: Colors.orange, strokeWidth: 2),
                                           FlDotData(
                                             show: true,
-                                            getDotPainter: (spot, percent, barData, index) {
+                                            getDotPainter:
+                                                (spot, percent, barData, index) {
                                               return FlDotCirclePainter(
                                                 radius: 6,
                                                 color: Colors.orange,
@@ -450,25 +469,34 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                                         interval: 1,
                                         getTitlesWidget: (value, meta) {
                                           final index = value.toInt();
-                                          if (index >= 0 && index < path.records.length) {
+                                          if (index >= 0 &&
+                                              index < path.records.length) {
                                             final date = path.records[index].date;
-                                            final recordId = path.records[index].recordId;
-                                            final selectedRecordIds = _selectedRecordIdsByPath[path.pathId] ?? {};
-                                            final isSelected = selectedRecordIds.contains(recordId);
-                                            
+                                            final recordId =
+                                                path.records[index].recordId;
+                                            final selectedRecordIds =
+                                                _selectedRecordIdsByPath[path.pathId] ??
+                                                    {};
+                                            final isSelected =
+                                                selectedRecordIds.contains(recordId);
+
                                             return GestureDetector(
                                               onTap: () {
-                                                _toggleRecordSelection(path.pathId, recordId);
+                                                _toggleRecordSelection(
+                                                    path.pathId, recordId);
                                               },
                                               child: Padding(
-                                                padding: const EdgeInsets.only(top: 8.0),
+                                                padding:
+                                                    const EdgeInsets.only(top: 8.0),
                                                 child: Text(
                                                   formatDate(date),
                                                   textAlign: TextAlign.center,
                                                   style: TextStyle(
                                                     fontSize: 10,
                                                     fontWeight: FontWeight.bold,
-                                                    color: isSelected ? Colors.orange : Colors.black,
+                                                    color: isSelected
+                                                        ? Colors.orange
+                                                        : Colors.black,
                                                   ),
                                                 ),
                                               ),
@@ -515,7 +543,9 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                                   ),
                                   borderData: FlBorderData(
                                     show: true,
-                                    border: Border.all(color: Colors.grey.withOpacity(0.5), width: 1),
+                                    border: Border.all(
+                                        color: Colors.grey.withOpacity(0.5),
+                                        width: 1),
                                   ),
                                   lineBarsData: [
                                     // 최고 심박수 라인
@@ -525,7 +555,9 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                                           : path.records.asMap().entries.map((entry) {
                                               final idx = entry.key;
                                               final record = entry.value;
-                                              return FlSpot(idx.toDouble(), record.maxHeartRate.toDouble());
+                                              return FlSpot(
+                                                  idx.toDouble(),
+                                                  record.maxHeartRate.toDouble());
                                             }).toList(),
                                       Colors.red,
                                       2.5,
@@ -537,7 +569,8 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                                           : path.records.asMap().entries.map((entry) {
                                               final idx = entry.key;
                                               final record = entry.value;
-                                              return FlSpot(idx.toDouble(), record.averageHeartRate);
+                                              return FlSpot(
+                                                  idx.toDouble(), record.averageHeartRate);
                                             }).toList(),
                                       Colors.blue,
                                       2.5,
@@ -549,7 +582,8 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                                           : path.records.asMap().entries.map((entry) {
                                               final idx = entry.key;
                                               final record = entry.value;
-                                              return FlSpot(idx.toDouble(), record.time.toDouble());
+                                              return FlSpot(
+                                                  idx.toDouble(), record.time.toDouble());
                                             }).toList(),
                                       Colors.green,
                                       2.5,
@@ -563,24 +597,63 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF52A486),
-                                  foregroundColor: Colors.white,
+                              Flexible(
+                                child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF52A486),
+                                    foregroundColor: Colors.white,
+                                    minimumSize: Size(120, 36),
+                                    padding: EdgeInsets.symmetric(horizontal: 8),
+                                  ),
+                                  onPressed: () =>
+                                      _showDatePickerModal(path.pathId, true),
+                                  child: Text(
+                                    _startDatesByPath[path.pathId] == null
+                                        ? '시작일 선택'
+                                        : displayDate(_startDatesByPath[path.pathId]),
+                                    style: TextStyle(fontSize: 14),
+                                  ),
                                 ),
-                                onPressed: () => _showDatePickerModal(path.pathId, true),
-                                child: Text('시작일 ${displayDate(_startDatesByPath[path.pathId])}'),
                               ),
-                              const SizedBox(width: 10),
-                              ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF52A486),
-                                  foregroundColor: Colors.white,
+                              if (_startDatesByPath[path.pathId] != null &&
+                                  _endDatesByPath[path.pathId] != null) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[200],
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    '~',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black54,
+                                    ),
+                                  ),
                                 ),
-                                onPressed: _startDatesByPath[path.pathId] == null
-                                    ? null
-                                    : () => _showDatePickerModal(path.pathId, false),
-                                child: Text('종료일 ${displayDate(_endDatesByPath[path.pathId])}'),
+                              ],
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF52A486),
+                                    foregroundColor: Colors.white,
+                                    minimumSize: Size(120, 36),
+                                    padding: EdgeInsets.symmetric(horizontal: 8),
+                                  ),
+                                  onPressed: _startDatesByPath[path.pathId] == null
+                                      ? null
+                                      : () =>
+                                          _showDatePickerModal(path.pathId, false),
+                                  child: Text(
+                                    _endDatesByPath[path.pathId] == null
+                                        ? '종료일 선택'
+                                        : displayDate(_endDatesByPath[path.pathId]),
+                                    style: TextStyle(fontSize: 14),
+                                  ),
+                                ),
                               ),
                             ],
                           ),
