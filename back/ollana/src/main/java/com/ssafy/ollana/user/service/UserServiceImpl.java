@@ -174,11 +174,13 @@ public class UserServiceImpl implements UserService {
     @Transactional(readOnly = true)
     public UserInfoDto getUserInfo(User user) {
         return UserInfoDto.builder()
+                .id(user.getId())
                 .email(user.getEmail())
                 .nickname(user.getNickname())
                 .exp(user.getExp())
                 .grade(String.valueOf(user.getGrade()))
                 .totalDistance(user.getTotalDistance())
+                .gradeCount(user.getGradeCount())
                 .profileImageUrl(user.getProfileImage())
                 .isTempPassword(user.isTempPassword())
                 .isSocial(user.isSocial())
