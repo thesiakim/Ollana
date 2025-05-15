@@ -2,16 +2,28 @@ package com.ssafy.ollana.tracking.web.controller;
 
 import com.ssafy.ollana.common.util.Response;
 import com.ssafy.ollana.footprint.web.dto.response.TodayHikingResultResponseDto;
+import com.ssafy.ollana.mountain.persistent.entity.Level;
+import com.ssafy.ollana.mountain.persistent.entity.Mountain;
+import com.ssafy.ollana.mountain.persistent.entity.Path;
+import com.ssafy.ollana.mountain.persistent.repository.MountainRepository;
+import com.ssafy.ollana.mountain.persistent.repository.PathRepository;
 import com.ssafy.ollana.security.CustomUserDetails;
 import com.ssafy.ollana.tracking.service.TrackingService;
+import com.ssafy.ollana.tracking.web.dto.request.CoordinateDto;
+import com.ssafy.ollana.tracking.web.dto.request.CoordinateRequestDto;
 import com.ssafy.ollana.tracking.web.dto.request.TrackingFinishRequestDto;
 import com.ssafy.ollana.tracking.web.dto.request.TrackingStartRequestDto;
 import com.ssafy.ollana.tracking.web.dto.response.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.geolatte.geom.V;
+import org.locationtech.jts.geom.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequiredArgsConstructor
@@ -115,5 +127,87 @@ public class TrackingController {
                                                                  @RequestBody TrackingFinishRequestDto request) {
         trackingService.manageTrackingFinish(userDetails.getUser().getId(), request);
         return ResponseEntity.ok(Response.success());
+    }
+
+    private final MountainRepository mountainRepository;
+    private final PathRepository pathRepository;
+
+    @PostMapping("/ssafy")
+    public ResponseEntity<Response<String>> saveSSAFY(@RequestBody CoordinateRequestDto request) {
+
+        List<CoordinateDto> coords = request.getCoordinates();
+        log.info("ssafy 산 coords : {}", coords);
+
+        if (coords == null || coords.isEmpty()) {
+            return ResponseEntity.ok(Response.success("저장 실패"));
+        }
+
+        CoordinateDto first = coords.get(0);
+
+        // geom 생성
+        GeometryFactory gf = new GeometryFactory(new PrecisionModel(), 4326);
+        Point geom = gf.createPoint(new Coordinate(first.getLongitude(), first.getLatitude()));
+
+        // Mountain 저장
+        Optional<Mountain> optionalMountain = mountainRepository.findByMntnCode("3000");
+
+        Mountain mountain;
+
+        if (optionalMountain.isPresent()) {
+            mountain = optionalMountain.get();
+        } else {
+            mountain = Mountain.builder()
+                    .mntnCode("3000")
+                    .mountainName("싸피산")
+                    .mountainLoc("광주")
+                    .mountainHeight(1200)
+                    .mountainDescription("싸피산입니다")
+                    .level(Level.L)
+                    .mountainLatitude(first.getLatitude())
+                    .mountainLongitude(first.getLongitude())
+                    .geom(gf.createPoint(new Coordinate(first.getLongitude(), first.getLatitude())))
+                    .mountainBadge(null)
+                    .build();
+
+            mountainRepository.save(mountain);
+        }
+
+        // LineString 생성
+        Coordinate[] lineCoords = coords.stream()
+                .map(c -> new Coordinate(c.getLongitude(), c.getLatitude()))
+                .toArray(Coordinate[]::new);
+
+        LineString route = gf.createLineString(lineCoords);
+
+        // centerPoint 계산
+        Coordinate center = getCenterCoordinate(lineCoords);
+        Point centerPoint = gf.createPoint(center);
+
+        // Path 저장
+        Path path = Path.builder()
+                .mountain(mountain)
+                .pathName("주차장 등산로")
+                .pathLength(250.0)
+                .level(Level.L)
+                .pathTime("5")
+                .route(route)
+                .centerPoint(centerPoint)
+                .build();
+
+        pathRepository.save(path);
+
+        return ResponseEntity.ok(Response.success("저장 완료"));
+    }
+
+    private Coordinate getCenterCoordinate(Coordinate[] coords) {
+        double sumLat = 0;
+        double sumLng = 0;
+
+        for (Coordinate c : coords) {
+            sumLat += c.getY();
+            sumLng += c.getX();
+        }
+
+        return new Coordinate(sumLng / coords.length, sumLat / coords.length);
     }
 }

@@ -1,5 +1,10 @@
 package com.ssafy.ollana.auth.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ssafy.ollana.auth.dto.TempUserDto;
+import com.ssafy.ollana.auth.dto.response.LoginResponseDto;
+import com.ssafy.ollana.auth.exception.InvalidTempTokenException;
 import com.ssafy.ollana.security.jwt.JwtUtil;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,8 +22,9 @@ public class TokenService {
 
     private final RedisTemplate<String, String> redisTemplate;
     private final JwtUtil jwtUtil;
+    private final ObjectMapper objectMapper;
 
-    // 토큰 저장 (redis)
+    // redis
     // redis에 리프레시 토큰 저장
     public void saveRefreshToken(String userEmail, String refreshToken) {
         String key = "RT:" + userEmail; // 키 형식: "RT:{userEmail}"
@@ -53,6 +59,80 @@ public class TokenService {
         }
 
         return isValid;
+    }
+
+    // 카카오 임시 사용자 정보 관련
+    // 카카오 딥링크 리다이렉트용 임시 사용자 정보 저장
+    public void saveTempUser(String token, TempUserDto tempUser) {
+        String key = "TU:" + token;
+        try {
+            // TempUserDto 객체를 json 문자열로 변환
+            String tempUserResponse = objectMapper.writeValueAsString(tempUser);
+
+            // 변환된 json 문자열을 redis에 저장 (10분동안 유효)
+            redisTemplate.opsForValue().set(key, tempUserResponse, 10, TimeUnit.MINUTES);
+        } catch (JsonProcessingException e) {
+            log.error("임시 사용자 정보 저장 중 오류 발생", e);
+            throw new RuntimeException("임시 사용자 정보 저장 실패");
+        }
+    }
+
+    // 임시 사용자 정보 조회
+    public TempUserDto getTempUserByToken(String token) {
+        String key = "TU:" + token;
+        String tempUserResponse = redisTemplate.opsForValue().get(key);
+
+        if (tempUserResponse == null) {
+            throw new InvalidTempTokenException();
+        }
+
+        try {
+            return objectMapper.readValue(tempUserResponse, TempUserDto.class);
+        } catch (JsonProcessingException e) {
+            log.error("임시 사용자 정보 조회 중 오류 발생", e);
+            throw new RuntimeException("임시 사용자 정보 파싱 실패");
+        }
+    }
+
+    // 임시 사용자 정보 삭제
+    public void deleteTempUserByToken(String token) {
+        String key = "TU:" + token;
+        redisTemplate.delete(key);
+    }
+
+    // 카카오 딥링크 리다이렉트용 - 로그인 응답
+    public void saveKakaoLoginResponse(String token, LoginResponseDto loginResponse) {
+        String key = "LS:" + token;
+
+        try {
+            // LoginResponseDto 객체를 json 문자열로 변환
+            String loginResponseJson = objectMapper.writeValueAsString(loginResponse);
+
+            redisTemplate.opsForValue().set(key, loginResponseJson, 10, TimeUnit.MINUTES);
+        } catch (JsonProcessingException e) {
+            log.error("카카오 로그인 응답 저장 중 오류 발생", e);
+            throw new RuntimeException("카카오 로그인 응답 저장 실패");
+        }
+    }
+
+    // 로그인 응답 조회
+    public LoginResponseDto getKakaoLoginResponse(String token) {
+        String key = "LS:" + token;
+
+        try {
+            String loginResponseJson = redisTemplate.opsForValue().get(key);
+
+            if (loginResponseJson == null) {
+                throw new InvalidTempTokenException();
+            }
+
+            redisTemplate.delete(key);
+
+            LoginResponseDto loginResponse = objectMapper.readValue(loginResponseJson, LoginResponseDto.class);
+            return loginResponse;
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("로그인 응답 조회 실패");
+        }
     }
 
     // 토큰 블랙리스트 관리

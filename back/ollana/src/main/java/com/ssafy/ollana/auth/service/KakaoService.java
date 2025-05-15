@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.ollana.auth.dto.KakaoProfileDto;
 import com.ssafy.ollana.auth.dto.KakaoTokenDto;
+import com.ssafy.ollana.auth.dto.TempUserDto;
+import com.ssafy.ollana.auth.dto.response.LoginResponseDto;
 import com.ssafy.ollana.auth.exception.KakaoResponseParsingException;
 import com.ssafy.ollana.user.entity.User;
 import lombok.RequiredArgsConstructor;
@@ -18,11 +20,14 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.UUID;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class KakaoService {
 
+    private final TokenService tokenService;
     @Value("${spring.kakao.auth.client}")
     private String client;
 
@@ -120,5 +125,27 @@ public class KakaoService {
                 kakaoUnlinkRequest,
                 String.class
         );
+    }
+
+
+    // 딥링크 리다이렉트용 임시 토큰 생성 - 회원가입 중 임시 사용자 정보
+    public String generateKakaoTempToken(TempUserDto tempUser) {
+        // UUID 기반 토큰 생성
+        String token = UUID.randomUUID().toString();
+
+        // redis 저장
+        tokenService.saveTempUser(token, tempUser);
+
+        return token;
+    }
+
+    // 딥링크 리다이렉트용 임시 토큰 생성 - 로그인 정보
+    public String generateKakaoLoginToken(LoginResponseDto loginResponse) {
+        // UUID 기반 토큰 생성
+        String token = UUID.randomUUID().toString();
+
+        // redis 저장
+        tokenService.saveKakaoLoginResponse(token, loginResponse);
+        return token;
     }
 }

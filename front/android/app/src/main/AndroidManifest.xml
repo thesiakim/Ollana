@@ -9,6 +9,8 @@
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />
+    <!-- 워치 연결 위한 권한 추가 -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application
         android:label="Ollana"
@@ -40,13 +42,35 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <!-- 이 android:scheme 값이 여러분이 사용하실 스킴입니다 -->
                 <data
                     android:scheme="ollana"
                     android:host="auth"
                     android:pathPrefix="/oauth/kakao" />
             </intent-filter>
         </activity>
+        
+        <!-- 워치 메시지 백그라운드 수신을 위한 서비스 등록 -->
+        <service
+            android:name="dev.rexios.watch_connectivity.WearableListenerService"
+            android:exported="true">
+            <!-- 메시지 수신 필터: 필요한 path만 처리 -->
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:pathPrefix="/message" />
+            </intent-filter>
+            <!-- 데이터 변경 수신 필터: 필요한 데이터 경로만 처리 -->
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:pathPrefix="/watch_connectivity" />
+            </intent-filter>
+        </service>
+        
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
@@ -59,6 +83,11 @@
 
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" />
+        </intent>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT" />
             <data android:mimeType="text/plain" />
