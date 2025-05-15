@@ -21,6 +21,7 @@ import '../../models/mode_data.dart';
 import '../../services/mode_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:watch_connectivity/watch_connectivity.dart';
+import 'tracking_result_screen.dart'; // 결과 화면 추가
 
 // 네이버 지도 라이브러리 임포트
 import 'package:flutter_naver_map/flutter_naver_map.dart';
@@ -1549,10 +1550,10 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
           if (distance <= _maxReasonableSpeed) {
             total += distance; // 미터 단위로 더함
             debugPrint(
-                '경로 포인트 ${i - 1}->${i} 거리 반영: ${distance.toStringAsFixed(2)}m');
+                '경로 포인트 ${i - 1}->$i 거리 반영: ${distance.toStringAsFixed(2)}m');
           } else {
             debugPrint(
-                '경로 포인트 ${i - 1}->${i} 거리 무시: ${distance.toStringAsFixed(2)}m (초당 5미터 초과)');
+                '경로 포인트 ${i - 1}->$i 거리 무시: ${distance.toStringAsFixed(2)}m (초당 5미터 초과)');
           }
         }
         total = total / 1000; // 미터를 킬로미터로 변환
@@ -2030,7 +2031,6 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   // 등산 종료 확인 다이얼로그
   void _showEndTrackingDialog(BuildContext context, bool shouldSave,
       {bool isEarlyExit = false}) {
-    // isEarlyExit 파라미터 추가
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
@@ -2115,8 +2115,10 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
                   TextButton(
                     onPressed: () {
                       Navigator.of(ctx).pop();
-                      // 등산 종료 처리 및 서버 전송, isSave 값을 전달
-                      _finishTracking(shouldSave);
+                      // 등산 종료 처리 및 서버 전송
+                      // 중간 종료(isEarlyExit=true)일 경우 결과 화면 표시하지 않음
+                      _finishTracking(shouldSave,
+                          showResultScreen: !isEarlyExit);
                     },
                     child: Container(
                       padding:
@@ -2144,7 +2146,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   }
 
   // 등산 종료 처리 및 서버 전송
-  Future<void> _finishTracking([bool shouldSave = true]) async {
+  Future<void> _finishTracking(bool shouldSave,
+      {bool showResultScreen = true}) async {
     try {
       // 현재 상태의 데이터 저장
       _saveCurrentTrackingData();
@@ -2162,17 +2165,22 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       final opponentId = _modeData?.opponent?.opponentId;
       final recordId = null; // ModeData에 recordId가 없으므로 null로 설정
 
+      // 선택된 모드 (서버 형식으로 변환)
+      final String selectedMode = appState.selectedMode ?? '일반 등산';
+      final String serverMode = _convertToServerMode(selectedMode);
+
       debugPrint(
-          '등산 종료 요청 준비: mountainId=$mountainId, pathId=$pathId, 기록 저장: $shouldSave');
+          '등산 종료 요청 준비: mountainId=$mountainId, pathId=$pathId, 기록 저장: $shouldSave, 모드: $serverMode');
 
       // 서버에 전송할 데이터
       // 기록 저장 여부에 관계없이 API는 항상 호출, isSave 값만 다르게 전달
       final modeService = ModeService();
 
       // 종료 API 호출
-      await modeService.endTracking(
+      final Map<String, dynamic> response = await modeService.endTracking(
         mountainId: mountainId.toInt(),
         pathId: pathId.toInt(),
+        mode: serverMode,
         opponentId: opponentId,
         recordId: recordId,
         isSave: shouldSave, // 사용자 선택에 따라 저장 여부 설정
@@ -2185,19 +2193,34 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       );
 
       debugPrint('등산 종료 요청 성공 (기록 저장: $shouldSave)');
+
+      // 종료 처리 (앱 상태 초기화)
+      appState.endTracking(); // isTracking = false, AppState 리스너들에게 알림
+
+      // 결과 화면으로 이동 또는 홈으로 이동
+      if (response['status'] == true && mounted && showResultScreen) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => TrackingResultScreen(
+              resultData: response['data'],
+              selectedMode: selectedMode, // 선택된 모드 전달
+            ),
+          ),
+        );
+      } else {
+        // 결과 데이터가 없거나 실패했거나 showResultScreen이 false인 경우 홈 화면으로 이동
+        appState.changePage(0);
+      }
     } catch (e) {
       debugPrint('등산 종료 요청 오류: $e');
       // 오류 발생 시에도 트래킹은 종료
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('등산 기록 저장 중 오류가 발생했습니다: $e')),
       );
-    } finally {
-      // 종료 처리 (앱 상태 초기화)
-      final appState = Provider.of<AppState>(context, listen: false);
-      appState.endTracking(); // isTracking = false, AppState 리스너들에게 알림
 
-      // 홈 화면(0번 탭)으로 이동하도록 AppState 변경
-      // HomeScreen이 이 변경을 감지하고 화면을 전환하거나 새로고침할 것임
+      // 홈 화면으로 이동
+      final appState = Provider.of<AppState>(context, listen: false);
+      appState.endTracking();
       appState.changePage(0);
     }
   }
@@ -3002,6 +3025,17 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       }
     } catch (e) {
       debugPrint('AI 서버 데이터 전송 중 오류 발생: $e');
+    }
+  }
+
+  String _convertToServerMode(String mode) {
+    switch (mode) {
+      case '나 vs 나':
+        return 'ME';
+      case '나 vs 친구':
+        return 'FRIEND';
+      default:
+        return 'GENERAL';
     }
   }
 }

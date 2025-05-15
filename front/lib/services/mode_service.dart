@@ -205,9 +205,10 @@ class ModeService {
   }
 
   /// 등산 종료 요청
-  Future<bool> endTracking({
+  Future<Map<String, dynamic>> endTracking({
     required int mountainId,
     required int pathId,
+    required String mode,
     int? opponentId,
     int? recordId,
     required bool isSave,
@@ -229,6 +230,7 @@ class ModeService {
       final body = jsonEncode({
         'mountainId': mountainId,
         'pathId': pathId,
+        'mode': mode,
         'opponentId': opponentId,
         'recordId': recordId,
         'isSave': isSave,
@@ -239,7 +241,8 @@ class ModeService {
         'records': records,
       });
 
-      debugPrint('등산 종료 요청 데이터: mountainId=$mountainId, pathId=$pathId');
+      debugPrint(
+          '등산 종료 요청 데이터: mountainId=$mountainId, pathId=$pathId, mode=$mode');
 
       final response = await _client.post(
         uri,
@@ -252,8 +255,8 @@ class ModeService {
 
       debugPrint('등산 종료 응답: ${response.statusCode}, ${jsonData['status']}');
 
-      if (response.statusCode == 200 && jsonData['status'] == true) {
-        return true;
+      if (response.statusCode == 200) {
+        return jsonData;
       } else {
         final errorMessage = jsonData['message'] ?? '등산 종료 요청 실패';
         throw Exception('$errorMessage (${response.statusCode})');
