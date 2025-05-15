@@ -53,6 +53,14 @@ public class HikingHistoryService {
 
         // path 단위로 페이징
         List<Map.Entry<Path, List<HikingHistory>>> groupedList = new ArrayList<>(grouped.entrySet());
+
+        // 가장 최근 createdAt 기준으로 path 정렬
+        groupedList.sort((e1, e2) -> {
+            LocalDateTime latest1 = e1.getValue().get(e1.getValue().size() - 1).getCreatedAt();
+            LocalDateTime latest2 = e2.getValue().get(e2.getValue().size() - 1).getCreatedAt();
+            return latest2.compareTo(latest1);
+        });
+
         int total = groupedList.size();
         int start = Math.min(pageable.getPageNumber() * pageable.getPageSize(), total);
         int end = Math.min(start + pageable.getPageSize(), total);
@@ -64,8 +72,11 @@ public class HikingHistoryService {
 
                     DiffResponseDto result = null;
                     if (records.size() >= 2) {
-                        HikingHistory secondLatest = records.get(records.size() - 2);
-                        HikingHistory latest = records.get(records.size() - 1);
+                        List<HikingHistory> sortedRecords = records.stream()
+                                .sorted(Comparator.comparing(HikingHistory::getCreatedAt).reversed()) // 최신순 정렬
+                                .toList();
+                        HikingHistory latest = sortedRecords.get(0); // 가장 최신
+                        HikingHistory secondLatest = sortedRecords.get(1); // 두 번째 최신
                         int timeDiff = latest.getHikingTime() - secondLatest.getHikingTime();
                         int maxHrDiff = latest.getMaxHeartRate() - secondLatest.getMaxHeartRate();
                         int avgHrDiff = (int) (latest.getAverageHeartRate() - secondLatest.getAverageHeartRate());
@@ -78,10 +89,11 @@ public class HikingHistoryService {
                                 .build();
                     }
 
-                    // 오래된 순서로 정렬 유지, 상위 5개 제한
+                    // 최신 5개 데이터를 과거 → 현재 순으로 정렬
                     List<TodayHikingResultResponseDto> recordDtos = records.stream()
-                            .sorted(Comparator.comparing(HikingHistory::getCreatedAt)) // 오래된 순서 정렬
-                            .limit(5)
+                            .sorted(Comparator.comparing(HikingHistory::getCreatedAt).reversed()) // 최신순 정렬
+                            .limit(5)    // 최신 5개 선택
+                            .sorted(Comparator.comparing(HikingHistory::getCreatedAt)) // 과거 → 현재 순으로 재정렬
                             .map(TodayHikingResultResponseDto::from)
                             .toList();
 

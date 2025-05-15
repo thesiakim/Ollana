@@ -274,7 +274,9 @@ public class TrackingService {
         }
 
         // 사용자 거리 및 경험치 갱신
-        userService.updateUserInfoAfterTracking(user, request.getFinalDistance(), mountain.getLevel());
+        if (request.isSave()) {
+            userService.updateUserInfoAfterTracking(user, request.getFinalDistance(), mountain.getLevel());
+        }
 
         // 등산 상태 저장 key 제거
         redisTemplate.delete(getTrackingStatusKey(userId));
