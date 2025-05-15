@@ -53,10 +53,22 @@
         <!-- 워치 메시지 백그라운드 수신을 위한 서비스 등록 -->
         <service
             android:name="dev.rexios.watch_connectivity.WearableListenerService"
-            android:exported="true"
-            android:permission="com.google.android.gms.permission.BIND_LISTENER">
+            android:exported="true">
+            <!-- 메시지 수신 필터: 필요한 path만 처리 -->
             <intent-filter>
-                <action android:name="com.google.android.gms.wearable.BIND_LISTENER"/>
+                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:pathPrefix="/message" />
+            </intent-filter>
+            <!-- 데이터 변경 수신 필터: 필요한 데이터 경로만 처리 -->
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:pathPrefix="/watch_connectivity" />
             </intent-filter>
         </service>
         

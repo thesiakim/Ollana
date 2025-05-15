@@ -104,7 +104,9 @@ class LiveTrackingScreen extends StatefulWidget {
   State<LiveTrackingScreen> createState() => _LiveTrackingScreenState();
 }
 
-class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
+class _LiveTrackingScreenState extends State<LiveTrackingScreen>
+    with WidgetsBindingObserver {
+  // WidgetsBindingObserver mixin 추가
   NaverMapController? _mapController;
   Timer? _timer;
   int _elapsedSeconds = 0;
@@ -128,6 +130,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   bool _isWatchPaired = false;
   bool _isCheckingWatch = false;
   String _watchStatus = '워치 연결 확인이 필요합니다';
+  int _steps = 0; // 걸음 수 변수 추가
 
   // 현재 위치 (처음 지도 로드 위치)
   double _currentLat = 37.5665;
@@ -145,17 +148,14 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   static const double _minHeadingChangeForUpdate =
       10.0; // 업데이트를 위한 최소 방향 변화 (도)
 
-  // 최고/평균 심박수
-  int _maxHeartRate = 120;
-  int _avgHeartRate = 86;
+  // 현재 심박수
+  int _currentHeartRate = 0; // _avgHeartRate에서 _currentHeartRate로 변경 및 초기값 설정
 
   // 경쟁 모드 데이터 (테스트용)
   Map<String, dynamic> _competitorData = {
     'name': '내가',
     'distance': 4.1,
     'time': 47,
-    'maxHeartRate': 120,
-    'avgHeartRate': 86,
     'isAhead': true, // 경쟁자가 앞서는지 여부
   };
 
@@ -208,6 +208,10 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   double _pastDistanceAtCurrentTime = 0.0;
   double _currentTotalDistance = 0.0;
 
+  // 현재 속도 관련 변수 추가
+  double _currentSpeed = 0.0; // 현재 속도 (km/h)
+  DateTime? _lastSpeedUpdateTime; // 마지막 속도 업데이트 시간
+
   // 워치 알림 상태
   bool _hasNotifiedWatchForAhead = false;
   bool _hasNotifiedWatchForBehind = false;
@@ -219,9 +223,12 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   // 등산 기록 데이터 저장을 위한 변수들
   final List<Map<String, dynamic>> _trackingRecords = [];
   DateTime? _lastRecordTime;
-  final int _recordIntervalSeconds = 30; // 30초마다 records에 기록 추가
+  final int _recordIntervalSeconds = 1800; // 30분마다 records에 기록 추가
   Timer? _recordTimer;
   final bool _isSavingEnabled = true; // 기록 저장 여부 (기본값: true)
+
+  // 앱 생명주기 상태 저장을 위한 변수
+  AppLifecycleState? _currentLifecycleState;
 
   @override
   void initState() {
@@ -235,29 +242,23 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
 
     // (1) 워치 메시지 수신 리스너 등록
     _watch.messageStream.listen((Map<String, dynamic> message) {
-      debugPrint('수신된 메시지 path: ${message['path']}, data: ${message['data']}');
-      final dynamic raw = message['data'];
-      if (raw is Uint8List) {
-        // 1) 바이트 배열 → 문자열
-        final jsonString = utf8.decode(raw);
-        debugPrint('받은 JSON 문자열: $jsonString');
-
-        try {
-          // 2) JSON → Map
-          final Map<String, dynamic> payload = json.decode(jsonString);
-          debugPrint('파싱된 Map: $payload');
-
-          // 이후 payload['heartRate'], payload['steps'] 등 사용
-          if (payload.containsKey('heartRate')) {
-            setState(() {
-              _avgHeartRate = payload['heartRate'] as int;
-            });
-          }
-        } catch (e) {
-          debugPrint('JSON 파싱 오류: $e');
-        }
-      } else {
-        debugPrint('알 수 없는 메시지 데이터 타입: ${raw.runtimeType}');
+      debugPrint('워치 메시지 수신: $message');
+      String path = message['path'];
+      switch (path) {
+        case '/SENSOR_DATA':
+          _currentHeartRate = message['heartRate'];
+          _steps = message['steps'];
+          break;
+        case '/STOP_TRACKING_CONFIRM': // 새로운 case 추가
+          debugPrint('워치로부터 /STOP_TRACKING_CONFIRM 메시지 수신');
+          // 현재 화면 상태와 관계없이 등산 종료 및 기록 저장
+          _finishTracking(true);
+          break;
+        case '/STOP_TRACKING_CANCEL': // 새로운 case 추가
+          debugPrint('워치로부터 /STOP_TRACKING_CANCEL 메시지 수신');
+          // 현재 화면 상태와 관계없이 등산 종료 (기록 저장 안 함)
+          _finishTracking(false);
+          break;
       }
     }, onError: (err) {
       debugPrint('메시지 수신 오류: $err');
@@ -283,8 +284,6 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
       _elapsedSeconds = appState.elapsedSeconds;
       _elapsedMinutes = appState.elapsedMinutes;
       _distance = appState.distance;
-      _maxHeartRate = appState.maxHeartRate;
-      _avgHeartRate = appState.avgHeartRate;
       _isNavigationMode = appState.isNavigationMode;
       _deviceHeading = appState.deviceHeading;
 
@@ -310,6 +309,9 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
 
     // 시트 컨트롤러 리스너 설정
     _sheetController.addListener(_onSheetChanged);
+
+    // 앱 생명주기 옵저버 등록
+    WidgetsBinding.instance.addObserver(this);
   }
 
   void _onSheetChanged() {
@@ -337,7 +339,20 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
     _sheetController.removeListener(_onSheetChanged);
     _sheetController.dispose();
     _mapController = null;
+
+    // 앱 생명주기 옵저버 해제
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  // 앱 생명주기 변경 감지
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    setState(() {
+      _currentLifecycleState = state;
+    });
+    debugPrint('App lifecycle state changed to: $state');
   }
 
   // 트래킹 시작
@@ -386,6 +401,25 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
           final appState = Provider.of<AppState>(context, listen: false);
           appState.updateTrackingData(elapsedSeconds: _elapsedSeconds);
         }
+
+        // 워치에 도착 알림 전송
+        if (!_hasNotifiedWatchForDestination) {
+          _notifyWatch('destination');
+          _hasNotifiedWatchForDestination = true;
+
+          // 사용자의 요청: 앱이 백그라운드 상태이고, 목적지에 도착했고, 워치에 연동되어 있으면 메시지 전송
+          if (_isWatchPaired &&
+              _currentLifecycleState == AppLifecycleState.paused) {
+            try {
+              _watch.sendMessage({
+                'path': '/REACHED',
+              });
+              debugPrint('백그라운드에서 목적지 도착 메시지 워치로 전송됨');
+            } catch (e) {
+              debugPrint('백그라운드 워치 메시지(/REACHED) 전송 실패: $e');
+            }
+          }
+        }
       }
     });
   }
@@ -394,30 +428,17 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   void _updateHeartRate() {
     // 워치에서 최근 5초 이내에 받은 심박수 데이터가 있는지 확인
     // 없으면 목데이터 사용 (테스트용)
-    bool useRealData = false;
+    bool useRealData = _isWatchPaired; // 실제 워치 연동 시 true로 변경 가정
 
-    if (!useRealData) {
+    if (useRealData) {
+      // 실제 데이터 사용 로직 (예: _currentHeartRate가 워치에서 직접 업데이트된다고 가정)
+      // 이 부분은 워치 연동 방식에 따라 달라짐
+      debugPrint('현재 심박수 (워치): $_currentHeartRate');
+    } else {
       // 목데이터 사용 (실제 워치 연동 전 테스트용)
-      int currentHeartRate = 80 + math.Random().nextInt(60);
-
-      // 최고 심박수 업데이트
-      if (currentHeartRate > _maxHeartRate) {
-        _maxHeartRate = currentHeartRate;
-      }
-
-      // 평균 심박수 업데이트 (간단한 시뮬레이션)
-      _avgHeartRate = ((_avgHeartRate * 9) + currentHeartRate) ~/ 10; // 가중 평균
-
-      // 목데이터 디버그 로그 출력
-      debugPrint(
-          '현재 심박수 (목데이터): $currentHeartRate, 최고: $_maxHeartRate, 평균: $_avgHeartRate');
-    }
-
-    // AppState 업데이트
-    if (mounted) {
-      final appState = Provider.of<AppState>(context, listen: false);
-      appState.updateTrackingData(
-          maxHeartRate: _maxHeartRate, avgHeartRate: _avgHeartRate);
+      // _currentHeartRate 값을 직접 업데이트 (예: 80 ~ 139 사이의 랜덤 값)
+      _currentHeartRate = 0;
+      debugPrint('현재 심박수 (목데이터): $_currentHeartRate');
     }
   }
 
@@ -761,6 +782,25 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
               shouldUpdatePath = false;
               debugPrint(
                   '비현실적인 위치 변화 감지: ${speed.toStringAsFixed(2)} m/s, 거리: ${distance.toStringAsFixed(2)}m');
+            } else {
+              // 합리적인 속도 범위 내에서 현재 속도 업데이트 (km/h로 변환)
+              // 20초마다 한번씩만 실제 UI 업데이트를 위해 setState 호출
+              final currentTimeInSeconds = now.millisecondsSinceEpoch ~/ 1000;
+              final lastUpdateTimeInSeconds =
+                  _lastSpeedUpdateTime?.millisecondsSinceEpoch ?? 0 ~/ 1000;
+
+              // 이동 거리가 의미있는 경우 (3m 이상)에만 속도 업데이트
+              if (distance >= 3.0 ||
+                  currentTimeInSeconds - lastUpdateTimeInSeconds >= 20) {
+                setState(() {
+                  // 미터/초를 km/h로 변환 (× 3.6)
+                  _currentSpeed = speed * 3.6;
+                  _lastSpeedUpdateTime = now;
+                });
+                if (_elapsedSeconds % 10 == 0) {
+                  debugPrint('현재 속도: ${_currentSpeed.toStringAsFixed(1)} km/h');
+                }
+              }
             }
           }
         }
@@ -1154,19 +1194,20 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
           '예상 남은 시간 : $_formattedRemainingTime',
           style: TextStyle(fontSize: 14),
         ),
+        SizedBox(height: 4), // 심박수 표시 전에 SizedBox 추가
+        if (_isWatchPaired)
+          Text(
+            '현재 심박수 : $_currentHeartRate bpm',
+            style: TextStyle(fontSize: 14),
+          )
+        else
+          Text(
+            '현재 심박수 : 워치와 연동해주세요',
+            style: TextStyle(fontSize: 14, color: Colors.grey),
+          ),
         SizedBox(height: 4),
         Text(
-          '현재 고도 : ${_currentAltitude.toStringAsFixed(1)}m',
-          style: TextStyle(fontSize: 14),
-        ),
-        SizedBox(height: 4),
-        Text(
-          '최고 심박수 : $_maxHeartRate bpm',
-          style: TextStyle(fontSize: 14),
-        ),
-        SizedBox(height: 4),
-        Text(
-          '평균 심박수 : $_avgHeartRate bpm',
+          '현재 속도 : ${_currentSpeed.toStringAsFixed(1)} km/h',
           style: TextStyle(fontSize: 14),
         ),
       ],
@@ -1299,7 +1340,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
       }
 
       if (_elapsedSeconds % 10 == 0) {
-        debugPrint('현재 이동 거리: ${total.toStringAsFixed(2)}km');
+        debugPrint('현재 이동 거리: ${total.toStringAsFixed(2)}km'); // 수정된 부분
       }
 
       // UI 갱신
@@ -1546,15 +1587,15 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
             style: TextStyle(fontSize: 14),
           ),
           SizedBox(height: 4),
-          Text(
-            '최고 심박수 : ${_competitorData['maxHeartRate']} bpm',
-            style: TextStyle(fontSize: 14),
-          ),
-          SizedBox(height: 4),
-          Text(
-            '평균 심박수 : ${_competitorData['avgHeartRate']} bpm',
-            style: TextStyle(fontSize: 14),
-          ),
+          // Text(
+          //   '최고 심박수 : ${_competitorData['maxHeartRate']} bpm',
+          //   style: TextStyle(fontSize: 14),
+          // ),
+          // SizedBox(height: 4),
+          // Text(
+          //   '평균 심박수 : ${_competitorData['avgHeartRate']} bpm',
+          //   style: TextStyle(fontSize: 14),
+          // ),
         ]
         // 일반 모드 정보
         else ...<Widget>[
@@ -1582,8 +1623,19 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
             style: TextStyle(fontSize: 14),
           ),
           SizedBox(height: 4),
+          if (_isWatchPaired)
+            Text(
+              '현재 심박수: $_currentHeartRate bpm',
+              style: TextStyle(fontSize: 14),
+            )
+          else
+            Text(
+              '현재 심박수: 워치와 연동해주세요',
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+            ),
+          SizedBox(height: 4),
           Text(
-            '현재 심박수: $_avgHeartRate bpm',
+            '현재 속도: ${_currentSpeed.toStringAsFixed(1)} km/h',
             style: TextStyle(fontSize: 14),
           ),
         ],
@@ -1648,7 +1700,15 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
         borderRadius: BorderRadius.circular(50),
       ),
       child: TextButton.icon(
-        onPressed: () => _showSaveOptionDialog(context),
+        onPressed: () {
+          if (_isDestinationReached) {
+            // 목적지 도달 시: 기존대로 저장 여부 선택 다이얼로그 표시
+            _showSaveOptionDialog(context);
+          } else {
+            // 목적지 미도달 시: 경고 문구와 함께 바로 종료 확인 다이얼로그 표시 (저장 안 함)
+            _showEndTrackingDialog(context, false, isEarlyExit: true);
+          }
+        },
         icon: Icon(
           _isPaused ? Icons.play_arrow : Icons.pause,
           color: Colors.white,
@@ -1752,7 +1812,9 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   }
 
   // 등산 종료 확인 다이얼로그
-  void _showEndTrackingDialog(BuildContext context, bool shouldSave) {
+  void _showEndTrackingDialog(BuildContext context, bool shouldSave,
+      {bool isEarlyExit = false}) {
+    // isEarlyExit 파라미터 추가
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
@@ -1798,6 +1860,20 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                   ),
                 ],
               ),
+              // 목적지 미도달 시 추가 경고 문구
+              if (isEarlyExit)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10.0),
+                  child: Text(
+                    '목적지에 도달하지 않고 종료 시에는\n기록이 저장되지 않고 경험치도 주어지지 않습니다.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
               SizedBox(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -1887,11 +1963,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
         finalLatitude: _currentLat,
         finalLongitude: _currentLng,
         finalTime: _elapsedSeconds,
-        totalTime: _elapsedSeconds,
-        totalDistance: (_currentTotalDistance * 1000).toInt(), // km -> m 변환
-        latitude: _currentLat,
-        longitude: _currentLng,
-        heartRate: _avgHeartRate,
+        finalDistance: (_currentTotalDistance * 1000).toInt(), // km -> m 변환
         records: _trackingRecords,
         token: token,
       );
@@ -1905,7 +1977,12 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
       );
     } finally {
       // 종료 처리 (앱 상태 초기화)
-      Provider.of<AppState>(context, listen: false).endTracking();
+      final appState = Provider.of<AppState>(context, listen: false);
+      appState.endTracking(); // isTracking = false, AppState 리스너들에게 알림
+
+      // 홈 화면(0번 탭)으로 이동하도록 AppState 변경
+      // HomeScreen이 이 변경을 감지하고 화면을 전환하거나 새로고침할 것임
+      appState.changePage(0);
     }
   }
 
@@ -2290,8 +2367,6 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
               'name': _modeData?.opponent?.nickname ?? '이전 기록',
               'distance': _modeData?.path.distance ?? 0.0,
               'time': _modeData?.path.estimatedTime ?? 0,
-              'maxHeartRate': 135, // 목데이터 사용
-              'avgHeartRate': 95, // 목데이터 사용
               'isAhead': true,
             };
             debugPrint('경쟁자 데이터 설정: ${_competitorData['name']}');
@@ -2524,7 +2599,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
         'distance': (_currentTotalDistance * 1000).toInt(), // km -> m 변환
         'latitude': _currentLat,
         'longitude': _currentLng,
-        'heartRate': _avgHeartRate,
+        'heartRate': _currentHeartRate, // _avgHeartRate를 _currentHeartRate로 변경
       };
 
       // 기록 추가
