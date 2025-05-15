@@ -5,6 +5,7 @@ import com.ssafy.ollana.common.util.PaginateUtil;
 import com.ssafy.ollana.footprint.persistent.entity.Footprint;
 import com.ssafy.ollana.footprint.persistent.repository.FootprintRepository;
 import com.ssafy.ollana.footprint.service.exception.NotFoundException;
+import com.ssafy.ollana.footprint.web.dto.response.FootprintListResponseDto;
 import com.ssafy.ollana.footprint.web.dto.response.FootprintResponseDto;
 
 import com.ssafy.ollana.user.entity.User;
@@ -28,17 +29,30 @@ public class FootprintService {
      * 발자취 목록 조회
      */
     @Transactional(readOnly = true)
-    public PageResponse<FootprintResponseDto> getFootprintList(Integer userId, Pageable pageable) {
+    public FootprintListResponseDto getFootprintList(Integer userId, Pageable pageable) {
         Page<Footprint> page = footprintRepository.findByUserId(userId, pageable);
+        double totalDistance = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."))
+                .getTotalDistance();
 
-        Page<FootprintResponseDto> dtoPage = page.map(footprint -> FootprintResponseDto.builder()
-                                                                    .footprintId(footprint.getId())
-                                                                    .mountainName(footprint.getMountain().getMountainName())
-                                                                    .imgUrl(footprint.getMountain().getMountainBadge())
-                                                                    .build());
+        List<FootprintResponseDto> dtoList = page.stream()
+                .map(footprint -> FootprintResponseDto.builder()
+                        .footprintId(footprint.getId())
+                        .mountainName(footprint.getMountain().getMountainName())
+                        .imgUrl(footprint.getMountain().getMountainBadge())
+                        .build())
+                .toList();
 
-        return new PageResponse<>("mountains", dtoPage);
+        return FootprintListResponseDto.builder()
+                .currentPage(page.getNumber())
+                .totalPages(page.getTotalPages())
+                .totalElements(page.getTotalElements())
+                .last(page.isLast())
+                .totalDistance(totalDistance)
+                .mountains(dtoList)
+                .build();
     }
+
 
     /*
      * 특정 발자취 조회

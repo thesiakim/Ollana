@@ -1,10 +1,13 @@
 // lib/models/app_state.dart
 // AppState: 전역 상태 관리 (로그인, 페이지 인덱스, 트래킹 등)
-
+import 'dart:convert'; // ▶ 추가: JSON 디코드용
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart'; // 🔥 secure storage
 import 'package:flutter_naver_map/flutter_naver_map.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart'; // ▶ 추가: 환경변수 읽기용
+import 'package:http/http.dart' as http; // ▶ 추가: HTTP 요청용
+
 import '../models/hiking_route.dart';
 import '../services/mode_service.dart';
 import './hiking_route.dart';
@@ -23,6 +26,15 @@ class AppState extends ChangeNotifier {
   String? _profileImageUrl;
   String? _nickname;
   bool? _social;
+  String? _userId; // ▶ userId 추가
+  bool _surveyCompleted = false; // ▶ 추가
+  bool get surveyCompleted => _surveyCompleted; // ▶ 추가
+
+  /// 클라이언트 단에서 설문 완료 상태 저장
+  void setSurveyCompleted(bool completed) {
+    _surveyCompleted = completed;
+    notifyListeners();
+  }
 
   // 페이지 인덱스
   int _currentPageIndex = 0;
@@ -56,18 +68,43 @@ class AppState extends ChangeNotifier {
     _initAuth(); // 🔥 초기 인증 정보 로드
   }
 
+  // ▶ 추가: 로그인/복원 후 설문 여부 조회
+  Future<void> fetchSurveyStatus() async {
+    if (_accessToken == null || _userId == null) return;
+    final url = '${dotenv.get('AI_BASE_URL')}/has_survey/$_userId';
+    try {
+      final resp = await http.post(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'authorization': 'Bearer $_accessToken',
+        },
+      );
+      if (resp.statusCode == 200) {
+        final body = jsonDecode(resp.body);
+        _surveyCompleted = body['has_survey'] as bool;
+        debugPrint('설문 상태: $_surveyCompleted'); // ▶ 디버그용
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('❌ fetchSurveyStatus 오류: $e');
+    }
+  }
+
   // Getters
   bool get isLoggedIn => _isLoggedIn;
   String? get accessToken => _accessToken;
+  String? get profileImageUrl => _profileImageUrl;
+  String? get nickname => _nickname;
+  bool? get social => _social;
+  String? get userId => _userId; // ▶ userId getter
+
   int get currentPageIndex => _currentPageIndex;
   TrackingStage get trackingStage => _trackingStage;
   bool get isTracking => _isTracking;
   String? get selectedMountain => _selectedMountain;
   HikingRoute? get selectedRoute => _selectedRoute;
   String? get selectedMode => _selectedMode;
-  String? get profileImageUrl => _profileImageUrl;
-  String? get nickname => _nickname;
-  bool? get social => _social;
 
   List<NLatLng> get routeCoordinates => _routeCoordinates;
   List<NLatLng> get userPath => _userPath;
@@ -85,23 +122,28 @@ class AppState extends ChangeNotifier {
   // 모드 데이터 Getter
   ModeData? get modeData => _modeData;
 
-  // 🔥 앱 시작 시 SecureStorage에서 토큰을 읽어 로그인 상태 복원
+  // 🔥 앱 시작 시 SecureStorage에서 토큰과 userId를 읽어 로그인 상태 복원
   Future<void> _initAuth() async {
     try {
       final token = await _storage.read(key: 'accessToken');
       final profileImage = await _storage.read(key: 'profileImageUrl');
       final nickname = await _storage.read(key: 'nickname');
       final social = await _storage.read(key: 'social');
+      final storedUserId = await _storage.read(key: 'userId'); // ▶ 읽기
+
       if (token != null && token.isNotEmpty) {
         _accessToken = token;
         _profileImageUrl = profileImage;
         _nickname = nickname;
         _social = social != null ? social.toLowerCase() == 'true' : null;
+        _userId = storedUserId; // ▶ 복원
         _isLoggedIn = true;
+
         debugPrint('SecureStorage에서 토큰 복원: $_accessToken');
         debugPrint('SecureStorage에서 프로필 이미지 복원: $_profileImageUrl');
         debugPrint('SecureStorage에서 닉네임 복원: $_nickname');
         debugPrint('SecureStorage에서 소셜 복원: $_social');
+        debugPrint('SecureStorage에서 userId 복원: $_userId'); // ▶ 로그
         notifyListeners();
       }
     } catch (e) {
@@ -116,44 +158,58 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // 🔥 토큰 설정 및 SecureStorage에 저장
-  Future<void> setToken(String token,
-      {String? profileImageUrl, String? nickname, bool? social,}) async {
+  // 🔥 토큰 및 userId 설정 및 SecureStorage에 저장
+  Future<void> setToken(
+    String token, {
+    required String userId, // ▶ userId 파라미터 추가
+    String? profileImageUrl,
+    String? nickname,
+    bool? social,
+  }) async {
     _accessToken = token;
     _isLoggedIn = true;
     _profileImageUrl = profileImageUrl;
     _nickname = nickname;
     _social = social;
+    _userId = userId; // ▶ 저장
     debugPrint('토큰 저장: $_accessToken');
     debugPrint('프로필 이미지 저장: $_profileImageUrl');
     debugPrint('닉네임 저장 : $_nickname');
     debugPrint('소셜 저장: $_social');
+    debugPrint('userId 저장: $_userId'); // ▶ 로그
+
     try {
       await _storage.write(key: 'accessToken', value: token);
       await _storage.write(key: 'profileImageUrl', value: profileImageUrl);
       await _storage.write(key: 'nickname', value: nickname);
       await _storage.write(key: 'social', value: social?.toString());
-      debugPrint('SecureStorage에 토큰 저장 완료');
+      await _storage.write(key: 'userId', value: userId); // ▶ 쓰기
+      debugPrint('SecureStorage에 인증 정보 저장 완료');
     } catch (e) {
       debugPrint('SecureStorage 저장 오류: $e');
     }
+    // ▶ 수정: 토큰 설정 후 즉시 설문 여부 조회
+    await fetchSurveyStatus();
     notifyListeners();
   }
 
-  // 🔥 로그아웃: 메모리와 SecureStorage에서 토큰 삭제
+  // 🔥 로그아웃: 메모리와 SecureStorage에서 인증 정보 삭제
   Future<void> clearAuth() async {
     _accessToken = null;
     _profileImageUrl = null;
     _nickname = null;
     _social = null;
+    _userId = null; // ▶ 초기화
     _isLoggedIn = false;
     debugPrint('클라이언트 인증 정보 초기화');
+
     try {
       await _storage.delete(key: 'accessToken');
       await _storage.delete(key: 'profileImageUrl');
       await _storage.delete(key: 'nickname');
       await _storage.delete(key: 'social');
-      debugPrint('SecureStorage에서 토큰 삭제 완료');
+      await _storage.delete(key: 'userId'); // ▶ 삭제
+      debugPrint('SecureStorage에서 인증 정보 삭제 완료');
     } catch (e) {
       debugPrint('SecureStorage 삭제 오류: $e');
     }

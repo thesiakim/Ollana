@@ -57,6 +57,7 @@ dependencies:
   google_fonts: ^6.2.1
   flutter_blue_plus: ^1.35.5
   shared_preferences: ^2.2.2
+  intl: ^0.18.1 
   
   
 
@@ -95,6 +96,8 @@ flutter:
     - lib/assets/images/ai_recommend.png
     - lib/assets/images/location_recommend.png
     - lib/assets/images/theme_recommend.png
+    - lib/assets/images/mountain.png
+    - lib/assets/images/logo.png
     - .env
 
   # An image asset can refer to one or more resolution-specific "variants", see
