@@ -7,8 +7,8 @@ import pandas as pd
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # methods 디렉토리
 DATA_DIR = os.path.join(BASE_DIR, "..", "datas", "mountains")
 
-mountain_origin = pd.read_csv(os.path.join(DATA_DIR, "mountain_202505071451.csv"), encoding="EUC-KR")
-mountain_img = pd.read_csv(os.path.join(DATA_DIR, "mountain_img_202505071742.csv"))
+mountain_origin = pd.read_csv(os.path.join(DATA_DIR, "mountain_202505151648.csv"), encoding="UTF-8")
+mountain_img = pd.read_csv(os.path.join(DATA_DIR, "mountain_img_202505151642.csv"))
 
 ###########################################################################################################
 #1. 등산지수를 보여주는 알고리즘
