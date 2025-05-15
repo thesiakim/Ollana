@@ -17,12 +17,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.web.csrf.InvalidCsrfTokenException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 @Slf4j
 @RestController
@@ -79,7 +79,7 @@ public class AuthController {
         } catch (IOException e) {
             log.error("딥링크 리다이렉트 중 오류 발생", e);
             try {
-                String errorLink = "ollana://auth/oauth/kakao/error?message=" + URLEncoder.encode("인증 처리 중 오류 발생", "UTF-8");
+                String errorLink = "ollana://auth/oauth/kakao/error?message=" + URLEncoder.encode("인증 처리 중 오류 발생", StandardCharsets.UTF_8);
                 response.sendRedirect(errorLink);
             } catch (IOException ex) {
                 log.error("에러 리다이렉트 중 추가 오류 발생", ex);

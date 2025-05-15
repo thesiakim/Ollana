@@ -15,7 +15,7 @@ import com.ssafy.ollana.common.s3.service.S3Service;
 import com.ssafy.ollana.security.jwt.JwtUtil;
 import com.ssafy.ollana.user.entity.User;
 import com.ssafy.ollana.user.entity.Gender;
-import com.ssafy.ollana.user.exception.DuplicateEmailException;
+import com.ssafy.ollana.user.exception.EmailAlreadyExistsException;
 import com.ssafy.ollana.user.repository.UserRepository;
 import com.ssafy.ollana.user.service.UserService;
 import jakarta.servlet.http.Cookie;
@@ -49,7 +49,7 @@ public class AuthServiceImpl implements AuthService {
 
         // 이메일 중복 검사
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new DuplicateEmailException();
+            throw new EmailAlreadyExistsException();
         }
 
         // 닉네임 중복 검사
@@ -283,6 +283,16 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public LoginResponseDto saveKakaoUserAndLogin(KakaoSignupRequestDto request, HttpServletResponse response) {
+        // 이메일 중복 검사
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new EmailAlreadyExistsException();
+        }
+
+        // 닉네임 중복 검사
+        if (userRepository.existsByNickname(request.getNickname())) {
+            throw new NicknameAlreadyExistsException();
+        }
+
         User newUser = User.builder()
                 .email(request.getEmail())
                 .nickname(request.getNickname())
