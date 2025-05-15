@@ -35,6 +35,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
   String? _errorMsg;
   String? _verifyError;
   final _picker = ImagePicker();
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   bool get _passwordsMatch =>
       _passwordCtrl.text.isNotEmpty &&
@@ -201,7 +203,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         context: context,
         builder: (_) => AlertDialog(
           title: const Text('오류'),
-          content: Text('네트워크 오류가 발생했습니다.\n\$e'),
+          content: Text('네트워크 오류가 발생했습니다.\n${e.toString()}'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -217,247 +219,573 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final primary = Theme.of(context).primaryColor;
-    final borderColor = Colors.grey.shade400;
+    final colorScheme = Theme.of(context).colorScheme;
+    final primary = colorScheme.primary;
+    final onPrimary = colorScheme.onPrimary;
+    
+    final textTheme = Theme.of(context).textTheme;
+
+    final inputDecoration = InputDecoration(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: primary, width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.red.shade300, width: 1),
+      ),
+      filled: true,
+      fillColor: Colors.grey.shade100,
+      hintStyle: TextStyle(color: Colors.grey.shade500),
+      errorStyle: const TextStyle(
+        fontSize: 12, 
+        fontWeight: FontWeight.w500,
+        height: 0.8,
+      ),
+    );
+
+    final buttonStyle = ElevatedButton.styleFrom(
+      backgroundColor: primary,
+      foregroundColor: onPrimary,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 16),
+    );
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.primary,
+        backgroundColor: Colors.white, // 배경색을 흰색으로 고정
+        surfaceTintColor: Colors.white, // 스크롤 시 색상 변화 방지
         centerTitle: true,
         elevation: 0,
-        title: const Text(
+        title: Text(
           '회원가입',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+          style: textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: Colors.black,
+          ),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (_errorMsg != null) ...[
-                Text(_errorMsg!, style: const TextStyle(color: Colors.red)),
-                const SizedBox(height: 12),
-              ],
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 100),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Profile image section
+                      Center(
+                        child: GestureDetector(
+                          onTap: _pickImage,
+                          child: Container(
+                            width: 100,
+                            height: 100,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade200,
+                              shape: BoxShape.circle,
+                              image: _profileImage != null
+                                  ? DecorationImage(
+                                      image: FileImage(_profileImage!),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : null,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.08),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: _profileImage == null
+                                ? Icon(
+                                    Icons.add_a_photo_outlined,
+                                    size: 36,
+                                    color: Colors.grey.shade500,
+                                  )
+                                : null,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Center(
+                        child: Text(
+                          '프로필 사진',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      
+                      // Error message
+                      if (_errorMsg != null) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.red.shade200),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.error_outline,
+                                  color: Colors.red.shade400, size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _errorMsg!,
+                                  style: TextStyle(
+                                    color: Colors.red.shade700,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
 
-              // Email + Send Code
-              // Email 입력
-              TextFormField(
-                controller: _emailCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Email',
-                  border: OutlineInputBorder(
-                      borderSide: BorderSide(color: borderColor)),
-                  enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: borderColor)),
-                  focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: primary)),
-                  filled: _emailVerified, // 인증 완료 시 회색 배경
-                  fillColor: _emailVerified ? Colors.grey.shade200 : null,
-                  suffixIcon: _emailVerified
-                      ? const Icon(Icons.check_circle, color: Colors.green)
-                      : null,
-                ),
-                keyboardType: TextInputType.emailAddress,
-                enabled: !_emailVerified,
-                validator: (v) =>
-                    v != null && v.contains('@') ? null : '유효한 이메일을 입력해 주세요.',
-              ),
-              const SizedBox(height: 8),
-              // 인증 코드 전송 버튼 (이메일 아래)
-              ElevatedButton(
-                onPressed: (_isSending || _emailSent || _emailVerified)
-                    ? null
-                    : _sendVerificationCode,
-                child: _isSending
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('인증 코드 전송'),
-              ),
-              const SizedBox(height: 16),
-              // 인증 코드 입력 및 확인
-              if (_emailSent && !_emailVerified) ...[
-                TextFormField(
-                  controller: _codeCtrl,
-                  decoration: InputDecoration(
-                    labelText: '인증 코드',
-                    border: OutlineInputBorder(
-                        borderSide: BorderSide(color: borderColor)),
-                    enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: borderColor)),
-                    focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: primary)),
+                      // Email section with verification
+                      _buildSectionTitle('이메일'),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _emailCtrl,
+                        decoration: inputDecoration.copyWith(
+                          hintText: 'example@email.com',
+                          prefixIcon: Icon(
+                            Icons.email_outlined,
+                            color: Colors.grey.shade600,
+                          ),
+                          suffixIcon: _emailVerified
+                              ? const Icon(
+                                  Icons.check_circle,
+                                  color: Color(0xFF52A486),
+                                )
+                              : null,
+                        ),
+                        keyboardType: TextInputType.emailAddress,
+                        enabled: !_emailVerified,
+                        validator: (v) =>
+                            v != null && v.contains('@') ? null : '유효한 이메일을 입력해 주세요.',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      
+                      if (!_emailVerified)
+                        ElevatedButton(
+                          onPressed: (_isSending || _emailSent) ? null : _sendVerificationCode,
+                          style: buttonStyle.copyWith(
+                            backgroundColor: MaterialStateProperty.resolveWith<Color>((states) {
+                              if (states.contains(MaterialState.disabled)) {
+                                return Colors.grey.shade300;
+                              }
+                              return Color(0xFF52A486);
+                            }),
+                            padding: MaterialStateProperty.all(
+                              const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                          ),
+                          child: _isSending
+                              ? SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: onPrimary,
+                                  ),
+                                )
+                              : Text(
+                                  _emailSent ? '인증 코드 재전송' : '인증 코드 전송',
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                        ),
+                      
+                      // Verification code section
+                      if (_emailSent && !_emailVerified) ...[
+                        const SizedBox(height: 24),
+                        _buildSectionTitle('인증'),
+                        const SizedBox(height: 8),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: _codeCtrl,
+                                decoration: inputDecoration.copyWith(
+                                  hintText: '인증 코드',
+                                  prefixIcon: Icon(
+                                    Icons.lock_outline,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                                keyboardType: TextInputType.number,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                  letterSpacing: 4,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            SizedBox(
+                              width: 100,
+                              child: ElevatedButton(
+                                onPressed: _isVerifying ? null : _verifyCode,
+                                style: buttonStyle.copyWith(
+                                  backgroundColor: MaterialStateProperty.resolveWith<Color>((states) {
+                                    if (states.contains(MaterialState.disabled)) {
+                                      return Colors.grey.shade300;
+                                    }
+                                    return Color(0xFF52A486);
+                                  }),
+                                  padding: MaterialStateProperty.all(
+                                    const EdgeInsets.symmetric(vertical: 16),
+                                  ),
+                                ),
+                                child: _isVerifying
+                                    ? SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: onPrimary,
+                                        ),
+                                      )
+                                    : const Text(
+                                        '확인',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (_verifyError != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8, left: 8),
+                            child: Text(
+                              _verifyError!,
+                              style: const TextStyle(
+                                color: Colors.red,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                      ],
+
+                      const SizedBox(height: 24),
+                      _buildSectionTitle('비밀번호'),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _passwordCtrl,
+                        decoration: inputDecoration.copyWith(
+                          hintText: '8자 이상 특수문자 포함',
+                          prefixIcon: Icon(
+                            Icons.lock_outline,
+                            color: Colors.grey.shade600,
+                          ),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              color: Colors.grey.shade600,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _obscurePassword = !_obscurePassword;
+                              });
+                            },
+                          ),
+                        ),
+                        obscureText: _obscurePassword,
+                        onChanged: (_) => setState(() {}),
+                        validator: (v) => (v != null &&
+                                v.length >= 8 &&
+                                RegExp(r'[^A-Za-z0-9]').hasMatch(v))
+                            ? null
+                            : '8자 이상 특수문자 포함 비밀번호를 입력해 주세요.',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      TextFormField(
+                        controller: _confirmCtrl,
+                        decoration: inputDecoration.copyWith(
+                          hintText: '비밀번호 확인',
+                          prefixIcon: Icon(
+                            Icons.lock_outlined,
+                            color: Colors.grey.shade600,
+                          ),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscureConfirmPassword
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              color: Colors.grey.shade600,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _obscureConfirmPassword = !_obscureConfirmPassword;
+                              });
+                            },
+                          ),
+                        ),
+                        obscureText: _obscureConfirmPassword,
+                        onChanged: (_) => setState(() {}),
+                        validator: (v) {
+                          if (v == null || v.isEmpty) return '비밀번호 확인을 입력해 주세요.';
+                          if (v != _passwordCtrl.text) return '비밀번호가 일치하지 않습니다.';
+                          return null;
+                        },
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+
+                      if (_confirmCtrl.text.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8, left: 8),
+                          child: Row(
+                            children: [
+                              Icon(
+                                _passwordsMatch ? Icons.check : Icons.error_outline,
+                                size: 14,
+                                color: _passwordsMatch ? Color(0xFF52A486) : Colors.red.shade400,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                _passwordsMatch ? '비밀번호가 일치합니다.' : '비밀번호가 일치하지 않습니다.',
+                                style: TextStyle(
+                                  color: _passwordsMatch ? Color(0xFF52A486) : Colors.red.shade400,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                      const SizedBox(height: 24),
+                      _buildSectionTitle('계정 정보'),
+                      const SizedBox(height: 8),
+                      
+                      // Nickname field
+                      TextFormField(
+                        controller: _nickCtrl,
+                        decoration: inputDecoration.copyWith(
+                          hintText: '닉네임',
+                          prefixIcon: Icon(
+                            Icons.person_outline,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(RegExp(r'[가-힣a-zA-Z0-9]'))
+                        ],
+                        validator: (v) => (v != null && v.trim().isNotEmpty)
+                            ? null
+                            : '닉네임을 입력해 주세요.',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      // Birth field
+                      TextFormField(
+                        controller: _birthCtrl,
+                        decoration: inputDecoration.copyWith(
+                          hintText: '생년월일 8자리 (YYYYMMDD)',
+                          prefixIcon: Icon(
+                            Icons.calendar_today_outlined,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(8),
+                        ],
+                        validator: (v) => v != null && RegExp(r'^\d{8}$').hasMatch(v)
+                            ? null
+                            : '생년월일 8자리 숫자로 입력해 주세요.',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      // Gender field
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => setState(() => _gender = 'M'),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  decoration: BoxDecoration(
+                                    color: _gender == 'M' ? Color(0xFF52A486) : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      '남성',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: _gender == 'M'
+                                            ? onPrimary
+                                            : Colors.grey.shade700,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => setState(() => _gender = 'F'),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  decoration: BoxDecoration(
+                                    color: _gender == 'F' ? Color(0xFF52A486) : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      '여성',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: _gender == 'F'
+                                            ? onPrimary
+                                            : Colors.grey.shade700,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 40),
+                    ],
                   ),
                 ),
-                if (_verifyError != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      _verifyError!,
-                      style: const TextStyle(color: Colors.red, fontSize: 12),
+              ),
+            ),
+            
+            // Sign up button at the bottom
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, -5),
                     ),
-                  ),
-                const SizedBox(height: 8),
-                ElevatedButton(
-                  onPressed: _isVerifying ? null : _verifyCode,
-                  child: _isVerifying
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('인증 확인'),
+                  ],
                 ),
-                const SizedBox(height: 16),
-              ],
-
-              // Password
-              TextFormField(
-                controller: _passwordCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  border: OutlineInputBorder(
-                      borderSide: BorderSide(color: borderColor)),
-                  enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: borderColor)),
-                  focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: primary)),
-                ),
-                obscureText: true,
-                onChanged: (_) => setState(() {}),
-                validator: (v) => (v != null &&
-                        v.length >= 8 &&
-                        RegExp(r'[^A-Za-z0-9]').hasMatch(v))
-                    ? null
-                    : '8자 이상 특수문자 포함 비밀번호를 입력해 주세요.',
-              ),
-              const SizedBox(height: 16),
-
-              // Confirm Password
-              TextFormField(
-                controller: _confirmCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Confirm Password',
-                  border: OutlineInputBorder(
-                      borderSide: BorderSide(color: borderColor)),
-                  enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: borderColor)),
-                  focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: primary)),
-                ),
-                obscureText: true,
-                onChanged: (_) => setState(() {}),
-                validator: (v) {
-                  if (v == null || v.isEmpty) return '비밀번호 확인을 입력해 주세요.';
-                  if (v != _passwordCtrl.text) return '비밀번호가 일치하지 않습니다.';
-                  return null;
-                },
-              ),
-              if (_confirmCtrl.text.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    _passwordsMatch ? '비밀번호가 일치합니다.' : '비밀번호가 일치하지 않습니다.',
-                    style: TextStyle(
-                      color: _passwordsMatch ? Colors.green : Colors.red,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 16),
-
-              // Nickname
-              TextFormField(
-                controller: _nickCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Nickname',
-                  border: OutlineInputBorder(
-                      borderSide: BorderSide(color: borderColor)),
-                  enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: borderColor)),
-                  focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: primary)),
-                ),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[가-힣a-zA-Z0-9]'))
-                ],
-                validator: (v) =>
-                    (v != null && v.trim().isNotEmpty) ? null : '닉네임을 입력해 주세요.',
-              ),
-              const SizedBox(height: 16),
-
-              // Birth
-              TextFormField(
-                controller: _birthCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Birth (YYYYMMDD)',
-                  border: OutlineInputBorder(
-                      borderSide: BorderSide(color: borderColor)),
-                  enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: borderColor)),
-                  focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: primary)),
-                ),
-                keyboardType: TextInputType.number,
-                validator: (v) => v != null && RegExp(r'^\d{8}$').hasMatch(v)
-                    ? null
-                    : '생년월일 8자리 숫자로 입력해 주세요.',
-              ),
-              const SizedBox(height: 16),
-
-              // Gender
-              DropdownButtonFormField<String>(
-                value: _gender,
-                items: const [
-                  DropdownMenuItem(value: 'M', child: Text('Male')),
-                  DropdownMenuItem(value: 'F', child: Text('Female')),
-                ],
-                decoration: InputDecoration(
-                  labelText: 'Gender',
-                  border: OutlineInputBorder(
-                      borderSide: BorderSide(color: borderColor)),
-                  enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: borderColor)),
-                  focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: primary)),
-                ),
-                onChanged: (v) => setState(() => _gender = v!),
-              ),
-              const SizedBox(height: 16),
-
-              // Profile Image Picker
-              Row(
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: _pickImage,
-                    icon: const Icon(Icons.image),
-                    label: const Text('프로필 사진 선택'),
-                  ),
-                  const SizedBox(width: 12),
-                  if (_profileImage != null)
-                    const Icon(Icons.check, color: Colors.green),
-                ],
-              ),
-              const SizedBox(height: 24),
-
-              // Sign Up Button
-              SizedBox(
-                width: double.infinity,
-                height: 48,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _handleSignUp,
+                  style: buttonStyle.copyWith(
+                    backgroundColor: MaterialStateProperty.resolveWith<Color>((states) {
+                      if (states.contains(MaterialState.disabled)) {
+                        return Colors.grey.shade400;
+                      }
+                      return Color(0xFF52A486);
+                    }),
+                  ),
                   child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('회원가입'),
+                      ? SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: onPrimary,
+                          ),
+                        )
+                      : const Text(
+                          '회원가입',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          color: Colors.black87,
         ),
       ),
     );
