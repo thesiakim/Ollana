@@ -214,11 +214,7 @@ class ModeService {
     required double finalLatitude,
     required double finalLongitude,
     required int finalTime,
-    required int totalTime,
-    required int totalDistance,
-    required double latitude,
-    required double longitude,
-    required int heartRate,
+    required int finalDistance,
     required List<Map<String, dynamic>> records,
     required String token,
   }) async {
@@ -239,11 +235,7 @@ class ModeService {
         'finalLatitude': finalLatitude,
         'finalLongitude': finalLongitude,
         'finalTime': finalTime,
-        'totalTime': totalTime,
-        'totalDistance': totalDistance,
-        'latitude': latitude,
-        'longitude': longitude,
-        'heartRate': heartRate,
+        'finalDistance': finalDistance,
         'records': records,
       });
 
