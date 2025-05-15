@@ -212,6 +212,7 @@ public class TrackingService {
      */
     @Transactional
     public void manageTrackingFinish(Integer userId, TrackingFinishRequestDto request) {
+        log.info("트래킹 종료 API 호출 -> 요청 데이터 : {}", request);
 
         // 등산 중인지 + 그 산의 등산로를 등산 중인지 검증
         String redisKey = getTrackingStatusKey(userId);
