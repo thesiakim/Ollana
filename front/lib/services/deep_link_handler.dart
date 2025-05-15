@@ -14,7 +14,7 @@ class DeepLinkHandler {
   final _appLinks = AppLinks();
   StreamSubscription<Uri>? _sub;
 
-  Future<void> startListening() async { // context 제거
+  Future<void> startListening() async {
     try {
       final initialLink = await _appLinks.getInitialLink();
       debugPrint('✅ 초기 링크 (String): $initialLink');
@@ -36,21 +36,28 @@ class DeepLinkHandler {
     });
   }
 
-  Future<void> _handleUri(Uri uri) async { // async가 반드시 포함되어야 함
+  Future<void> _handleUri(Uri uri) async {
     final status = uri.queryParameters['status'];
     final tempToken = uri.queryParameters['temp_token'];
+    final loginToken = uri.queryParameters['login_token']; // loginToken 추출
+    debugPrint('temp_token = $tempToken');
+    debugPrint('loginToken = $loginToken');
 
     // navigatorKey.currentState가 준비될 때까지 대기
-    await Future.delayed(Duration.zero, () async { // Future.delayed 콜백도 async로 선언
+    await Future.delayed(Duration.zero, () async {
       if (navigatorKey.currentState == null) {
         debugPrint('❌ navigatorKey.currentState가 null입니다. 나중에 다시 시도합니다.');
         return;
       }
 
-      if (status == 'login') {
-        debugPrint('✅ 딥링크 status=login → 홈으로 이동');
+      if (status == 'login' && loginToken != null) {
+        debugPrint('loginToken = $loginToken');
+        debugPrint('✅ 딥링크 status=login, loginToken=$loginToken → 홈으로 이동');
+        // loginToken을 HomeScreen에 전달하거나 앱 상태에 저장
         navigatorKey.currentState!.pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          MaterialPageRoute(
+            builder: (_) => HomeScreen(), 
+          ),
           (route) => false,
         );
       } else if (status == 'signup' && tempToken != null) {
@@ -61,7 +68,7 @@ class DeepLinkHandler {
             Uri.parse('$baseUrl/auth/oauth/kakao/temp-user?token=$tempToken');
 
         try {
-          final res = await http.get(apiUri); // await 사용
+          final res = await http.get(apiUri);
           final body = utf8.decode(res.bodyBytes);
           debugPrint('📡 API 응답: $body');
           final data = jsonDecode(body);
