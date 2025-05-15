@@ -40,12 +40,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             // 토큰 만료 여부 확인
             } else if (jwtUtil.isTokenExpired(accessToken)) {
-                // 만료 되었으면 refresh token 통해서 access token 새로 발금
+                // 만료 되었으면 refresh token 검증 및 로테이션 처리, access token 새로 발금
                 String refreshToken = getRefreshTokenFromCookie(request);
 
                 if (refreshToken != null && jwtUtil.validateToken(refreshToken)) {
                     String userEmail = jwtUtil.getUserEmailFromToken(refreshToken);
                     int userId = jwtUtil.getUserIdFromToken(refreshToken);
+
+                    // redis 분산 락 적용 (동시 요청 방지)
 
                     // redis에 있는 refresh token과 일치하는지 확인
                     if (tokenService.validateRefreshToken(userEmail, refreshToken)) {

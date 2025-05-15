@@ -99,6 +99,22 @@ public class TokenService {
         redisTemplate.delete(key);
     }
 
+    // 리프레시 토큰 로테이션
+    // 분산 락 획득
+    public boolean acquireRefreshLock(String userEmail) {
+        String lockKey = "RT-LOCK:" + userEmail;
+        // 30초 동안 유효한 락 설정 (데드락 방지)
+        return Boolean.TRUE.equals(
+                redisTemplate.opsForValue().setIfAbsent(lockKey, "locked", 30, TimeUnit.SECONDS));
+    }
+
+    // 락 해제
+    public void releaseRefreshLock(String userEmail) {
+        String lockKey = "RT-LOCK:" + userEmail;
+        redisTemplate.delete(lockKey);
+    }
+
+
     // 토큰 블랙리스트 관리
     // 액세스 토큰을 redis 블랙리스트에 추가
     public void blacklistAccessToken(String accessToken, long expirationMillis) {
