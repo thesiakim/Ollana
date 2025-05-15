@@ -81,7 +81,7 @@ class _AdditionalInfoScreenState extends State<AdditionalInfoScreen> {
         (route) => false,
       );
     } catch (e) {
-      debugPrint('❌ [AdditionalInfo] 오류 발생: $e');
+      debugPrint('[AdditionalInfo] 오류 발생: $e');
       setState(() => _errorMsg = e.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -90,7 +90,7 @@ class _AdditionalInfoScreenState extends State<AdditionalInfoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('🖼️ AdditionalInfoScreen 빌드');
+    debugPrint('AdditionalInfoScreen 빌드');
     final theme = Theme.of(context);
     final primaryColor = theme.primaryColor;
     
