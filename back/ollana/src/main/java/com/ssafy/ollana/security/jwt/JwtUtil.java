@@ -36,11 +36,13 @@ public class JwtUtil {
 
     // access token 생성
     public String createAccessToken(String userEmail, int userId) {
+        log.info("create access token: userId={}", userId);
         return createAccessToken(userEmail, userId, accessTokenExpiration);
     }
 
     // refresh token 생성
     public String createRefreshToken(String userEmail, int userId) {
+        log.info("create refresh token: userId={}", userId);
         return createAccessToken(userEmail, userId, refreshTokenExpiration);
     }
 

@@ -195,6 +195,9 @@ public class AuthServiceImpl implements AuthService {
         String accessToken = jwtUtil.createAccessToken(user.getEmail(), user.getId());
         String refreshToken = jwtUtil.createRefreshToken(user.getEmail(), user.getId());
 
+        System.out.println("accessToken = " + accessToken);
+        System.out.println("refreshToken = " + refreshToken);
+
         // 리프레시 토큰 레디스 저장
         tokenService.saveRefreshToken(user.getEmail(), refreshToken);
 
@@ -207,6 +210,8 @@ public class AuthServiceImpl implements AuthService {
                 .user(userService.getUserInfo(user))
                 .latestRecord(userService.getLatestRecord(user))
                 .build();
+
+        System.out.println("loginResponse.getAccessToken() = " + loginResponse.getAccessToken());
 
         return loginResponse;
     }
