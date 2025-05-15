@@ -43,23 +43,48 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 // 만료 되었으면 refresh token 검증 및 로테이션 처리, access token 새로 발금
                 String refreshToken = getRefreshTokenFromCookie(request);
 
-                if (refreshToken != null && jwtUtil.validateToken(refreshToken)) {
+                // 리프레시 토큰 검증
+                if (refreshToken != null && jwtUtil.validateToken(refreshToken) &&
+                        !tokenService.isBlacklisted(refreshToken)) {
+
+                    // user 정보 추출
                     String userEmail = jwtUtil.getUserEmailFromToken(refreshToken);
                     int userId = jwtUtil.getUserIdFromToken(refreshToken);
 
-                    // redis 분산 락 적용 (동시 요청 방지)
+                    // redis 분산 락 획득 시도 (동시 요청 처리를 위해)
+                    boolean lockAcquired = tokenService.acquireRefreshLock(userEmail);
 
-                    // redis에 있는 refresh token과 일치하는지 확인
-                    if (tokenService.validateRefreshToken(userEmail, refreshToken)) {
-                        // 일치한다면 access token 재발급
-                        String newAccessToken = jwtUtil.createAccessToken(userEmail, userId);
+                    if (lockAcquired) {
+                        try {
+                            // redis에 있는 refresh token과 일치하는지 확인
+                            if (tokenService.validateRefreshToken(userEmail, refreshToken)) {
+                                // 기존 리프레시 토큰을 블랙리스트에 추가
+                                tokenService.blacklistToken(refreshToken, "rotation");
 
-                        // 재발급한 access token을 응답 헤더에 넣어주기
-                        response.setHeader("Authorization", "Bearer " + newAccessToken);
-                        log.info("new access token for user: userId={}", userId);
+                                // 새로운 토큰 생성
+                                String newAccessToken = jwtUtil.createAccessToken(userEmail, userId);
+                                String newRefreshToken = jwtUtil.createRefreshToken(userEmail, userId);
 
-                        // SecurityContext 갱신
-                        setAuthentication(newAccessToken);
+                                // redis에 새로운 리프레시 토큰 저장
+                                tokenService.saveRefreshToken(userEmail, newRefreshToken);
+
+                                // 새로운 리프레시 토큰을 쿠키에 설정
+                                Cookie refreshCookie = tokenService.createRefreshTokenCookie(newRefreshToken);
+                                response.addCookie(refreshCookie);
+
+                                // 새로운 액세스 토큰을 응답 헤더에 넣어주기
+                                response.setHeader("Authorization", "Bearer " + newAccessToken);
+
+                                // SecurityContext 갱신
+                                setAuthentication(newAccessToken);
+
+                                log.info("new token created!");
+                            }
+                        } finally {
+                            // 락 해제
+                            tokenService.releaseRefreshLock(userEmail);
+                            log.info("lock released!");
+                        }
                     }
                 }
             }

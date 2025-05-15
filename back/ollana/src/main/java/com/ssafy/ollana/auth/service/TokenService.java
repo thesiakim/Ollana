@@ -116,15 +116,21 @@ public class TokenService {
 
 
     // 토큰 블랙리스트 관리
-    // 액세스 토큰을 redis 블랙리스트에 추가
-    public void blacklistAccessToken(String accessToken, long expirationMillis) {
-        String key = "BL:" + accessToken;
-        redisTemplate.opsForValue().set(key, "logout", expirationMillis, TimeUnit.MILLISECONDS);
+    // redis 블랙리스트에 추가
+    public void blacklistToken(String token, String reason) {
+        long remainingTime = jwtUtil.getTokenRemainingTime(token);
+
+        if (remainingTime > 0) {
+            String key = "BL: " + token;
+
+            // 남은 유효시간 만큼 저장
+            redisTemplate.opsForValue().set(key, reason, remainingTime, TimeUnit.MILLISECONDS);
+        }
     }
 
     // 블랙리스트에 있는지 확인
-    public boolean isBlacklisted(String accessToken) {
-        return redisTemplate.hasKey("BL:" + accessToken);
+    public boolean isBlacklisted(String token) {
+        return redisTemplate.hasKey("BL:" + token);
     }
 
     // 토큰 추출

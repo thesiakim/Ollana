@@ -138,12 +138,7 @@ public class UserServiceImpl implements UserService {
         // 토큰, 쿠키 처리
         String accessToken = extractAccessTokenFromHeader(request);
         if (accessToken != null) {
-            // 토큰 남은 유효시간
-            long tokenRemainingTime = jwtUtil.getTokenRemainingTime(accessToken);
-            if (tokenRemainingTime > 0) {
-                // 남은 유효시간 만큼 블랙리스트에 저장
-                tokenService.blacklistAccessToken(accessToken, tokenRemainingTime);
-            }
+            tokenService.blacklistToken(accessToken, "withdraw");
         }
 
         tokenService.deleteRefreshToken(user.getEmail());
