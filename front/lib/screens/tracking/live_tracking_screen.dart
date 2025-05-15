@@ -212,6 +212,12 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   double _currentSpeed = 0.0; // 현재 속도 (km/h)
   DateTime? _lastSpeedUpdateTime; // 마지막 속도 업데이트 시간
 
+  // 5초 전 좌표 및 시간 (속도 계산용)
+  double _speedCalcPreviousLat = 0.0;
+  double _speedCalcPreviousLng = 0.0;
+  DateTime? _speedCalcPreviousTime;
+  static const int _speedCalcIntervalSeconds = 5; // 속도 계산에 사용할 시간 간격 (초)
+
   // 워치 알림 상태
   bool _hasNotifiedWatchForAhead = false;
   bool _hasNotifiedWatchForBehind = false;
@@ -750,16 +756,63 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     _positionStream =
         Geolocator.getPositionStream(locationSettings: locationSettings)
             .listen((Position position) {
-      // 백그라운드에서 거리 계산
+      // 현재 위치 기록
+      final now = DateTime.now();
+      final double newLat = position.latitude;
+      final double newLng = position.longitude;
+
+      // 5초 전 좌표가 없거나 첫 위치 업데이트인 경우 초기화
+      if (_speedCalcPreviousTime == null ||
+          _speedCalcPreviousLat == 0.0 ||
+          _speedCalcPreviousLng == 0.0) {
+        _speedCalcPreviousLat = newLat;
+        _speedCalcPreviousLng = newLng;
+        _speedCalcPreviousTime = now;
+      }
+
+      // 5초 이상 경과했는지 확인
+      final timeSinceLastSpeedCalc = _speedCalcPreviousTime != null
+          ? now.difference(_speedCalcPreviousTime!).inSeconds
+          : 0;
+
+      // 5초 이상 경과한 경우 속도 계산
+      if (timeSinceLastSpeedCalc >= _speedCalcIntervalSeconds) {
+        // 5초 전 좌표와 현재 좌표 사이의 거리 계산
+        compute(_BackgroundTask.calculateDistance, {
+          'lat1': _speedCalcPreviousLat,
+          'lng1': _speedCalcPreviousLng,
+          'lat2': newLat,
+          'lng2': newLng,
+        }).then((distance) {
+          if (!mounted) return;
+
+          // 정확히 5초로 나누어 속도 계산
+          final speedMeterPerSecond = distance / _speedCalcIntervalSeconds;
+
+          // 속도 업데이트 (m/s -> km/h 변환)
+          setState(() {
+            _currentSpeed = speedMeterPerSecond * 3.6;
+          });
+
+          debugPrint(
+              '5초 간격 속도 계산: ${_currentSpeed.toStringAsFixed(1)} km/h (거리: ${distance.toStringAsFixed(1)}m)');
+
+          // 현재 좌표와 시간을 새로운 "5초 전 좌표와 시간"으로 업데이트
+          _speedCalcPreviousLat = newLat;
+          _speedCalcPreviousLng = newLng;
+          _speedCalcPreviousTime = now;
+        });
+      }
+
+      // 기존 거리 계산 코드 (경로 업데이트용)
       compute(_BackgroundTask.calculateDistance, {
         'lat1': _currentLat,
         'lng1': _currentLng,
-        'lat2': position.latitude,
-        'lng2': position.longitude,
+        'lat2': newLat,
+        'lng2': newLng,
       }).then((distance) {
         if (!mounted) return;
 
-        final now = DateTime.now();
         bool shouldUpdatePath = true;
 
         // 비현실적인 위치 변화 필터링
@@ -774,33 +827,14 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
               now.difference(_lastLocationUpdateTime!).inMilliseconds;
 
           if (timeDiff > 0) {
-            // 속도 계산 (미터/초)
-            final speed = distance / (timeDiff / 1000);
+            // 속도 계산 (미터/초) - 경로 업데이트 필터링용으로만 사용
+            final instantSpeed = distance / (timeDiff / 1000);
 
             // 비현실적으로 빠른 속도(예: 18km/h 이상)로 움직인 경우 필터링
-            if (speed > _maxReasonableSpeed) {
+            if (instantSpeed > _maxReasonableSpeed) {
               shouldUpdatePath = false;
               debugPrint(
-                  '비현실적인 위치 변화 감지: ${speed.toStringAsFixed(2)} m/s, 거리: ${distance.toStringAsFixed(2)}m');
-            } else {
-              // 합리적인 속도 범위 내에서 현재 속도 업데이트 (km/h로 변환)
-              // 20초마다 한번씩만 실제 UI 업데이트를 위해 setState 호출
-              final currentTimeInSeconds = now.millisecondsSinceEpoch ~/ 1000;
-              final lastUpdateTimeInSeconds =
-                  _lastSpeedUpdateTime?.millisecondsSinceEpoch ?? 0 ~/ 1000;
-
-              // 이동 거리가 의미있는 경우 (3m 이상)에만 속도 업데이트
-              if (distance >= 3.0 ||
-                  currentTimeInSeconds - lastUpdateTimeInSeconds >= 20) {
-                setState(() {
-                  // 미터/초를 km/h로 변환 (× 3.6)
-                  _currentSpeed = speed * 3.6;
-                  _lastSpeedUpdateTime = now;
-                });
-                if (_elapsedSeconds % 10 == 0) {
-                  debugPrint('현재 속도: ${_currentSpeed.toStringAsFixed(1)} km/h');
-                }
-              }
+                  '비현실적인 위치 변화 감지: ${instantSpeed.toStringAsFixed(2)} m/s, 거리: ${distance.toStringAsFixed(2)}m');
             }
           }
         }
@@ -811,8 +845,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
         // 현재 위치와 충분히 차이가 있을 때만 업데이트 (5미터 이상)
         if (distance > 5.0) {
           setState(() {
-            _currentLat = position.latitude;
-            _currentLng = position.longitude;
+            _currentLat = newLat;
+            _currentLng = newLng;
             _currentAltitude = position.altitude;
 
             // 사용자 이동 경로에 현재 위치 추가 (필터링 조건 적용)
@@ -1633,11 +1667,6 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
               '현재 심박수: 워치와 연동해주세요',
               style: TextStyle(fontSize: 14, color: Colors.grey),
             ),
-          SizedBox(height: 4),
-          Text(
-            '현재 속도: ${_currentSpeed.toStringAsFixed(1)} km/h',
-            style: TextStyle(fontSize: 14),
-          ),
         ],
 
         // 피드백 메시지 (일반 모드가 아닐 때만 표시)
