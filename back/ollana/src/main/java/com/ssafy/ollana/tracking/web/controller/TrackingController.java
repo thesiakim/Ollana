@@ -23,6 +23,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequiredArgsConstructor
@@ -133,7 +134,9 @@ public class TrackingController {
 
     @PostMapping("/ssafy")
     public ResponseEntity<Response<String>> saveSSAFY(@RequestBody CoordinateRequestDto request) {
+
         List<CoordinateDto> coords = request.getCoordinates();
+        log.info("ssafy 산 coords : {}", coords);
 
         if (coords == null || coords.isEmpty()) {
             return ResponseEntity.ok(Response.success("저장 실패"));
@@ -146,20 +149,28 @@ public class TrackingController {
         Point geom = gf.createPoint(new Coordinate(first.getLongitude(), first.getLatitude()));
 
         // Mountain 저장
-        Mountain mountain = Mountain.builder()
-                .mntnCode("3000")
-                .mountainName("싸피산")
-                .mountainLoc("광주")
-                .mountainHeight(1200)
-                .mountainDescription("싸피산입니다")
-                .level(Level.L)
-                .mountainLatitude(first.getLatitude())
-                .mountainLongitude(first.getLongitude())
-                .geom(geom)
-                .mountainBadge(null)
-                .build();
+        Optional<Mountain> optionalMountain = mountainRepository.findByMntnCode("3000");
 
-        mountainRepository.save(mountain);
+        Mountain mountain;
+
+        if (optionalMountain.isPresent()) {
+            mountain = optionalMountain.get();
+        } else {
+            mountain = Mountain.builder()
+                    .mntnCode("3000")
+                    .mountainName("싸피산")
+                    .mountainLoc("광주")
+                    .mountainHeight(1200)
+                    .mountainDescription("싸피산입니다")
+                    .level(Level.L)
+                    .mountainLatitude(first.getLatitude())
+                    .mountainLongitude(first.getLongitude())
+                    .geom(gf.createPoint(new Coordinate(first.getLongitude(), first.getLatitude())))
+                    .mountainBadge(null)
+                    .build();
+
+            mountainRepository.save(mountain);
+        }
 
         // LineString 생성
         Coordinate[] lineCoords = coords.stream()
