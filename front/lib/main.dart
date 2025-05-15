@@ -8,6 +8,7 @@ import 'models/app_state.dart';
 import 'screens/home_screen.dart';
 import 'services/deep_link_handler.dart';
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 final DeepLinkHandler deepLinkHandler = DeepLinkHandler();
 
 void main() async {
@@ -46,14 +47,13 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
 
+    // MaterialApp 빌드 후 딥링크 처리
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      deepLinkHandler.startListening(context); // app_links 기반
+      deepLinkHandler.startListening();
     });
 
     _checkTrackingStatus();
   }
-
-
 
   Future<void> _checkTrackingStatus() async {
     final appState = Provider.of<AppState>(context, listen: false);
@@ -86,6 +86,7 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       title: 'Ollana',
       theme: appTheme,
+      navigatorKey: navigatorKey,
       home: const HomeScreen(),
     );
   }
