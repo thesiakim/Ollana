@@ -100,7 +100,8 @@ class _FootprintBattleScreenState extends State<FootprintBattleScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF9F9F9),
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.white,
+        scrolledUnderElevation: 0,
         elevation: 0,
         title: const Text(
           '대결 결과',

@@ -5,7 +5,7 @@ import com.ssafy.ollana.auth.dto.request.EmailVerifyRequestDto;
 import com.ssafy.ollana.auth.exception.EmailCodeExpiredException;
 import com.ssafy.ollana.auth.exception.InvalidEmailCodeException;
 import com.ssafy.ollana.auth.exception.MailSendException;
-import com.ssafy.ollana.user.exception.DuplicateEmailException;
+import com.ssafy.ollana.user.exception.EmailAlreadyExistsException;
 import com.ssafy.ollana.user.repository.UserRepository;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
@@ -37,7 +37,7 @@ public class MailService {
 
         // 이미 가입된 이메일인지 확인
         if (userRepository.existsByEmail(recipientEmail)) {
-            throw new DuplicateEmailException();
+            throw new EmailAlreadyExistsException();
         }
 
         int code = createCode();

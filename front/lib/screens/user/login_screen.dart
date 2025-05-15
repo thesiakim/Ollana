@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:jwt_decode/jwt_decode.dart'; // 🔥 JWT 디코딩 패키지
-
+import '../../services/kakao_auth_service.dart';
 import '../../models/app_state.dart';
 import './sign_up_screen.dart';
 import './password_reset_screen.dart';
@@ -245,11 +245,27 @@ class _LoginScreenState extends State<LoginScreen> {
               SizedBox(
                 height: 48,
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    // TODO: 카카오톡 로그인 기능 구현
-                  },
+                  onPressed: _isLoading
+                      ? null
+                      : () async {
+                          setState(() {
+                            _isLoading = true;
+                            _errorMsg = null;
+                          });
+                          try {
+                            final kakaoService = KakaoAuthService();
+                            await kakaoService.loginWithKakao(context);
+                            // 인가 코드 콜백은 별도로 처리 (예: DeepLink 또는 백엔드에서)
+                          } catch (e) {
+                            setState(() {
+                              _errorMsg = '카카오 로그인 중 오류가 발생했습니다.';
+                            });
+                          } finally {
+                            setState(() => _isLoading = false);
+                          }
+                        },
                   icon: const Icon(Icons.chat),
-                  label: const Text('카카오 로그인'),
+                  label: const Text('카카오톡으로 시작하기'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFEE500),
                     foregroundColor: Colors.black,
@@ -266,3 +282,4 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
+

@@ -68,23 +68,32 @@ class AppState extends ChangeNotifier {
     _initAuth(); // 🔥 초기 인증 정보 로드
   }
 
-  // ▶ 추가: 로그인/복원 후 설문 여부 조회
+  // ▶ 로그인/복원 후 설문 여부 조회
   Future<void> fetchSurveyStatus() async {
-    if (_accessToken == null || _userId == null) return;
-    final url = '${dotenv.get('AI_BASE_URL')}/has_survey/$_userId';
+    if (_accessToken == null || _userId == null) {
+      debugPrint('▶ fetchSurveyStatus: accessToken 또는 userId가 없습니다.');
+      return;
+    }
+    // AI 서비스 엔드포인트 사용
+    final aiBaseUrl = dotenv.get('AI_BASE_URL');
+    final urlStr = '$aiBaseUrl/has_survey/$_userId';
+    debugPrint('▶ fetchSurveyStatus 호출 URL: $urlStr');
     try {
       final resp = await http.post(
-        Uri.parse(url),
+        Uri.parse(urlStr),
         headers: {
           'Content-Type': 'application/json',
           'authorization': 'Bearer $_accessToken',
         },
       );
+      debugPrint('▶ fetchSurveyStatus HTTP status: ${resp.statusCode}');
       if (resp.statusCode == 200) {
         final body = jsonDecode(resp.body);
         _surveyCompleted = body['has_survey'] as bool;
-        debugPrint('설문 상태: $_surveyCompleted'); // ▶ 디버그용
+        debugPrint('▶ 설문 상태: $_surveyCompleted');
         notifyListeners();
+      } else {
+        debugPrint('▶ fetchSurveyStatus 실패: statusCode=${resp.statusCode}');
       }
     } catch (e) {
       debugPrint('❌ fetchSurveyStatus 오류: $e');
@@ -159,7 +168,7 @@ class AppState extends ChangeNotifier {
   // 🔥 토큰 및 userId 설정 및 SecureStorage에 저장
   Future<void> setToken(
     String token, {
-    required String userId, // ▶ userId 파라미터 추가
+    required String userId,
     String? profileImageUrl,
     String? nickname,
     bool? social,
@@ -169,24 +178,24 @@ class AppState extends ChangeNotifier {
     _profileImageUrl = profileImageUrl;
     _nickname = nickname;
     _social = social;
-    _userId = userId; // ▶ 저장
+    _userId = userId;
     debugPrint('토큰 저장: $_accessToken');
     debugPrint('프로필 이미지 저장: $_profileImageUrl');
     debugPrint('닉네임 저장 : $_nickname');
     debugPrint('소셜 저장: $_social');
-    debugPrint('userId 저장: $_userId'); // ▶ 로그
+    debugPrint('userId 저장: $_userId');
 
     try {
       await _storage.write(key: 'accessToken', value: token);
       await _storage.write(key: 'profileImageUrl', value: profileImageUrl);
       await _storage.write(key: 'nickname', value: nickname);
       await _storage.write(key: 'social', value: social?.toString());
-      await _storage.write(key: 'userId', value: userId); // ▶ 쓰기
+      await _storage.write(key: 'userId', value: userId);
       debugPrint('SecureStorage에 인증 정보 저장 완료');
     } catch (e) {
       debugPrint('SecureStorage 저장 오류: $e');
     }
-    // ▶ 수정: 토큰 설정 후 즉시 설문 여부 조회
+    // ▶ 토큰 저장 후 바로 설문 상태 조회 (DEBUG용)
     await fetchSurveyStatus();
     notifyListeners();
   }
@@ -197,7 +206,7 @@ class AppState extends ChangeNotifier {
     _profileImageUrl = null;
     _nickname = null;
     _social = null;
-    _userId = null; // ▶ 초기화
+    _userId = null;
     _isLoggedIn = false;
     debugPrint('클라이언트 인증 정보 초기화');
 
@@ -206,7 +215,7 @@ class AppState extends ChangeNotifier {
       await _storage.delete(key: 'profileImageUrl');
       await _storage.delete(key: 'nickname');
       await _storage.delete(key: 'social');
-      await _storage.delete(key: 'userId'); // ▶ 삭제
+      await _storage.delete(key: 'userId');
       debugPrint('SecureStorage에서 인증 정보 삭제 완료');
     } catch (e) {
       debugPrint('SecureStorage 삭제 오류: $e');

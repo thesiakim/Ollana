@@ -1,6 +1,7 @@
 // lib/screens/user/survey_screen.dart
 
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -36,9 +37,11 @@ class _SurveyScreenState extends State<SurveyScreen> {
   ];
 
   Future<void> _submitSurvey() async {
+    // ▶ 입력값 유효성 확인
     if (_selectedTheme == null ||
         _selectedExperience == null ||
         _selectedRegion == null) {
+      debugPrint('▶ _submitSurvey: 선택값 없음'); // 디버그
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('모든 항목을 선택해주세요.')),
       );
@@ -48,33 +51,60 @@ class _SurveyScreenState extends State<SurveyScreen> {
     setState(() => _isLoading = true);
 
     final appState = context.read<AppState>();
-    final userId = appState.userId ?? '';
+    final userId = appState.userId;
     final token = appState.accessToken;
 
-    final url = '${dotenv.get('AI_BASE_URL')}/submit_survey/$userId';
+    debugPrint('▶ userId: $userId, token: ${token?.substring(0, 10)}...');
+
+    if (userId == null || token == null) {
+      debugPrint('▶ _submitSurvey: userId 또는 token null');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('인증 정보가 없습니다. 다시 로그인해주세요.')),
+      );
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    final endpoint = '${dotenv.get('AI_BASE_URL')}/submit_survey/$userId';
+    debugPrint('▶ 요청 URL: $endpoint');
 
     try {
-      final resp = await http.post(
-        Uri.parse(url),
+      final bodyMap = {
+        'theme': _selectedTheme,
+        'experience': _selectedExperience,
+        'region': _selectedRegion,
+      };
+      final bodyJson = jsonEncode(bodyMap);
+      debugPrint('▶ 요청 바디: $bodyJson');
+
+      final resp = await http
+          .post(
+        Uri.parse(endpoint),
         headers: {
           'Content-Type': 'application/json',
           'authorization': 'Bearer $token',
         },
-        body: jsonEncode({
-          'theme': _selectedTheme,
-          'experience': _selectedExperience,
-          'region': _selectedRegion,
-        }),
-      );
+        body: bodyJson,
+      )
+          .timeout(const Duration(seconds: 10), onTimeout: () {
+        throw TimeoutException('요청이 시간 초과되었습니다.');
+      });
+
+      debugPrint('▶ HTTP 상태 코드: ${resp.statusCode}');
+      final respBody = utf8.decode(resp.bodyBytes);
+      debugPrint('▶ 응답 바디(raw): $respBody');
 
       if (resp.statusCode == 200) {
-        final body = jsonDecode(resp.body);
-        if (body['message'] != null) {
+        final data = jsonDecode(respBody) as Map<String, dynamic>;
+        debugPrint('▶ 파싱된 응답: $data');
+
+        final msg = data['message'] as String?;
+        if (msg != null) {
           await showDialog(
             context: context,
             builder: (_) => AlertDialog(
               title: const Text('완료'),
-              content: Text(body['message']),
+              content: Text(msg),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
@@ -83,21 +113,26 @@ class _SurveyScreenState extends State<SurveyScreen> {
               ],
             ),
           );
-          // ▶ 설문 완료 플래그를 true로 설정
           context.read<AppState>().setSurveyCompleted(true);
-
-          Navigator.of(context).pop(); // 이전 화면으로 돌아가기
+          Navigator.of(context).pop();
         } else {
           throw Exception('알 수 없는 응답 형식');
         }
       } else {
-        final err = jsonDecode(resp.body);
-        throw Exception(err['message'] ?? '설문 저장에 실패했습니다.');
+        debugPrint('▶ 서버 에러 발생');
+        final errData = jsonDecode(respBody) as Map<String, dynamic>?;
+        debugPrint('▶ 에러 파싱: $errData');
+        final errMsg = errData?['message'] as String? ?? '설문 저장 실패';
+        throw Exception(errMsg);
       }
+    } on TimeoutException catch (e) {
+      debugPrint('❌ Timeout: $e');
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('요청 시간이 초과되었습니다.')));
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('에러: ${e.toString()}')),
-      );
+      debugPrint('❌ 예외 발생: $e');
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('에러: ${e.toString()}')));
     } finally {
       setState(() => _isLoading = false);
     }
@@ -129,14 +164,11 @@ class _SurveyScreenState extends State<SurveyScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         child: Column(
           children: [
-            // 상단 귀여운 마스코트 이미지
             SizedBox(
               height: 120,
               child: Image.asset('lib/assets/images/ai_recommend.png'),
             ),
             const SizedBox(height: 24),
-
-            // 테마 선택
             DropdownButtonFormField<String>(
               decoration: _buildDecoration('테마 선택', Icons.filter_vintage),
               value: _selectedTheme,
@@ -146,8 +178,6 @@ class _SurveyScreenState extends State<SurveyScreen> {
               onChanged: (val) => setState(() => _selectedTheme = val),
             ),
             const SizedBox(height: 16),
-
-            // 난이도(경험) 선택
             DropdownButtonFormField<String>(
               decoration: _buildDecoration('난이도 선택', Icons.terrain),
               value: _selectedExperience,
@@ -157,8 +187,6 @@ class _SurveyScreenState extends State<SurveyScreen> {
               onChanged: (val) => setState(() => _selectedExperience = val),
             ),
             const SizedBox(height: 16),
-
-            // 지역 선택
             DropdownButtonFormField<String>(
               decoration: _buildDecoration('지역 선택', Icons.place),
               value: _selectedRegion,
@@ -168,8 +196,6 @@ class _SurveyScreenState extends State<SurveyScreen> {
               onChanged: (val) => setState(() => _selectedRegion = val),
             ),
             const SizedBox(height: 32),
-
-            // 제출 버튼
             SizedBox(
               width: double.infinity,
               height: 48,
