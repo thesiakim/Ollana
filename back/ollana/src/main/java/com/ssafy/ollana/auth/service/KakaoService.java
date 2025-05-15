@@ -145,7 +145,7 @@ public class KakaoService {
         String token = UUID.randomUUID().toString();
 
         // redis 저장
-        tokenService.getKakaoLoginResponse(token);
+        tokenService.saveKakaoLoginResponse(token, loginResponse);
         return token;
     }
 }
