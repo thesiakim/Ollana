@@ -15,6 +15,7 @@ public class TrackingFinishRequestDto {
     private Integer pathId;
     private Integer opponentId;
     private Integer recordId;
+    private String mode;
     private boolean isSave;
     private Double finalLatitude;
     private Double finalLongitude;

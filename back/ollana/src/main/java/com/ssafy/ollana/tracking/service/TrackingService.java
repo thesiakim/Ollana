@@ -211,31 +211,21 @@ public class TrackingService {
      * 트래킹 종료 요청
      */
     @Transactional
-    public void manageTrackingFinish(Integer userId, TrackingFinishRequestDto request) {
+    public TrackingFinishResponseDto manageTrackingFinish(Integer userId, TrackingFinishRequestDto request) {
         log.info("트래킹 종료 API 호출 -> 요청 데이터 : {}", request);
 
-        // 등산 중인지 + 그 산의 등산로를 등산 중인지 검증
         String redisKey = getTrackingStatusKey(userId);
         String redisValue = (String) redisTemplate.opsForValue().get(redisKey);
-
         String expectedValue = request.getMountainId() + ":" + request.getPathId();
         if (redisValue == null || !redisValue.equals(expectedValue)) {
             throw new InvalidTrackingException();
         }
 
-        User user = userRepository.findById(userId)
-                                  .orElseThrow(NotFoundException::new);
-        Path path = pathRepository.findById(request.getPathId())
-                                  .orElseThrow(NotFoundException::new);
-        Mountain mountain = mountainRepository.findById(request.getMountainId())
-                                              .orElseThrow(NotFoundException::new);
-        User opponent = null;
-        if (request.getOpponentId() != null) {
-            opponent = userRepository.findById(request.getOpponentId())
-                    .orElseThrow(NotFoundException::new);
-        }
+        User user = userRepository.findById(userId).orElseThrow(NotFoundException::new);
+        Path path = pathRepository.findById(request.getPathId()).orElseThrow(NotFoundException::new);
+        Mountain mountain = mountainRepository.findById(request.getMountainId()).orElseThrow(NotFoundException::new);
 
-        // 거리 측정
+        // 정상 도착했는지 확인
         Coordinate end = path.getRoute().getEndPoint().getCoordinate();
         double endLat = end.y;
         double endLng = end.x;
@@ -243,44 +233,59 @@ public class TrackingService {
         double userLng = request.getFinalLongitude();
         double distance = TrackingUtils.calculateDistance(endLat, endLng, userLat, userLng);
 
-        if (distance > 300 && request.isSave()==true) {
+        if (distance > 300 && request.isSave()) {
             throw new CannotSaveBeforeSummitException();
         }
 
-        // 실시간 등산 기록 저장
+        // 기본 응답값 초기화
+        String badge = mountain.getMountainBadge();
+        Double avg = null;
+        Integer max = null;
+        Integer timeDiff = null;
+
+        // 기록 저장 및 응답 데이터 계산
         if (request.isSave()) {
             Footprint footprint = footprintRepository.findByUserAndMountain(user, mountain)
-                                                     .orElseGet(() -> footprintRepository.save(Footprint.of(user, mountain)));
+                                        .orElseGet(() -> footprintRepository.save(Footprint.of(user, mountain)));
 
-            // HikingHistory 저장
             List<Integer> heartRates = request.getRecords().stream()
-                                                           .map(BattleRecordsForTrackingResponseDto::getHeartRate)
-                                                           .filter(Objects::nonNull)
-                                                           .toList();
+                    .map(BattleRecordsForTrackingResponseDto::getHeartRate)
+                    .filter(Objects::nonNull)
+                    .toList();
 
             HikingHistory history = HikingHistory.of(footprint, path, request.getFinalTime(), heartRates);
             hikingHistoryRepository.save(history);
 
-            // HikingLiveRecords 저장
-            List<HikingLiveRecords> entityList = TrackingUtils.toEntities(
-                                            request.getRecords(), user, mountain, path, history);
+            avg = history.getAverageHeartRate();
+            max = history.getMaxHeartRate();
+
+            List<HikingLiveRecords> entityList = TrackingUtils.toEntities(request.getRecords(), user, mountain, path, history);
             hikingLiveRecordsRepository.saveAll(entityList);
-            log.info("등산 기록 저장 완료");
-        }
 
-        // 대결 결과 저장
-        if (opponent != null) {
-            battleHistoryService.saveBattleHistoryAfterTracking(user, opponent, mountain, path, request.getRecordId(), request.getFinalTime());
-        }
-
-        // 사용자 거리 및 경험치 갱신
-        if (request.isSave()) {
+            // 경험치 및 거리 갱신
             userService.updateUserInfoAfterTracking(user, request.getFinalDistance(), mountain.getLevel());
         }
 
-        // 등산 상태 저장 key 제거
-        redisTemplate.delete(getTrackingStatusKey(userId));
+        // 나 VS 친구인 경우 대결 결과 저장
+        if ("FRIEND".equals(request.getMode())) {
+            User opponent = userRepository.findById(request.getOpponentId()).orElseThrow(NotFoundException::new);
+            battleHistoryService.saveBattleHistoryAfterTracking(user, opponent, mountain, path, request.getRecordId(), request.getFinalTime());
+        }
+
+        // 나 VS 친구, 나 VS 나인 경우 timeDiff 계산
+        if ("ME".equals(request.getMode()) || "FRIEND".equals(request.getMode())) {
+            if (request.getRecordId() != null) {
+                HikingHistory opponentHistory = hikingHistoryRepository.findById(request.getRecordId())
+                                                     .orElseThrow(NotFoundException::new);
+                timeDiff = request.getFinalTime() - opponentHistory.getHikingTime();
+            }
+        }
+
+        // Redis key 제거
+        redisTemplate.delete(redisKey);
+        return TrackingFinishResponseDto.of(badge, avg, max, timeDiff);
     }
+
 
     private String getTrackingStatusKey(Integer userId) {
         return TRACKING_STATUS_KEY_PREFIX + userId;
