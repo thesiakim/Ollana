@@ -123,8 +123,6 @@ class AppState extends ChangeNotifier {
   int get elapsedSeconds => _elapsedSeconds;
   int get elapsedMinutes => _elapsedMinutes;
   double get distance => _distance;
-  int get maxHeartRate => _maxHeartRate;
-  int get avgHeartRate => _avgHeartRate;
   bool get isNavigationMode => _isNavigationMode;
   double get deviceHeading => _deviceHeading;
 
