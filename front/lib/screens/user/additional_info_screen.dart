@@ -107,6 +107,7 @@ class _AdditionalInfoScreenState extends State<AdditionalInfoScreen> {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('🖼️ AdditionalInfoScreen 빌드');
     final primaryColor = Theme.of(context).primaryColor;
 
     return Scaffold(
