@@ -81,10 +81,9 @@ class _CustomAppBarState extends State<CustomAppBar> {
     );
     if (!mounted) return;
 
-    // 403 : 세션 만료 시
     if (res.statusCode == 403) {
       appState.clearAuth();
-      appState.changePage(0); // 🔥 로그아웃 시 페이지 인덱스를 0으로 리셋
+      appState.changePage(0);
       scaffold.showSnackBar(
           const SnackBar(content: Text('세션이 만료되었습니다. 다시 로그인해주세요.')));
       navigator.pushAndRemoveUntil(
@@ -94,7 +93,6 @@ class _CustomAppBarState extends State<CustomAppBar> {
       return;
     }
 
-    // 200 : 정상 로그아웃
     if (res.statusCode == 200) {
       bool success = false;
       try {
@@ -105,11 +103,10 @@ class _CustomAppBarState extends State<CustomAppBar> {
       }
       if (success) {
         appState.clearAuth();
-        appState.changePage(0); // 🔥 로그아웃 시 페이지 인덱스를 0으로 리셋
+        appState.changePage(0);
         scaffold.showSnackBar(const SnackBar(content: Text('로그아웃되었습니다.')));
         navigator.pushAndRemoveUntil(
-          MaterialPageRoute(
-              builder: (_) => const HomeScreen()), // 🔥 모든 페이지를 Home으로
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
           (route) => false,
         );
       } else {
@@ -128,14 +125,22 @@ class _CustomAppBarState extends State<CustomAppBar> {
     final isLoggedIn = context.watch<AppState>().isLoggedIn;
 
     return AppBar(
-      // ▶ leading에 로고 추가
-      leading: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Image.asset(
-          'lib/assets/images/logo.png', // 로고 파일 경로
-          width: 32,
-          height: 32,
-          fit: BoxFit.contain,
+      leading: GestureDetector(
+        onTap: () {
+          // 로고 클릭 시 홈으로 이동
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const HomeScreen()),
+            (route) => false,
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Image.asset(
+            'lib/assets/images/logo.png',
+            width: 32,
+            height: 32,
+            fit: BoxFit.contain,
+          ),
         ),
       ),
       backgroundColor: Theme.of(context).colorScheme.primary,
@@ -164,8 +169,9 @@ class _CustomAppBarState extends State<CustomAppBar> {
         TextButton(
           onPressed: () {
             if (!isLoggedIn) {
-              Navigator.of(context)
-                  .push(MaterialPageRoute(builder: (_) => const LoginScreen()));
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+              );
             } else {
               _handleLogout();
             }
