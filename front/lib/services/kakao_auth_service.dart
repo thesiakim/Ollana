@@ -3,17 +3,9 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class KakaoAuthService {
-  // String _getKakaoAuthUrl() {
-  //   final clientId = dotenv.env['KAKAO_CLIENT_ID'] ?? '';
-  //   final redirectUri = 'ollana://auth/oauth/kakao';
-  //   final authUrl = 'https://kauth.kakao.com/oauth/authorize?response_type=code&client_id=$clientId&redirect_uri=$redirectUri&lang=ko';
-
-  //   debugPrint('🔗 [KakaoAuth] URL: $authUrl');
-  //   return authUrl;
-  // }
   String _getKakaoAuthUrl() {
     final clientId = dotenv.env['KAKAO_CLIENT_ID'] ?? '';
-    final redirectUri = 'http://localhost:8080/auth/oauth/kakao';
+    final redirectUri = 'https://k12c104.p.ssafy.io/back-api/auth/oauth/kakao';
     final authUrl =
         'https://kauth.kakao.com/oauth/authorize?response_type=code&client_id=$clientId&redirect_uri=$redirectUri&lang=ko';
 

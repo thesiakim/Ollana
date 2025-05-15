@@ -8,6 +8,7 @@ import 'models/app_state.dart';
 import 'screens/home_screen.dart';
 import 'services/deep_link_handler.dart';
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 final DeepLinkHandler deepLinkHandler = DeepLinkHandler();
 
 void main() async {
@@ -86,6 +87,7 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       title: 'Ollana',
       theme: appTheme,
+      navigatorKey: navigatorKey,
       home: const HomeScreen(),
     );
   }

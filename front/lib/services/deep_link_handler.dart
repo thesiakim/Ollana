@@ -23,9 +23,9 @@ class DeepLinkHandler {
         final uri = await _appLinks.getInitialLink();
         debugPrint('✅ 초기 URI: $uri');
 
-        if (uri != null) {
-          _handleUri(context, uri);
-        }
+      if (uri != null) {
+        _handleUri(context, uri);
+      }
       }
     } catch (e) {
       debugPrint('❌ 초기 딥링크 처리 실패: $e');
@@ -62,6 +62,8 @@ class DeepLinkHandler {
         final res = await http.get(apiUri);
         final body = utf8.decode(res.bodyBytes);
         final data = jsonDecode(body);
+        final tempdata = data['data'];
+        debugPrint('temp data : $tempdata');
 
         if (res.statusCode == 200 && data['status'] == true) {
           final tempUser = data['data'];
