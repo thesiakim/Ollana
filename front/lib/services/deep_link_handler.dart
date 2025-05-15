@@ -77,6 +77,7 @@ class DeepLinkHandler {
                   nickname: tempUser['nickname'],
                   profileImage: tempUser['profileImage'],
                   isSocial: tempUser['isSocial'],
+                  kakaoId: tempUser['kakaoId'],
                   tempToken: tempToken,
                 ),
               ),
