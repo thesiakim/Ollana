@@ -637,7 +637,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       TextFormField(
                         controller: _birthCtrl,
                         decoration: inputDecoration.copyWith(
-                          hintText: '생년월일 8자리',
+                          hintText: '생년월일 8자리 (YYYYMMDD)',
                           prefixIcon: Icon(
                             Icons.calendar_today_outlined,
                             color: Colors.grey.shade600,
