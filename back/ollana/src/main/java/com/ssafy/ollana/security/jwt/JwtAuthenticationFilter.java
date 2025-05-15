@@ -77,13 +77,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                                 // SecurityContext 갱신
                                 setAuthentication(newAccessToken);
-
-                                log.info("new token created!");
                             }
                         } finally {
                             // 락 해제
                             tokenService.releaseRefreshLock(userEmail);
-                            log.info("lock released!");
                         }
                     }
                 }
