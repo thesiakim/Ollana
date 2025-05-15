@@ -65,7 +65,7 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
         // UI 렌더링
         setContent {
             val message = remember { mutableStateOf("센서 수집 중...") }
-            val isHome = remember { mutableStateOf(true) }
+            val isHome = remember { mutableStateOf(false) }
             val badgeUrl = remember { mutableStateOf<String?>(null) }
             val showSaveDialog = remember { mutableStateOf(false) }
 
@@ -91,7 +91,9 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
                         onFastTestClick = {
                             val fakeEvent = MessageEventFake(
                                 "/watch_connectivity",
-                                """{"path":"/PROGRESS","data":"{"type":"FAST","difference":300}"}""".trimIndent()
+                                """{
+                                    "path":"/PROGRESS",
+                                     "data":"{\"type\":\"FAST\",\"difference\":300}"}""".trimIndent()
                             )
                             handleIncomingMessage(String(fakeEvent.data))
                             isHome.value = true
@@ -99,7 +101,8 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
                         onSlowTestClick = {
                             val fakeEvent = MessageEventFake(
                                 "/watch_connectivity",
-                                """{"path":"/PROGRESS","data":"{"type":"SLOW","difference":300}"}""".trimIndent()
+                                """{"path":"/PROGRESS",
+                                    "data":"{\"type\":\"SLOW\",\"difference\":300}"}""".trimIndent()
                             )
                             handleIncomingMessage(String(fakeEvent.data))
                             isHome.value = true
@@ -115,7 +118,8 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
                         onBadgeClick = {
                             val fakeEvent = MessageEventFake(
                                 "/watch_connectivity",
-                                """{"path":"/BADGE","data":"{"url":"https://example.com"}"}""".trimIndent()
+                                """{"path":"/BADGE",
+                                   "data": "{\"url\":\"https://example.com\"}"}""".trimIndent()
                             )
                             handleIncomingMessage(String(fakeEvent.data))
                             isHome.value = true
@@ -165,11 +169,11 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
                                     onClick = {
                                         showSaveDialog.value = false
                                         message.value = "종료"
-                                        MessageSender.send(
-                                            path = "/STOP_TRACKING_CONFIRM",
-                                            message = "",
-                                            context = this@MainActivity
-                                        )
+//                                        MessageSender.send(
+//                                            path = "/STOP_TRACKING_CONFIRM",
+//                                            message = "",
+//                                            context = this@MainActivity
+//                                        )
                                     },
                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
                                     shape = CircleShape,
@@ -188,11 +192,11 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
                                     onClick = {
                                         showSaveDialog.value = false
                                         message.value = "종료"
-                                        MessageSender.send(
-                                            path = "/STOP_TRACKING_CANCEL",
-                                            message = "",
-                                            context = this@MainActivity
-                                        )
+//                                        MessageSender.send(
+//                                            path = "/STOP_TRACKING_CANCEL",
+//                                            message = "",
+//                                            context = this@MainActivity
+//                                        )
                                     },
                                     colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
                                     shape = CircleShape,
@@ -292,6 +296,7 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
             val obj=JSONObject(jsonStr)
             val path = obj.optString("path","")
             val payload =obj.optString("data","")
+            Log.d(TAG,"잘가니?${path}")
             when (path) {
                 "/REACHED" -> {
                     runOnUiThread {

@@ -7,7 +7,10 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.util.Log
 import com.c104.ollana.presentation.data.MessageSender
+import com.google.android.gms.wearable.DataMap
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
+import java.io.ObjectOutputStream
 
 class SensorCollector(private val context : Context) : SensorEventListener{
 
@@ -79,34 +82,43 @@ class SensorCollector(private val context : Context) : SensorEventListener{
     }
     //센서 데이터를 앱에 전송
     private fun sendSensorData() {
-        
-        val json = JSONObject().apply { 
-            put("heartRate",lastHeartRate)
-            put("steps",lastStepCount)
-        }
+
+        val baos = ByteArrayOutputStream()
+        val oos = ObjectOutputStream(baos)
+        oos.writeObject(mapOf("distance" to 10.5))
+        oos.flush()
+        val byteArray = baos.toByteArray()
+
         //전송
         MessageSender.send(
             path="/SENSOR_DATA",
-            message = json.toString(),
+            message = byteArray,
             context=context
         )
-        Log.d("SensorCollector","센서 데이터 전송:${json}")
+        Log.d("SensorCollector","센서 데이터 전송:${byteArray}")
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
        //정확도 변경
     }
     fun sendTestDataManually() {
-        val json = JSONObject().apply {
-            put("heartRate", lastHeartRate ?: 72) // 기본값 72
-            put("steps", lastStepCount ?: 1000)   // 기본값 1000
-        }
+        val baos = ByteArrayOutputStream()
+        val oos = ObjectOutputStream(baos)
+        oos.writeObject(mapOf(
+            "path" to "/SENSOR_DATA",
+            "heartRate" to 72.8,
+            "steps" to 100
+
+        ))
+        oos.flush()
+        val byteArray = baos.toByteArray()
+
         MessageSender.send(
             path = "/SENSOR_DATA",
-            message = json.toString(),
+            message = byteArray,
             context = context
         )
-        Log.d("SensorCollector", "✅ 테스트 센서 데이터 전송: $json")
+        Log.d("SensorCollector", "✅ 테스트 센서 데이터 전송: ${byteArray.toString()}")
     }
 
 }
