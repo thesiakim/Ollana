@@ -6,9 +6,11 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
+import androidx.core.app.ActivityCompat.requestPermissions
 import androidx.core.app.NotificationCompat
 import com.c104.ollana.R
 
@@ -19,14 +21,32 @@ class SensorCollectorService : Service(){
 
     override fun onCreate() {
         super.onCreate()
+        Log.d("SensorCollectorService", "🔥 서비스 생성됨")
 
-        //센서 수집 클래스 초기화 및 시작
-        sensorCollector = SensorCollector(this)
-        sensorCollector.start()
+        try {
+            val notification = createMinimalNotification()
+            Log.d(TAG, "🔧 Notification 객체 생성됨")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                if (checkSelfPermission(android.Manifest.permission.FOREGROUND_SERVICE_HEALTH) == PackageManager.PERMISSION_GRANTED) {
+                    startForeground(1, createMinimalNotification())
+                } else {
+                    Log.e(TAG, "❌ FOREGROUND_SERVICE_HEALTH 권한 없음 - startForeground 실패")
+                }
+            } else {
+                startForeground(1, createMinimalNotification())
+            }
+            Log.d(TAG, "📌 startForeground 호출 완료")
 
-        //서비스 알림 표시
-        startForeground(1001,createNotification())
-        Log.d(TAG, "✅ 센서 수집 서비스 시작됨 (Foreground)")
+            sensorCollector = SensorCollector(this)
+            sensorCollector.start()
+            Log.d(TAG, "✅ 센서 수집 시작됨")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ 예외 발생: ${e.message}", e)
+        }
+    }
+
+    private fun requestPermissions(arrayOf: Array<String>, i: Int) {
+
     }
 
     override fun onDestroy() {
@@ -39,25 +59,21 @@ class SensorCollectorService : Service(){
 
     override fun onBind(intent : Intent?) : IBinder?=null
 
-    //ForegroundService 알림 생성
-    private fun createNotification() : Notification{
-        val channelId="sensor_channel_id"
-        val channelName="센서 수집 서비스"
+    private fun createMinimalNotification() : Notification{
+        val channelId = "sensor_channel"
+        val channelName = "센서 수집 알림"
 
-        if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.O){
-            val channel = NotificationChannel(
-                channelId,
-                channelName,
-                NotificationManager.IMPORTANCE_LOW
-            )
-            val manager=getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            manager.createNotificationChannel(channel)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val chan = NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_LOW)
+            chan.description = "센서 수집을 위한 포그라운드 알림"
+            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.createNotificationChannel(chan)
         }
         return NotificationCompat.Builder(this, channelId)
-            .setContentTitle("트래킹 진행 중")
-            .setContentText("심박수 데이터를 전송하고 있어요")
-            .setSmallIcon(R.drawable.logo) // 너희 앱의 아이콘으로 변경해도 됨
-            .setOngoing(true)
+            .setContentTitle("센서 수집 중")
+            .setContentText("심박수/걸음 수 데이터를 수집합니다.")
+            .setSmallIcon(android.R.drawable.ic_menu_mylocation) // ← 이거 없으면 안됨
+            .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
     }
 

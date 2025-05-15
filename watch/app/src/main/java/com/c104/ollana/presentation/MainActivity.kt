@@ -24,6 +24,7 @@ import androidx.core.app.NotificationCompat
 import com.c104.ollana.presentation.data.MessageSender
 import com.c104.ollana.presentation.screen.ConfirmReachedScreen
 import com.c104.ollana.presentation.screen.HomeScreen
+import com.c104.ollana.presentation.screen.ProgressComparisonScreen
 import com.c104.ollana.presentation.screen.TestScreen
 import com.c104.ollana.presentation.sensor.SensorCollector
 import com.google.android.gms.wearable.MessageClient
@@ -50,15 +51,10 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
     private lateinit var sensorCollector: SensorCollector
 
     // Compose 상태 변수들 (UI 상태 저장용)
-//    private var messageState: MutableState<String>? = null
-//    private var isHomeState: MutableState<Boolean>? = null
-//    private var badgeUrlState: MutableState<String?>? = null
-//    private var showSaveDialogState: MutableState<Boolean>? = null
-
-    private var message = mutableStateOf("센서 수집 중...")
-    private var isHome = mutableStateOf(false)
-    private var badgeUrl = mutableStateOf<String?>(null)
-    private var showSaveDialog = mutableStateOf(false)
+    private var messageState: MutableState<String>? = null
+    private var isHomeState: MutableState<Boolean>? = null
+    private var badgeUrlState: MutableState<String?>? = null
+    private var showSaveDialogState: MutableState<Boolean>? = null
 
     private var trigger: String? = null
     private var progressMessage: String? = null
@@ -96,8 +92,7 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
                 else -> "🚶 이동 비교 결과: $formatted"
             }
             Log.d(TAG,"progressMessage :$progressMessage")
-            isHome.value = true
-            message.value = progressMessage ?: ""
+
         }
 
         renderScreen()
@@ -108,81 +103,78 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
 
         // UI 렌더링
         setContent {
-//            val message = remember { mutableStateOf("센서 수집 중...") }
-//            val isHome = remember { mutableStateOf(false) }
-//            val badgeUrl = remember { mutableStateOf<String?>(null) }
-//            val showSaveDialog = remember { mutableStateOf(false) }
+            val message = remember { mutableStateOf("센서 수집 중...") }
+            val isHome = remember { mutableStateOf(false) }
+            val badgeUrl = remember { mutableStateOf<String?>(null) }
+            val showSaveDialog = remember { mutableStateOf(false) }
 
             // 상태 변수를 외부에서도 접근 가능하게 저장
-//            messageState = message
-//            isHomeState = isHome
-//            badgeUrlState = badgeUrl
-//            showSaveDialogState = showSaveDialog
+            messageState = message
+            isHomeState = isHome
+            badgeUrlState = badgeUrl
+            showSaveDialogState = showSaveDialog
 
             Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
 
-                if (trigger == "reached") {
-                    Log.d(TAG,"trigger==reached")
-                    ConfirmReachedScreen(
-                        onStopTracking = {
-                            //앱에 트래킹 종료 알림 전송
-                            sendStopTrackingToApp()
-                            showSaveDialog.value = true
-                        }
-                    )
-                }
-                // 실제 트래킹 홈 화면 or 테스트 화면 선택
-                else if (isHome.value) {
-                    HomeScreen(
-                        receivedMessage = message.value,
-                        badgeImageUrl = badgeUrl.value,
-                        onStopTracking = {
-                            //앱에 트래킹 종료 및 알림 전송
-                            sendStopTrackingToApp()
-                            showSaveDialog.value = true // 종료 시 확인 다이얼로그 표시
-                        }
-                    )
-                } else {
-                    TestScreen(
-                        receivedMessage = message.value,
-                        onFastTestClick = {
-                            val fakeEvent = MessageEventFake(
-                                "/watch_connectivity",
-                                """{
+               when(trigger){
+                   "reached"-> ConfirmReachedScreen(
+                       onStopTracking = {
+                           sendStopTrackingToApp()
+                           showSaveDialog.value=true
+                       }
+                   )
+                   "progress" -> ProgressComparisonScreen(progressMessage ?: "")
+                   else ->if(isHome.value){
+                       HomeScreen(
+                           receivedMessage = message.value,
+                           badgeImageUrl = badgeUrl.value,
+                           onStopTracking = {
+                               //앱에 트래킹 종료 및 알림 전송
+                               sendStopTrackingToApp()
+                               showSaveDialog.value = true // 종료 시 확인 다이얼로그 표시
+                           }
+                       )
+                   }else TestScreen(
+                       receivedMessage = message.value,
+                       onFastTestClick = {
+                           val fakeEvent = MessageEventFake(
+                               "/watch_connectivity",
+                               """{
                                     "path":"/PROGRESS",
                                      "data":"{\"type\":\"FAST\",\"difference\":300}"}""".trimIndent()
-                            )
-                            handleIncomingMessage(String(fakeEvent.data))
-                            isHome.value = true
-                        },
-                        onSlowTestClick = {
-                            val fakeEvent = MessageEventFake(
-                                "/watch_connectivity",
-                                """{"path":"/PROGRESS",
+                           )
+                           handleIncomingMessage(String(fakeEvent.data))
+                           isHome.value = true
+                       },
+                       onSlowTestClick = {
+                           val fakeEvent = MessageEventFake(
+                               "/watch_connectivity",
+                               """{"path":"/PROGRESS",
                                     "data":"{\"type\":\"SLOW\",\"difference\":300}"}""".trimIndent()
-                            )
-                            handleIncomingMessage(String(fakeEvent.data))
-                            isHome.value = true
-                        },
-                        onReachClick = {
-                            val fakeEvent = MessageEventFake(
-                                "/watch_connectivity",
-                                """{"path":"/REACHED","data":""}"""
-                            )
-                            handleIncomingMessage(String(fakeEvent.data))
-                            isHome.value = true
-                        },
-                        onBadgeClick = {
-                            val fakeEvent = MessageEventFake(
-                                "/watch_connectivity",
-                                """{"path":"/BADGE",
+                           )
+                           handleIncomingMessage(String(fakeEvent.data))
+                           isHome.value = true
+                       },
+                       onReachClick = {
+                           val fakeEvent = MessageEventFake(
+                               "/watch_connectivity",
+                               """{"path":"/REACHED","data":""}"""
+                           )
+                           handleIncomingMessage(String(fakeEvent.data))
+                           isHome.value = true
+                       },
+                       onBadgeClick = {
+                           val fakeEvent = MessageEventFake(
+                               "/watch_connectivity",
+                               """{"path":"/BADGE",
                                    "data": "{\"url\":\"https://example.com\"}"}""".trimIndent()
-                            )
-                            handleIncomingMessage(String(fakeEvent.data))
-                            isHome.value = true
-                        }
-                    )
-                }
+                           )
+                           handleIncomingMessage(String(fakeEvent.data))
+                           isHome.value = true
+                       }
+                   )
+               }
+                // 실제 트래킹 홈 화면 or 테스트 화면 선택
                 FloatingActionButton(
                     onClick = {
                         sensorCollector.sendTestDataManually()
@@ -308,16 +300,6 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
             Log.e(TAG, "역직렬화 실패", e)
         }
 
-//
-//        runOnUiThread { isHomeState?.value = true }
-
-        if (event.path == "/STOP_TRACKING_CONFIRM") {
-            Log.d(TAG, "센서 수집 중지 요청 수신")
-            sensorCollector.stop()
-//            runOnUiThread {
-//                messageState?.value = "종료"
-//            }
-        }
     }
 
     // 시스템 진동 및 알림 호출
@@ -357,11 +339,10 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
             Log.d(TAG, "잘가니?${path}")
             when (path) {
                 "/REACHED" -> {
-                    //runOnUiThread {
-                        //messageState?.value = "도착"
-                    message.value = "도착"
+                    runOnUiThread {
+                        messageState?.value = "도착"
                         vibrateAndNotify("정상 도착", "트래킹 종료를 눌러 기록을 저장하세요")
-                    //}
+                    }
                 }
 
                 "/PROGRESS" -> {
@@ -376,36 +357,29 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
                         "SLOW" -> "🐢 - $formatted"
                         else -> "🚶 이동 비교 결과: $formatted"
                     }
-//                    runOnUiThread {
-//                        messageState?.value = result
-//                        val title = if (type == "FAST") "더 빨라요" else "천천히 가고 있어요"
-//                        vibrateAndNotify(title, "이전 기록보다 $formatted 차이납니다.")
-//                    }
-                    message.value = result
-                    val title = if (type == "FAST") "더 빨라요" else "천천히 가고 있어요"
-                    vibrateAndNotify(title, "이전 기록보다 $formatted 차이납니다.")
-
+                    runOnUiThread {
+                        messageState?.value = result
+                        val title = if (type == "FAST") "더 빨라요" else "천천히 가고 있어요"
+                        vibrateAndNotify(title, "이전 기록보다 $formatted 차이납니다.")
+                    }
 
                 }
 
                 "/BADGE" -> {
-                    val badge = JSONObject(payload).getString("url")
-//                    runOnUiThread {
-//                        messageState?.value = "종료"
-//                        badgeUrlState?.value = badgeUrl
-//                    }
-                    badgeUrl.value = badge
-                    message.value = "종료"
+                    val badgeUrl = JSONObject(payload).getString("url")
+                    runOnUiThread {
+                        messageState?.value = "종료"
+                        badgeUrlState?.value = badgeUrl
+                    }
+
 
 
 
                 }
 
-//                else -> runOnUiThread {
-//                    messageState?.value = "알수없는 경로: $path"
-//                }
-                else->
-                message.value="알수없는 경로 :$path"
+                else -> runOnUiThread {
+                    messageState?.value = "알수없는 경로: $path"
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "메시지 파싱 오류", e)
@@ -439,10 +413,9 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
                 else -> "🚶 이동 비교 결과: $formatted"
             }
             Log.d(TAG, "progressMessage : $progressMessage")
-//            isHomeState?.value = true
-//            messageState?.value = progressMessage ?: ""
-            isHome.value = true
-            message.value = progressMessage ?: ""
+            isHomeState?.value = true
+            messageState?.value = progressMessage ?: ""
+
         }
         renderScreen()
     }
