@@ -3,9 +3,11 @@ package com.ssafy.ollana.tracking.web.dto.response;
 import com.ssafy.ollana.tracking.persistent.entity.HikingLiveRecords;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.ToString;
 
 @Getter
 @Builder
+@ToString
 public class BattleRecordsForTrackingResponseDto {
     private int time;
     private double distance;

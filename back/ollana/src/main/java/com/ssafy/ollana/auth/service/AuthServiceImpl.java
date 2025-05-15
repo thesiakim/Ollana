@@ -213,11 +213,14 @@ public class AuthServiceImpl implements AuthService {
     public DeepLinkResponseDto processKakaoLogin(String accessCode, HttpServletResponse response) {
         try {
             // 카카오 로그인 시도
-            kakaoLogin(accessCode, response);
+            LoginResponseDto loginResponse = kakaoLogin(accessCode, response);
+
+            // 로그인 정보를 임시 저장하고 임시 토큰 발급
+            String loginToken = kakaoService.generateKakaoLoginToken(loginResponse);
 
             // 로그인 하면 앱으로 돌아가기
             return DeepLinkResponseDto.builder()
-                    .deepLink("ollana://auth/oauth/kakao?status=login")
+                    .deepLink("ollana://auth/oauth/kakao?status=login&login_token=" + loginToken)
                     .isNewUser(false)
                     .build();
 

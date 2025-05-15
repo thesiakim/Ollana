@@ -179,7 +179,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ],
               TextFormField(
                 controller: _emailController,
-                decoration: _inputDecoration('Email', primaryColor),
+                decoration: _inputDecoration('이메일', primaryColor),
                 keyboardType: TextInputType.emailAddress,
                 validator: (v) =>
                     (v?.contains('@') ?? false) ? null : '유효한 이메일을 입력해 주세요.',
@@ -187,7 +187,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _passwordController,
-                decoration: _inputDecoration('Password', primaryColor),
+                decoration: _inputDecoration('비밀번호', primaryColor),
                 obscureText: true,
                 validator: (v) => (v != null && v.length >= 6)
                     ? null

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.ollana.auth.dto.KakaoProfileDto;
 import com.ssafy.ollana.auth.dto.KakaoTokenDto;
 import com.ssafy.ollana.auth.dto.TempUserDto;
+import com.ssafy.ollana.auth.dto.response.LoginResponseDto;
 import com.ssafy.ollana.auth.exception.KakaoResponseParsingException;
 import com.ssafy.ollana.user.entity.User;
 import lombok.RequiredArgsConstructor;
@@ -127,7 +128,7 @@ public class KakaoService {
     }
 
 
-    // 딥링크 리다이렉트용 임시 토큰 생성
+    // 딥링크 리다이렉트용 임시 토큰 생성 - 회원가입 중 임시 사용자 정보
     public String generateKakaoTempToken(TempUserDto tempUser) {
         // UUID 기반 토큰 생성
         String token = UUID.randomUUID().toString();
@@ -135,6 +136,16 @@ public class KakaoService {
         // redis 저장
         tokenService.saveTempUser(token, tempUser);
 
+        return token;
+    }
+
+    // 딥링크 리다이렉트용 임시 토큰 생성 - 로그인 정보
+    public String generateKakaoLoginToken(LoginResponseDto loginResponse) {
+        // UUID 기반 토큰 생성
+        String token = UUID.randomUUID().toString();
+
+        // redis 저장
+        tokenService.saveKakaoLoginResponse(token, loginResponse);
         return token;
     }
 }
