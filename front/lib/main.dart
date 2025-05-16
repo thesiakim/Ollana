@@ -6,6 +6,7 @@ import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'core/theme.dart';
 import 'models/app_state.dart';
 import 'screens/home_screen.dart';
+import 'screens/tracking/tracking_result_screen.dart';
 import 'services/deep_link_handler.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -88,6 +89,17 @@ class _MyAppState extends State<MyApp> {
       theme: appTheme,
       navigatorKey: navigatorKey,
       home: const HomeScreen(),
+      routes: {
+        '/tracking-result': (context) => TrackingResultScreen(
+              resultData: {
+                'badge': '',
+                'averageHeartRate': 0,
+                'maxHeartRate': 0,
+                'timeDiff': 0,
+              },
+              selectedMode: 'GENERAL',
+            ),
+      },
     );
   }
 }
