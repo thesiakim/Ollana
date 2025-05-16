@@ -102,7 +102,11 @@ flutter:
     - lib/assets/images/theme_recommend.png
     - lib/assets/images/mountain.png
     - lib/assets/images/logo.png
-    - lib/assets/images/mount_default.png
+    - lib/assets/images/level_one.png
+    - lib/assets/images/level_two.png
+    - lib/assets/images/level_three.png
+    - lib/assets/images/level_four.png
+    - lib/assets/images/level_five.png
     - .env
 
   # An image asset can refer to one or more resolution-specific "variants", see
