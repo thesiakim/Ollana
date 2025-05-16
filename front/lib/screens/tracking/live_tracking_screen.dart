@@ -21,6 +21,7 @@ import '../../models/mode_data.dart';
 import '../../services/mode_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:watch_connectivity/watch_connectivity.dart';
+import 'package:flutter_background_service/flutter_background_service.dart'; // 백그라운드 서비스 import 추가
 import 'tracking_result_screen.dart'; // 결과 화면 추가
 
 // 네이버 지도 라이브러리 임포트
@@ -246,6 +247,15 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
   // 앱 생명주기 상태 저장을 위한 변수
   AppLifecycleState? _currentLifecycleState;
+
+  // 페이스메이커 level 관련 변수 추가
+  String? _previousPacemakerLevel;
+  bool _hasNotifiedWatchForPacemaker = false;
+  String? _pacemakerMessage;
+  String? _pacemakerLevel;
+
+  // 기본 생성자 추가
+  _LiveTrackingScreenState();
 
   @override
   void initState() {
@@ -484,6 +494,11 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       _currentLifecycleState = state;
     });
     debugPrint('App lifecycle state changed to: $state');
+    if (state == AppLifecycleState.paused) {
+      debugPrint('[BG] 앱이 백그라운드로 진입했습니다. 백그라운드 로직 정상 동작 중인지 확인하세요.');
+    } else if (state == AppLifecycleState.resumed) {
+      debugPrint('[BG] 앱이 포그라운드로 복귀했습니다.');
+    }
   }
 
   // 트래킹 시작
@@ -496,6 +511,11 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
             _elapsedMinutes++;
           }
         });
+
+        if (_elapsedSeconds % 10 == 0) {
+          debugPrint(
+              '[BG] 타이머 동작 중: $_elapsedSeconds초 경과, 백그라운드 상태: $_currentLifecycleState');
+        }
 
         // _calculateTotalDistance(); // 이 함수는 새로운 로직으로 대체됨
 
@@ -556,11 +576,15 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       // 실제 데이터 사용 로직 (예: _currentHeartRate가 워치에서 직접 업데이트된다고 가정)
       // 이 부분은 워치 연동 방식에 따라 달라짐
       debugPrint('현재 심박수 (워치): $_currentHeartRate');
+      debugPrint(
+          '[BG] 심박수 업데이트: $_currentHeartRate bpm, 백그라운드 상태: $_currentLifecycleState');
     } else {
       // 목데이터 사용 (실제 워치 연동 전 테스트용)
       // _currentHeartRate 값을 직접 업데이트 (예: 80 ~ 139 사이의 랜덤 값)
       _currentHeartRate = 0;
       debugPrint('현재 심박수 (목데이터): $_currentHeartRate');
+      debugPrint(
+          '[BG] 심박수 업데이트(목데이터): $_currentHeartRate bpm, 백그라운드 상태: $_currentLifecycleState');
     }
   }
 
@@ -873,6 +897,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     _positionStream =
         Geolocator.getPositionStream(locationSettings: locationSettings)
             .listen((Position position) {
+      debugPrint(
+          '[BG] 위치 업데이트 수신: ${position.latitude}, ${position.longitude}, 백그라운드 상태: $_currentLifecycleState');
       // 현재 위치 기록
       final now = DateTime.now();
       final double newLat = position.latitude;
@@ -1387,6 +1413,26 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
           style: TextStyle(fontSize: 14),
         ),
         SizedBox(height: 4), // 심박수 표시 전에 SizedBox 추가
+        SizedBox(height: 4),
+        Text(
+          '현재 속도 : ${_currentSpeed.toStringAsFixed(1)} km/h',
+          style: TextStyle(fontSize: 14),
+        ),
+        SizedBox(height: 4),
+        Text(
+          '고도 변화: ${_currentAltitude.toStringAsFixed(1)}m',
+          style: TextStyle(fontSize: 14),
+        ),
+        SizedBox(height: 4),
+        Text(
+          '등산 시간: $_formattedTime',
+          style: TextStyle(fontSize: 14),
+        ),
+        SizedBox(height: 4),
+        Text(
+          '이동 거리: ${_currentTotalDistance.toStringAsFixed(2)}km',
+          style: TextStyle(fontSize: 14),
+        ),
         if (_isWatchPaired)
           Text(
             '현재 심박수 : $_currentHeartRate bpm',
@@ -1397,11 +1443,27 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
             '현재 심박수 : 워치와 연동해주세요',
             style: TextStyle(fontSize: 14, color: Colors.grey),
           ),
-        SizedBox(height: 4),
-        Text(
-          '현재 속도 : ${_currentSpeed.toStringAsFixed(1)} km/h',
-          style: TextStyle(fontSize: 14),
-        ),
+        if (_pacemakerMessage != null)
+          Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: Row(
+              children: [
+                Icon(Icons.directions_run, color: Colors.orange, size: 18),
+                SizedBox(width: 6),
+                Text(
+                  _pacemakerMessage!,
+                  style: TextStyle(
+                    color: _pacemakerLevel == '고강도'
+                        ? Colors.red
+                        : _pacemakerLevel == '저강도'
+                            ? Colors.blue
+                            : Colors.green,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
       ],
     );
   }
@@ -1840,21 +1902,6 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
               color: Colors.blue,
             ),
           ),
-          SizedBox(height: 10),
-          Text(
-            '고도 변화: ${_currentAltitude.toStringAsFixed(1)}m',
-            style: TextStyle(fontSize: 14),
-          ),
-          SizedBox(height: 4),
-          Text(
-            '등산 시간: $_formattedTime',
-            style: TextStyle(fontSize: 14),
-          ),
-          SizedBox(height: 4),
-          Text(
-            '이동 거리: ${_currentTotalDistance.toStringAsFixed(2)}km',
-            style: TextStyle(fontSize: 14),
-          ),
         ],
 
         // 피드백 메시지 (일반 모드가 아닐 때만 표시)
@@ -2149,6 +2196,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   Future<void> _finishTracking(bool shouldSave,
       {bool showResultScreen = true}) async {
     try {
+      // 백그라운드 서비스 종료
+      stopTrackingService();
       // 현재 상태의 데이터 저장
       _saveCurrentTrackingData();
 
@@ -3015,6 +3064,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       });
 
       debugPrint('AI 서버로 데이터 전송 요청: $url, body: $body');
+      debugPrint('[BG] AI 서버 데이터 전송 시도, 백그라운드 상태: $_currentLifecycleState');
 
       final response = await http.post(url, headers: headers, body: body);
 
@@ -3034,6 +3084,61 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
         debugPrint('level: $level');
         debugPrint('message: $message');
 
+        // 페이스메이커 level이 변경되었는지 확인
+        if (_previousPacemakerLevel != level) {
+          debugPrint('페이스메이커 level 변경: $_previousPacemakerLevel -> $level');
+
+          // level별 맞춤 메시지
+          String pacemakerMessage;
+          switch (level) {
+            case '저강도':
+              pacemakerMessage = '운동 강도가 낮아요. 조금 더 힘내볼까요?';
+              break;
+            case '중강도':
+              pacemakerMessage = '적절한 강도로 등산 중입니다!';
+              break;
+            case '고강도':
+              pacemakerMessage = '운동 강도가 높아요! 무리하지 않게 조심하세요.';
+              break;
+            default:
+              pacemakerMessage = message; // 서버에서 온 기본 메시지
+          }
+
+          // 페이스메이커 level이 변경되었는지 확인
+          if (_previousPacemakerLevel != level) {
+            debugPrint('페이스메이커 level 변경: $_previousPacemakerLevel -> $level');
+            // 워치에 알람 전송
+            if (_isWatchPaired) {
+              try {
+                await _watch.sendMessage({
+                  "path": "/PACEMAKER_ALERT",
+                  "level": level,
+                  "message": pacemakerMessage
+                });
+                debugPrint('페이스메이커 level 변경 알람 전송 완료');
+              } catch (e) {
+                debugPrint('페이스메이커 level 변경 알람 전송 실패: $e');
+              }
+            }
+            // 이전 level 업데이트
+            _previousPacemakerLevel = level;
+          }
+
+          // 바텀시트에 메시지 표시
+          setState(() {
+            _pacemakerMessage = pacemakerMessage;
+            _pacemakerLevel = level;
+          });
+
+          // 기존 페이스메이커 메시지 전송
+          _watch.sendMessage({
+            "path": "/PACEMAKER",
+            "level": level,
+            "message": pacemakerMessage
+          });
+        }
+
+        // 기존 페이스메이커 메시지 전송
         _watch.sendMessage(
             {"path": "/PACEMAKER", "level": level, "message": message});
       } else {
@@ -3053,5 +3158,12 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       default:
         return 'GENERAL';
     }
+  }
+
+  // 등산 종료/결과 페이지 진입 시 서비스 완전 종료 함수 보강
+  void stopTrackingService() {
+    debugPrint('트래킹 서비스 종료 요청');
+    final FlutterBackgroundService service = FlutterBackgroundService();
+    service.invoke('stop');
   }
 }

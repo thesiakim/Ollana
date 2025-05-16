@@ -15,7 +15,7 @@ class CustomFooter extends StatelessWidget {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Container(
-      height: 45 + bottomPadding,
+      height: 60 + bottomPadding,
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
@@ -119,13 +119,13 @@ class CustomFooter extends StatelessWidget {
             child: Icon(
               icon,
               color: isSelected ? Colors.green : Colors.grey,
-              size: 20.0,
+              size: 24.0,
             ),
           )
         : Icon(
             icon,
             color: isSelected ? Colors.green : Colors.grey,
-            size: 24.0,
+            size: 34.0,
           );
 
     return GestureDetector(
