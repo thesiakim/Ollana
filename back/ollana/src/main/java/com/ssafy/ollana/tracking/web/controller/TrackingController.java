@@ -123,15 +123,19 @@ public class TrackingController {
      * 트래킹 종료 요청
      */
     @PostMapping("/finish")
-    public ResponseEntity<Response<Void>> manageTrackingFinish(@AuthenticationPrincipal CustomUserDetails userDetails,
+    public ResponseEntity<Response<TrackingFinishResponseDto>> manageTrackingFinish(@AuthenticationPrincipal CustomUserDetails userDetails,
                                                                  @RequestBody TrackingFinishRequestDto request) {
-        trackingService.manageTrackingFinish(userDetails.getUser().getId(), request);
-        return ResponseEntity.ok(Response.success());
+        TrackingFinishResponseDto response = trackingService.manageTrackingFinish(userDetails.getUser().getId(), request);
+        return ResponseEntity.ok(Response.success(response));
     }
 
+    //------------------------------------------------------------------------------------------------------------------------------
     private final MountainRepository mountainRepository;
     private final PathRepository pathRepository;
 
+    /*
+     * 테스트용 가상 등산로 좌표 저장 API
+     */
     @PostMapping("/ssafy")
     public ResponseEntity<Response<String>> saveSSAFY(@RequestBody CoordinateRequestDto request) {
 

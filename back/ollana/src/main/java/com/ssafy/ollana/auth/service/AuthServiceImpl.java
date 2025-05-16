@@ -174,13 +174,7 @@ public class AuthServiceImpl implements AuthService {
         // 액세스 토큰 블랙리스트에 추가
         String accessToken = tokenService.extractAccessTokenFromHeader(request);
         if (accessToken != null) {
-            // 토큰 남은 유효시간
-            long tokenRemainingTime = jwtUtil.getTokenRemainingTime(accessToken);
-
-            if (tokenRemainingTime > 0) {
-                // 남은 유효시간 만큼 저장
-                tokenService.blacklistAccessToken(accessToken, tokenRemainingTime);
-            }
+            tokenService.blacklistToken(accessToken, "logout");
         }
 
         // 리프레시 토큰 쿠키 삭제

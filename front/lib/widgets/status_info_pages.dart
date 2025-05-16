@@ -1,51 +1,113 @@
 // status_info_pages.dart
-// - 사용자 상태 정보 페이지 위젯들
-// - FirstStatusInfo: 첫 번째 상태 정보 페이지 (등산 지수)
-// - SecondStatusInfo: 두 번째 상태 정보 페이지 (한라산 성장 일지)
-
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart'; // ← dotenv 로드
+import '../../models/app_state.dart';
 
-class FirstStatusInfo extends StatelessWidget {
+class FirstStatusInfo extends StatefulWidget {
   const FirstStatusInfo({super.key});
 
   @override
+  State<FirstStatusInfo> createState() => _FirstStatusInfoState();
+}
+
+class _FirstStatusInfoState extends State<FirstStatusInfo> {
+  late Future<int> _climbingIndexFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _climbingIndexFuture = fetchClimbingIndex();
+  }
+
+  Future<int> fetchClimbingIndex() async {
+    final baseUrl = dotenv.env['AI_BASE_URL']!; // ← 빈 문자열 대신 non-null 단언
+    debugPrint('▶ AI_BASE_URL = $baseUrl'); // ← 로깅 추가
+    final url = Uri.parse('$baseUrl/weather'); // ← leading slash 제거, 올바른 URI 형식
+    final token = Provider.of<AppState>(context, listen: false).accessToken;
+
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      if (data['score'] != null) {
+        final rawScore = data['score'];
+        if (rawScore is num) {
+          return rawScore.toInt(); // ← num으로 받아서 toInt()
+        }
+        throw Exception('score 필드가 숫자가 아닙니다.');
+      }
+      throw Exception('API 응답에 score 필드가 없습니다.');
+    } else {
+      throw Exception('등산지수 조회 실패: ${response.statusCode}');
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: const [
-          Text(
-            '등산지수',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              shadows: [
-                Shadow(
-                  color: Colors.black26,
-                  offset: Offset(2, 2),
-                  blurRadius: 4,
+    return FutureBuilder<int>(
+      future: _climbingIndexFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        } else if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              '오류: ${snapshot.error}', // ← 실제 예외 메시지 노출
+              style: TextStyle(color: Colors.red[700]),
+              textAlign: TextAlign.center,
+            ),
+          );
+        } else if (snapshot.hasData) {
+          final score = snapshot.data!;
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  '등산지수',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black26,
+                        offset: Offset(2, 2),
+                        blurRadius: 4,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '$score', // ← 문자열 보간 바로 적용
+                  style: const TextStyle(
+                    fontSize: 48,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black26,
+                        offset: Offset(2, 2),
+                        blurRadius: 6,
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            '78',
-            style: TextStyle(
-              fontSize: 48,
-              fontWeight: FontWeight.bold,
-              color: Colors.green,
-              shadows: [
-                Shadow(
-                  color: Colors.black26,
-                  offset: Offset(2, 2),
-                  blurRadius: 6,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+          );
+        }
+        return const SizedBox.shrink();
+      },
     );
   }
 }
@@ -56,7 +118,6 @@ class SecondStatusInfo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, constraints) {
-      // 사용 가능한 공간에 따라 크기 조절
       double fontSize = constraints.maxHeight < 150 ? 11.0 : 13.0;
       double spacing = constraints.maxHeight < 150 ? 2.0 : 2.0;
       double iconSize = constraints.maxHeight < 150 ? 8.0 : 10.0;
