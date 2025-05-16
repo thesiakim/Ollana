@@ -276,18 +276,13 @@ async def data_collection(data: Dict[str, Any]):
 
         # ▶ 보조 지표 정규화
         norm_speed = round(min(data["speed"] / 5.0, 1.0), 2)
-        norm_time = round(min(data["time"] / 180.0, 1.0), 2)
-        norm_altitude = round(min(data["altitude"] / 150.0, 1.0), 2)
+        time_score = data["time"] * (20 / 180)
+        altitude_score = data["altitude"] * 0.1
 
         # ▶ 최종 점수 계산
         intensity_score = (predicted_score / 2.0) * 40
-        final_score = round(
-            intensity_score +
-            min(data["speed"] / 5.0, 1.0) * 25 +
-            min(data["time"] / 180.0, 1.0) * 20 +
-            min(data["altitude"] / 150.0, 1.0) * 15,
-            1
-        )
+        final_score = round(norm_speed + time_score + altitude_score + intensity_score, 1)
+
 
         # ▶ 강도 레벨 및 메시지 생성
         if final_score < 40:
