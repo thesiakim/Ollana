@@ -117,12 +117,31 @@ class WatchMessageListenerService : WearableListenerService() {
                         putExtra("trigger","etaDistance")
                         putExtra("eta", eta)
                         putExtra("distance",distance)
-                        Log.d(TAG, "📢 남은거리 & 예상 도착 시간안내 화면 실행 시도")
                     }
                     startActivity(intent)
+                    Log.d(TAG, "📢 남은거리 & 예상 도착 시간안내 화면 실행 시도")
+                }
+                "/PACEMAKER"->{
+                    val level = json.optString("level","")
+                    val message = json.optString("message","")
+
+                    Log.d(TAG,"페이스메이커 수신 : type = ${level}, comment = ${message}")
+
+                    vibrate()
+                    showNotification("페이스메이커 안내", "$level - $message")
+
+                    //UI 표시
+                    val intent = Intent(this, MainActivity::class.java).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                        putExtra("trigger", "pacemaker")
+                        putExtra("level", level)
+                        putExtra("message", message)
+                    }
+                    startActivity(intent)
+                    Log.d(TAG, "📢 페이스메이커 화면 실행 시도")
+
                 }
 
-                // 추후 페이스메이커, 도착 예상 시간 등 추가 예정
             }
 
         } catch (e: Exception) {

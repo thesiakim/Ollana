@@ -25,6 +25,7 @@ import com.c104.ollana.presentation.data.MessageSender
 import com.c104.ollana.presentation.screen.ConfirmReachedScreen
 import com.c104.ollana.presentation.screen.ETADistanceViewScreen
 import com.c104.ollana.presentation.screen.HomeScreen
+import com.c104.ollana.presentation.screen.PacemakerScreen
 import com.c104.ollana.presentation.screen.ProgressComparisonScreen
 import com.c104.ollana.presentation.screen.TestScreen
 import com.c104.ollana.presentation.sensor.SensorCollector
@@ -62,6 +63,7 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
 
     private var eta: String = ""
     private var distance: Int = 0
+    private var pacemakerInfo: Pair<String, String>? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -101,6 +103,11 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
             Log.d(TAG,"etaDistance 트리커 작용")
           eta=intent.getStringExtra("eta")?:"--:--"
           distance = intent.getIntExtra("distance",0)
+        }else if(trigger=="pacemaker"){
+            Log.d(TAG,"pacemaker 트리커 작용")
+            val level = intent.getStringExtra("level") ?: ""
+            val message = intent.getStringExtra("message") ?: ""
+            pacemakerInfo = Pair(level, message)
         }
 
         renderScreen()
@@ -133,6 +140,10 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
                    )
                    "progress" -> ProgressComparisonScreen(progressMessage ?: "")
                    "etaDistance"-> ETADistanceViewScreen(eta=eta, distance = distance)
+                   "pacemaker"->PacemakerScreen(
+                       level = pacemakerInfo?.first?:"",
+                       message=pacemakerInfo?.second?:""
+                   )
                    else ->if(isHome.value){
                        HomeScreen(
                            receivedMessage = message.value,
@@ -394,6 +405,16 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
                     }
                     startActivity(intent)
                 }
+                "/PACEMAKER"->{
+                    val data=JSONObject(payload)
+                    val level = data.getString("level")
+                    val message=data.getString("message")
+                    runOnUiThread {
+                        trigger = "pacemaker"
+                        pacemakerInfo = Pair(level, message)
+                        renderScreen()
+                    }
+                }
 
                 else -> runOnUiThread {
                     messageState?.value = "알수없는 경로: $path"
@@ -437,14 +458,17 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
         }else if(trigger=="etaDistance"){
             eta=intent.getStringExtra("eta")?:"--:--"
             distance=intent.getIntExtra("distance",0)
+        }else if(trigger=="pacemaker"){
+            val level=intent.getStringExtra("level")?:""
+            val message = intent.getStringExtra("message")?:""
+            pacemakerInfo =Pair(level,message)
         }
         renderScreen()
     }
     //앱에 기록 저장 여부 전송
     private fun sendRecordDecisionToApp(shouldSave : Boolean){
         val recordMap= mapOf(
-            "path" to "/RECORD_CONFIRM",
-            "flag" to shouldSave
+            "path" to "/RECORD_CONFIRM"
         )
         try{
             val baos = ByteArrayOutputStream()
