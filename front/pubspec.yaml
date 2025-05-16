@@ -61,6 +61,7 @@ dependencies:
   intl: ^0.18.1 
   app_links: ^6.4.0
   kakao_flutter_sdk_user: ^1.3.1
+  flutter_svg: ^2.0.7 
   carousel_slider: ^5.0.0
   smooth_page_indicator: ^1.2.1
   charset_converter: ^2.3.0
@@ -103,7 +104,11 @@ flutter:
     - lib/assets/images/theme_recommend.png
     - lib/assets/images/mountain.png
     - lib/assets/images/logo.png
-    - lib/assets/images/mount_default.png
+    - lib/assets/images/level_one.png
+    - lib/assets/images/level_two.png
+    - lib/assets/images/level_three.png
+    - lib/assets/images/level_four.png
+    - lib/assets/images/level_five.png
     - .env
 
   # An image asset can refer to one or more resolution-specific "variants", see
