@@ -72,7 +72,7 @@ dependencies {
     implementation(libs.activity.compose)
     implementation(libs.core.splashscreen)
     implementation(libs.material3.android)
-    implementation("com.google.code.gson:gson:2.10.1")
+    implementation(libs.gson)
 
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.ui.test.junit4)
@@ -80,4 +80,6 @@ dependencies {
     debugImplementation(libs.ui.tooling)
     debugImplementation(libs.ui.test.manifest)
     implementation(libs.coil.compose)
+
+    implementation(libs.coil.gif)
 }
