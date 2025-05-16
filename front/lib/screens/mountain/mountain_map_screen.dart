@@ -4,14 +4,18 @@
 // - 로컬 저장소 활용한 데이터 캐싱
 
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../../models/app_state.dart';
 import '../../models/mountain_map.dart';
 import '../../services/mountain_map_service.dart';
 import '../../utils/app_colors.dart';
+import 'mountain_detail_screen.dart'; // 산 상세 화면 import
 
 class MountainMapScreen extends StatefulWidget {
   const MountainMapScreen({Key? key}) : super(key: key);
@@ -31,10 +35,47 @@ class _MountainMapScreenState extends State<MountainMapScreen> {
   Map<String, NMarker> _markerCache = {}; // 마커 캐시
   String? _lastTappedMarkerId; // 마지막으로 탭한 마커 ID
 
+  // 지도/리스트 보기 토글 관련 변수
+  bool _isMapView = true; // 초기값은 지도 보기
+
+  // 리스트 데이터 관련 변수
+  List<dynamic> _mountainList = [];
+  int _currentPage = 0;
+  int _totalPages = 0;
+  bool _isLoadingMore = false;
+  bool _hasReachedEnd = false;
+  final int _pageSize = 10;
+  final ScrollController _scrollController = ScrollController();
+  final TextEditingController _searchController = TextEditingController();
+  bool _isSearching = false;
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
     _loadMountains();
+    _loadMountainList();
+
+    // 스크롤 리스너 추가 (무한 스크롤용)
+    _scrollController.addListener(_scrollListener);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_scrollListener);
+    _scrollController.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  // 무한 스크롤 리스너
+  void _scrollListener() {
+    if (_scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 200 &&
+        !_isLoadingMore &&
+        !_hasReachedEnd) {
+      _loadMoreMountains();
+    }
   }
 
   // 산 정보 로드 (로컬 또는 API)
@@ -59,6 +100,121 @@ class _MountainMapScreenState extends State<MountainMapScreen> {
           SnackBar(content: Text('산 정보를 불러오는데 실패했습니다: $e')),
         );
       }
+    }
+  }
+
+  // 산 리스트 데이터 로드 (API)
+  Future<void> _loadMountainList({bool resetList = false}) async {
+    if (_isLoadingMore) return;
+
+    setState(() {
+      _isLoadingMore = true;
+      if (resetList) {
+        _currentPage = 0;
+        _mountainList = [];
+        _hasReachedEnd = false;
+      }
+    });
+
+    try {
+      // 앱 상태에서 토큰과 baseUrl 가져오기
+      final appState = context.read<AppState>();
+      final token = appState.accessToken ?? '';
+      final baseUrl = dotenv.env['BASE_URL'] ?? '';
+
+      // API URL 구성
+      String url = '$baseUrl/mountain/list?page=$_currentPage&size=$_pageSize';
+      if (_searchQuery.isNotEmpty) {
+        url = '$baseUrl/mountain/list?search=$_searchQuery';
+      }
+
+      // API 요청
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = utf8.decode(response.bodyBytes);
+        final Map<String, dynamic> dataMap = jsonDecode(decoded);
+
+        if (dataMap['status'] == true) {
+          if (_searchQuery.isNotEmpty) {
+            // 검색 결과는 데이터 구조가 다름
+            final List<dynamic> mountains = dataMap['data'];
+            setState(() {
+              _mountainList = mountains;
+              _isLoadingMore = false;
+              _hasReachedEnd = true; // 검색 결과는 페이징 없음
+            });
+          } else {
+            // 일반 리스트 데이터 구조 처리
+            final data = dataMap['data'];
+            final List<dynamic> mountains = data['mountains'];
+
+            setState(() {
+              if (resetList) {
+                _mountainList = mountains;
+              } else {
+                _mountainList.addAll(mountains);
+              }
+
+              _currentPage = data['currentPage'];
+              _totalPages = data['totalPages'];
+              _hasReachedEnd =
+                  data['last'] ?? (_currentPage >= _totalPages - 1);
+              _isLoadingMore = false;
+              _currentPage++;
+            });
+          }
+        } else {
+          setState(() => _isLoadingMore = false);
+          _showErrorSnackBar('데이터를 불러오는데 실패했습니다.');
+        }
+      } else {
+        setState(() => _isLoadingMore = false);
+        _showErrorSnackBar('서버 응답 오류: ${response.statusCode}');
+      }
+    } catch (e) {
+      setState(() => _isLoadingMore = false);
+      _showErrorSnackBar('데이터 로드 중 오류 발생: $e');
+    }
+  }
+
+  // 더 많은 산 데이터 로드 (무한 스크롤)
+  Future<void> _loadMoreMountains() async {
+    if (_searchQuery.isNotEmpty) return; // 검색 중에는 추가 로드 안함
+    await _loadMountainList();
+  }
+
+  // 검색 수행
+  Future<void> _performSearch(String query) async {
+    setState(() {
+      _searchQuery = query.trim();
+      _isSearching = _searchQuery.isNotEmpty;
+    });
+    await _loadMountainList(resetList: true);
+  }
+
+  // 검색 취소
+  void _cancelSearch() {
+    setState(() {
+      _searchQuery = '';
+      _isSearching = false;
+      _searchController.clear();
+    });
+    _loadMountainList(resetList: true);
+  }
+
+  // 에러 스낵바 표시
+  void _showErrorSnackBar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
     }
   }
 
@@ -105,6 +261,9 @@ class _MountainMapScreenState extends State<MountainMapScreen> {
         );
       }
       debugPrint('✔ show SnackBar done');
+
+      // 리스트 데이터도 새로고침
+      _loadMountainList(resetList: true);
     } catch (e) {
       debugPrint('❌ 에러 발생: $e');
       setState(() => _isLoading = false);
@@ -350,15 +509,22 @@ class _MountainMapScreenState extends State<MountainMapScreen> {
   void _onMarkerTap(MountainMap mountain) {
     setState(() {
       _selectedMountain = mountain;
+      _isMapView = false; // 리스트 뷰로 전환
     });
 
-    // 바텀 시트로 산 정보 표시
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    // 검색창에 산 이름 설정하고 검색 수행
+    _searchController.text = mountain.name;
+    _performSearch(mountain.name);
+  }
+
+  // 리스트 아이템에서 산 정보 표시
+  void _onMountainItemTap(dynamic mountain) {
+    // 상세 화면으로 이동
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MountainDetailScreen(mountainId: mountain['id']),
       ),
-      builder: (context) => _buildMountainDetailSheet(mountain),
     );
   }
 
@@ -428,6 +594,182 @@ class _MountainMapScreenState extends State<MountainMapScreen> {
     );
   }
 
+  // 리스트 아이템에서 산 정보 표시
+  Widget _buildMountainListItem(dynamic mountain) {
+    final images = mountain['images'] as List<dynamic>;
+    final hasImage = images.isNotEmpty;
+
+    return InkWell(
+      onTap: () => _onMountainItemTap(mountain),
+      child: Card(
+        elevation: 2,
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 이미지 (있는 경우만)
+              if (hasImage)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    images[0],
+                    width: 80,
+                    height: 80,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      width: 80,
+                      height: 80,
+                      color: Colors.grey[300],
+                      child: const Icon(Icons.terrain, color: Colors.grey),
+                    ),
+                  ),
+                )
+              else
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.terrain, color: Colors.grey),
+                ),
+              const SizedBox(width: 12),
+              // 산 정보
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            mountain['name'],
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color:
+                                _getLevelColor(mountain['level']).withAlpha(50),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '난이도: ${mountain['level']}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: _getLevelColor(mountain['level']),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '고도: ${mountain['altitude']}m',
+                      style: const TextStyle(fontSize: 13, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      mountain['location'],
+                      style: const TextStyle(fontSize: 13, color: Colors.grey),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // 리스트 화면 위젯
+  Widget _buildListView() {
+    return Column(
+      children: [
+        // 검색 바
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              hintText: '산 이름으로 검색',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _isSearching
+                  ? IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: _cancelSearch,
+                    )
+                  : null,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(30),
+              ),
+              contentPadding:
+                  const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            ),
+            onSubmitted: _performSearch,
+          ),
+        ),
+
+        // 리스트 내용
+        Expanded(
+          child: _mountainList.isEmpty && !_isLoadingMore
+              ? const Center(child: Text('산 정보가 없습니다.'))
+              : RefreshIndicator(
+                  onRefresh: () => _loadMountainList(resetList: true),
+                  child: ListView.builder(
+                    controller: _scrollController,
+                    itemCount: _mountainList.length + (_isLoadingMore ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (index == _mountainList.length) {
+                        return const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(8.0),
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+                      }
+                      return _buildMountainListItem(_mountainList[index]);
+                    },
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+
+  // 토글 버튼 위젯
+  Widget _buildToggleButton() {
+    return Positioned(
+      right: 16,
+      bottom: 16,
+      child: FloatingActionButton(
+        backgroundColor: AppColors.primary,
+        child: Icon(
+          _isMapView ? Icons.list : Icons.map,
+          color: Colors.white,
+        ),
+        onPressed: () {
+          setState(() {
+            _isMapView = !_isMapView;
+          });
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -444,42 +786,53 @@ class _MountainMapScreenState extends State<MountainMapScreen> {
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('산 정보를 불러오는 중...', style: TextStyle(color: Colors.grey))
-                ],
-              ),
-            )
-          : NaverMap(
-              options: NaverMapViewOptions(
-                initialCameraPosition: NCameraPosition(
-                  target: const NLatLng(36.0, 128.0), // 한국 중앙 좌표
-                  zoom: 6,
-                ),
-                mapType: NMapType.basic,
-                contentPadding: const EdgeInsets.all(0),
-                logoAlign: NLogoAlign.rightBottom,
-                activeLayerGroups: [
-                  NLayerGroup.mountain,
-                  NLayerGroup.building,
-                  NLayerGroup.transit,
-                ],
-              ),
-              onMapReady: (controller) {
-                _mapController = controller;
-                // 지도가 준비되면 산 마커 표시
-                Future.delayed(const Duration(milliseconds: 300), () {
-                  if (mounted) {
-                    _showMountainsOnMap();
-                  }
-                });
-              },
-            ),
+      body: Stack(
+        children: [
+          // 지도 또는 리스트 뷰 (토글에 따라 표시)
+          _isLoading
+              ? const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(height: 16),
+                      Text('산 정보를 불러오는 중...',
+                          style: TextStyle(color: Colors.grey))
+                    ],
+                  ),
+                )
+              : _isMapView
+                  ? NaverMap(
+                      options: NaverMapViewOptions(
+                        initialCameraPosition: NCameraPosition(
+                          target: const NLatLng(36.0, 128.0), // 한국 중앙 좌표
+                          zoom: 6,
+                        ),
+                        mapType: NMapType.basic,
+                        contentPadding: const EdgeInsets.all(0),
+                        logoAlign: NLogoAlign.rightBottom,
+                        activeLayerGroups: [
+                          NLayerGroup.mountain,
+                          NLayerGroup.building,
+                          NLayerGroup.transit,
+                        ],
+                      ),
+                      onMapReady: (controller) {
+                        _mapController = controller;
+                        // 지도가 준비되면 산 마커 표시
+                        Future.delayed(const Duration(milliseconds: 300), () {
+                          if (mounted) {
+                            _showMountainsOnMap();
+                          }
+                        });
+                      },
+                    )
+                  : _buildListView(),
+
+          // 토글 버튼 (항상 표시)
+          _buildToggleButton(),
+        ],
+      ),
     );
   }
 }
