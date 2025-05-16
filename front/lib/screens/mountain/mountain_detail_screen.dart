@@ -932,12 +932,15 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(
-                                Icons.arrow_upward,
-                                size: 12,
-                                color: Colors.black,
+                              Text(
+                                '최고',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.black,
+                                ),
                               ),
-                              const SizedBox(width: 2),
+                              const SizedBox(width: 6),
                               Text(
                                 '$maxTemp°',
                                 style: TextStyle(
@@ -954,12 +957,15 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(
-                                Icons.arrow_downward,
-                                size: 12,
-                                color: Colors.black,
+                              Text(
+                                '최저',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.black,
+                                ),
                               ),
-                              const SizedBox(width: 2),
+                              const SizedBox(width: 6),
                               Text(
                                 '$minTemp°',
                                 style: TextStyle(
