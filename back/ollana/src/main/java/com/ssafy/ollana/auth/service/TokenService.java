@@ -4,7 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.ollana.auth.dto.TempUserDto;
 import com.ssafy.ollana.auth.dto.response.LoginResponseDto;
-import com.ssafy.ollana.auth.exception.InvalidTempTokenException;
+import com.ssafy.ollana.auth.exception.KakaoTokenNotFoundException;
+import com.ssafy.ollana.auth.exception.KakaoResponseSaveException;
 import com.ssafy.ollana.security.jwt.JwtUtil;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -72,8 +73,7 @@ public class TokenService {
             // 변환된 json 문자열을 redis에 저장 (10분동안 유효)
             redisTemplate.opsForValue().set(key, tempUserResponse, 10, TimeUnit.MINUTES);
         } catch (JsonProcessingException e) {
-            log.error("임시 사용자 정보 저장 중 오류 발생", e);
-            throw new RuntimeException("임시 사용자 정보 저장 실패");
+            throw new KakaoResponseSaveException("임시 사용자 정보");
         }
     }
 
@@ -83,14 +83,13 @@ public class TokenService {
         String tempUserResponse = redisTemplate.opsForValue().get(key);
 
         if (tempUserResponse == null) {
-            throw new InvalidTempTokenException();
+            throw new KakaoTokenNotFoundException("temp user token");
         }
 
         try {
             return objectMapper.readValue(tempUserResponse, TempUserDto.class);
         } catch (JsonProcessingException e) {
-            log.error("임시 사용자 정보 조회 중 오류 발생", e);
-            throw new RuntimeException("임시 사용자 정보 파싱 실패");
+            throw new KakaoTokenNotFoundException("temp user token");
         }
     }
 
@@ -110,8 +109,7 @@ public class TokenService {
 
             redisTemplate.opsForValue().set(key, loginResponseJson, 10, TimeUnit.MINUTES);
         } catch (JsonProcessingException e) {
-            log.error("카카오 로그인 응답 저장 중 오류 발생", e);
-            throw new RuntimeException("카카오 로그인 응답 저장 실패");
+            throw new KakaoResponseSaveException("로그인 응답");
         }
     }
 
@@ -123,7 +121,7 @@ public class TokenService {
             String loginResponseJson = redisTemplate.opsForValue().get(key);
 
             if (loginResponseJson == null) {
-                throw new InvalidTempTokenException();
+                throw new KakaoTokenNotFoundException("kakao login token");
             }
 
             redisTemplate.delete(key);
@@ -131,7 +129,7 @@ public class TokenService {
             LoginResponseDto loginResponse = objectMapper.readValue(loginResponseJson, LoginResponseDto.class);
             return loginResponse;
         } catch (JsonProcessingException e) {
-            throw new RuntimeException("로그인 응답 조회 실패");
+            throw new KakaoTokenNotFoundException("kakao login token");
         }
     }
 
