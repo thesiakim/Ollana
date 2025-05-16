@@ -174,7 +174,9 @@ async def recommend(user_id:str, db: Session = Depends(get_db)):
         if not matched.empty:
             info = matched.iloc[0]
             rec_data["location"] = info.get("mountain_loc")
-        
+            rec_data["level"] = info.get("level")
+            rec_data["height"] = info.get("mountain_height")
+
     return JSONResponse({
         "cluster": int(cluster_label),
         "recommendations": recommendations
@@ -216,6 +218,8 @@ async def recommend_by_keyword(keyword: str = Body(..., embed=True)):
         if not matched.empty:
             info = matched.iloc[0]
             rec_data["location"] = info.get("mountain_loc")
+            rec_data["level"] = info.get("level")
+            rec_data["height"] = info.get("mountain_height")
     return JSONResponse({
         "keyword": keyword,
         "recommendations": recommendations
@@ -244,6 +248,9 @@ async def recommend_by_region(region: str = Body(..., embed=True)):
         if not matched.empty:
             info = matched.iloc[0]
             rec_data["location"] = info.get("mountain_loc")
+            rec_data["level"] = info.get("level")
+            rec_data["height"] = info.get("mountain_height")
+            
     return JSONResponse({
         "region": region,
         "recommendations": recommendations
@@ -285,10 +292,10 @@ async def data_collection(data: Dict[str, Any]):
 
 
         # ▶ 강도 레벨 및 메시지 생성
-        if final_score < 40:
+        if final_score < 49:
             level = "저강도"
             message = "천천히 풍경을 보며 산행을 즐기고 계시는군요. 템포를 좀 더 올려도 괜찮습니다!"
-        elif final_score < 70:
+        elif final_score < 79:
             level = "중강도"
             message = "좋은 페이스로 산행 중입니다. 무리하지말고 페이스를 유지하도록 조절하세요.!"
         else:
