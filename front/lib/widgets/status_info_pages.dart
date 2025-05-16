@@ -188,7 +188,7 @@ class _SecondStatusInfoState extends State<SecondStatusInfo> {
           child: growth == null
               ? Center(
                   child: Text(
-                    '아직 기록된 등산 정보가 없습니다.\n등산을 하고 내 등산을 기록 해보세요!',
+                    '기록된 등산 정보가 \n없습니다.\n등산을 하고 내 등산을\n기록 해보세요!',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.grey[700], fontSize: 15),
                   ),
