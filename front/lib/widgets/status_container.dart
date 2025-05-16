@@ -39,10 +39,6 @@ class StatusContainer extends StatelessWidget {
               Container(
                 width: 70, // 크기 축소
                 height: 70, // 크기 축소
-                decoration: BoxDecoration(
-                  color: Colors.orange[300],
-                  shape: BoxShape.circle,
-                ),
                 child: Center(
                   child: Image.asset('lib/assets/images/seed.png'),
                 ),
