@@ -119,7 +119,7 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
         // UI 렌더링
         setContent {
             val message = remember { mutableStateOf("센서 수집 중...") }
-            val isHome = remember { mutableStateOf(false) }
+            val isHome = remember { mutableStateOf(true) }
             val badgeUrl = remember { mutableStateOf<String?>(null) }
             val showSaveDialog = remember { mutableStateOf(false) }
 
@@ -195,17 +195,17 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
                    )
                }
                 // 실제 트래킹 홈 화면 or 테스트 화면 선택
-                FloatingActionButton(
-                    onClick = {
-                        sensorCollector.sendTestDataManually()
-                    },
-                    containerColor = Color(0xFF2196F3),
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(16.dp)
-                ) {
-                    Text("TEST", color = Color.White)
-                }
+//                FloatingActionButton(
+//                    onClick = {
+//                        sensorCollector.sendTestDataManually()
+//                    },
+//                    containerColor = Color(0xFF2196F3),
+//                    modifier = Modifier
+//                        .align(Alignment.BottomEnd)
+//                        .padding(16.dp)
+//                ) {
+//                    Text("TEST", color = Color.White)
+//                }
 
 
                 // 기록 저장 여부 다이얼로그
