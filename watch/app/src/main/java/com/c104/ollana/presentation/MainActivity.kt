@@ -422,7 +422,7 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
     //앱에 기록 저장 여부 전송
     private fun sendRecordDecisionToApp(shouldSave : Boolean){
         val recordMap= mapOf(
-            "path" to "/RECORD",
+            "path" to "/RECORD_CONFIRM",
             "flag" to shouldSave
         )
         try{

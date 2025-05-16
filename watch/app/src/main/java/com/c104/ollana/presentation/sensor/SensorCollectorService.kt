@@ -54,6 +54,7 @@ class SensorCollectorService : Service(){
 
         //서비스가 종료될때 센서 수집도 중단
         sensorCollector.stop()
+        stopForeground(true) // ← 알림까지 제거
         Log.d(TAG,"센서 수집 서비스 종료")
     }
 
