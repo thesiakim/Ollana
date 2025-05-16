@@ -1289,7 +1289,7 @@ Widget _buildFilterChip({
           ),
           const SizedBox(height: 24),
           Text(
-            '산 정보를 불러오는 중...',
+            '산 정보를 불러오는 중입니다',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w500,
@@ -1308,9 +1308,9 @@ Widget _buildFilterChip({
         elevation: 0,
         backgroundColor: Colors.white, // 고정된 배경색
         scrolledUnderElevation: 0, // 스크롤 시 엘리베이션 변화 방지
-        title: const Text(
-          '전체 산 지도',
-          style: TextStyle(
+        title: Text(
+          _isMapView ? '전체 산 지도' : '산 전체 목록',  // _isMapView 상태에 따라 타이틀 변경
+          style: const TextStyle(
             fontWeight: FontWeight.bold,
             color: Colors.black,
           ),
