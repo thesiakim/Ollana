@@ -923,12 +923,54 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
                         },
                       ),
                       const SizedBox(height: 6),
-                      Text(
-                        '$minTemp° / $maxTemp°',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
+                      // 온도 상하 배치 디자인
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // 최고 온도
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.arrow_upward,
+                                size: 12,
+                                color: Colors.black,
+                              ),
+                              const SizedBox(width: 2),
+                              Text(
+                                '$maxTemp°',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          // 최저 온도
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.arrow_downward,
+                                size: 12,
+                                color: Colors.black,
+                              ),
+                              const SizedBox(width: 2),
+                              Text(
+                                '$minTemp°',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ],
                   ),
