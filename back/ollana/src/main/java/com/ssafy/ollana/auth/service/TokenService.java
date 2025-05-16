@@ -135,16 +135,38 @@ public class TokenService {
         }
     }
 
+    // 리프레시 토큰 로테이션
+    // 분산 락 획득
+    public boolean acquireRefreshLock(String userEmail) {
+        String lockKey = "RT-LOCK:" + userEmail;
+        // 30초 동안 유효한 락 설정 (데드락 방지)
+        return Boolean.TRUE.equals(
+                redisTemplate.opsForValue().setIfAbsent(lockKey, "locked", 30, TimeUnit.SECONDS));
+    }
+
+    // 락 해제
+    public void releaseRefreshLock(String userEmail) {
+        String lockKey = "RT-LOCK:" + userEmail;
+        redisTemplate.delete(lockKey);
+    }
+
+
     // 토큰 블랙리스트 관리
-    // 액세스 토큰을 redis 블랙리스트에 추가
-    public void blacklistAccessToken(String accessToken, long expirationMillis) {
-        String key = "BL:" + accessToken;
-        redisTemplate.opsForValue().set(key, "logout", expirationMillis, TimeUnit.MILLISECONDS);
+    // redis 블랙리스트에 추가
+    public void blacklistToken(String token, String reason) {
+        long remainingTime = jwtUtil.getTokenRemainingTime(token);
+
+        if (remainingTime > 0) {
+            String key = "BL: " + token;
+
+            // 남은 유효시간 만큼 저장
+            redisTemplate.opsForValue().set(key, reason, remainingTime, TimeUnit.MILLISECONDS);
+        }
     }
 
     // 블랙리스트에 있는지 확인
-    public boolean isBlacklisted(String accessToken) {
-        return redisTemplate.hasKey("BL:" + accessToken);
+    public boolean isBlacklisted(String token) {
+        return redisTemplate.hasKey("BL:" + token);
     }
 
     // 토큰 추출
