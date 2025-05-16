@@ -841,113 +841,89 @@ Widget _buildMountainDetailDialog(MountainMap mountain) {
   );
 }
   
-  // 리스트 아이템 디자인 개선
-  Widget _buildMountainListItem(dynamic mountain) {
-    final level = mountain['level'] as String? ?? 'M';
-    final difficultyText = () {
-      switch (level) {
-        case 'L':
-          return '쉬움';
-        case 'M':
-          return '보통';
-        case 'H':
-          return '어려움';
-        default:
-          return '보통';
-      }
-    }();
-    
-    final levelColor = _getLevelColor(level);
-    final images = mountain['images'] as List<dynamic>;
-    final hasImage = images.isNotEmpty;
+  // 리스트 아이템 디자인 - 깔끔하게 한 줄에 고도와 난이도 표시
+Widget _buildMountainListItem(dynamic mountain) {
+  final level = mountain['level'] as String? ?? 'M';
+  final difficultyText = () {
+    switch (level) {
+      case 'L':
+        return '쉬움';
+      case 'M':
+        return '보통';
+      case 'H':
+        return '어려움';
+      default:
+        return '보통';
+    }
+  }();
+  
+  final levelColor = _getLevelColor(level);
+  final images = mountain['images'] as List<dynamic>;
+  final hasImage = images.isNotEmpty;
+  final altitude = mountain['altitude'] ?? 0;
 
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+  return Container(
+    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.04),
+          blurRadius: 8,
+          spreadRadius: 0,
+          offset: const Offset(0, 2),
+        ),
+      ],
+    ),
+    child: Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: () => _onMountainItemTap(mountain),
         borderRadius: BorderRadius.circular(16),
-        splashColor: levelColor.withOpacity(0.1),
-        highlightColor: levelColor.withOpacity(0.05),
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(12),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 이미지 (있는 경우만)
+              // 이미지
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: hasImage
                   ? Image.network(
                       images[0],
-                      width: 90,
-                      height: 90,
+                      width: 100,
+                      height: 100,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) => _buildMountainPlaceholder(),
                     )
                   : _buildMountainPlaceholder(),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               
               // 산 정보
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            mountain['name'],
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 17,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10, 
-                            vertical: 4
-                          ),
-                          decoration: BoxDecoration(
-                            color: levelColor.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            difficultyText,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: levelColor.withOpacity(0.9),
-                            ),
-                          ),
-                        ),
-                      ],
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // 산 이름 (오른쪽으로 이동)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 18), 
+                    child: Text(
+                      mountain['name'],
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 17,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 8),
+                  ),
+                  const SizedBox(height: 8), 
+
+                    // 위치 정보
                     Row(
-                      children: [
-                        Icon(Icons.height, size: 16, color: Colors.grey[600]),
-                        const SizedBox(width: 4),
-                        Text(
-                          '고도: ${mountain['altitude']}m',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey[700],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
                         const SizedBox(width: 4),
@@ -964,6 +940,45 @@ Widget _buildMountainDetailDialog(MountainMap mountain) {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 6),
+                    
+                    // 고도와 난이도를 한 줄에 표시 
+                    Row(
+                      children: [
+                        // 고도 정보
+                        Icon(Icons.height, size: 16, color: Colors.grey[600]),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${altitude}m',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                        
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                        ),
+                        
+                        // 난이도 정보 (색상으로 구분)
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: levelColor,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          difficultyText,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -971,134 +986,249 @@ Widget _buildMountainDetailDialog(MountainMap mountain) {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   // 산 이미지 플레이스홀더
-  Widget _buildMountainPlaceholder() {
-    return Container(
-      width: 90,
-      height: 90,
-      decoration: BoxDecoration(
-        color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(12),
+  // 산 이미지 플레이스홀더
+Widget _buildMountainPlaceholder() {
+  return Container(
+    width: 100,
+    height: 100,
+    decoration: BoxDecoration(
+      color: Colors.grey[200],
+      borderRadius: BorderRadius.circular(14),
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Colors.grey[300]!,
+          Colors.grey[200]!,
+        ],
       ),
-      child: Center(
-        child: Icon(
+    ),
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
           Icons.terrain,
           size: 36,
           color: Colors.grey[400],
         ),
-      ),
-    );
-  }
-
-  // 리스트 화면 위젯 - 디자인 개선
-  Widget _buildListView() {
-    return Column(
-      children: [
-        // 검색 바
-        Container(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          color: Colors.white,
-          child: TextField(
-            controller: _searchController,
-            decoration: InputDecoration(
-              hintText: '산 이름으로 검색',
-              hintStyle: TextStyle(color: Colors.grey[500], fontSize: 15),
-              prefixIcon: Icon(Icons.search, color: _primaryColor),
-              suffixIcon: _isSearching
-                  ? IconButton(
-                      icon: Icon(Icons.clear, color: Colors.grey[600]),
-                      onPressed: _cancelSearch,
-                    )
-                  : null,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(30),
-                borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(30),
-                borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(30),
-                borderSide: BorderSide(color: _primaryColor, width: 1.5),
-              ),
-              filled: true,
-              fillColor: Colors.grey[100],
-              contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-            ),
-            style: const TextStyle(fontSize: 15),
-            onSubmitted: _performSearch,
-            textInputAction: TextInputAction.search,
+        const SizedBox(height: 4),
+        Text(
+          '이미지 없음',
+          style: TextStyle(
+            fontSize: 10,
+            color: Colors.grey[500],
+            fontWeight: FontWeight.w500,
           ),
         ),
+      ],
+    ),
+  );
+}
 
-        // 리스트 내용
-        Expanded(
-          child: _mountainList.isEmpty && !_isLoadingMore
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
+// 리스트 화면 위젯 - 디자인 개선
+Widget _buildListView() {
+  return Column(
+    children: [
+      // 검색 바 영역
+      Container(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 10,
+              spreadRadius: 0,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: TextField(
+          controller: _searchController,
+          decoration: InputDecoration(
+            hintText: '산 이름을 검색해주세요',
+            hintStyle: TextStyle(color: Colors.grey[400], fontSize: 15),
+            prefixIcon: Padding(
+              padding: const EdgeInsets.only(left: 12, right: 8),
+              child: Icon(Icons.search, color: _primaryColor),
+            ),
+            suffixIcon: _isSearching
+                ? Container(
+                    margin: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: Icon(Icons.close, size: 16, color: Colors.grey[700]),
+                      onPressed: _cancelSearch,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  )
+                : null,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(30),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(30),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(30),
+              borderSide: BorderSide(color: _primaryColor, width: 1.5),
+            ),
+            filled: true,
+            fillColor: Colors.grey[100],
+            contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+          ),
+          style: const TextStyle(fontSize: 15),
+          onSubmitted: _performSearch,
+          textInputAction: TextInputAction.search,
+        ),
+      ),
+
+      // 리스트 내용
+      Expanded(
+        child: _mountainList.isEmpty && !_isLoadingMore
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
                       Icons.terrain,
-                      size: 64,
+                      size: 40,
                       color: Colors.grey[400],
                     ),
-                    const SizedBox(height: 16),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    _isSearching ? '검색 결과가 없습니다' : '산 정보가 없습니다',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  if (_isSearching) ...[
+                    const SizedBox(height: 8),
                     Text(
-                      '산 정보가 없습니다',
+                      '다른 검색어로 다시 시도해보세요',
                       style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[600],
-                        fontWeight: FontWeight.w500,
+                        fontSize: 14,
+                        color: Colors.grey[500],
                       ),
                     ),
-                    if (_isSearching) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        '검색어를 변경해보세요',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[500],
+                    const SizedBox(height: 20),
+                    OutlinedButton(
+                      onPressed: _cancelSearch,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: _primaryColor,
+                        side: BorderSide(color: _primaryColor),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                    ],
+                      child: const Text('검색 초기화'),
+                    ),
                   ],
+                ],
+              ),
+            )
+          : RefreshIndicator(
+              color: _primaryColor,
+              onRefresh: () => _loadMountainList(resetList: true),
+              child: ListView.builder(
+                controller: _scrollController,
+                padding: const EdgeInsets.only(top: 8, bottom: 80),
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
                 ),
-              )
-            : RefreshIndicator(
-                color: _primaryColor,
-                onRefresh: () => _loadMountainList(resetList: true),
-                child: ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.only(top: 8, bottom: 80),
-                  physics: const AlwaysScrollableScrollPhysics(
-                    parent: BouncingScrollPhysics(),
-                  ),
-                  itemCount: _mountainList.length + (_isLoadingMore ? 1 : 0),
-                  itemBuilder: (context, index) {
-                    if (index == _mountainList.length) {
-                      return Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
+                itemCount: _mountainList.length + (_isLoadingMore ? 1 : 0),
+                itemBuilder: (context, index) {
+                  if (index == _mountainList.length) {
+                    return Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: Center(
+                        child: SizedBox(
+                          width: 30,
+                          height: 30,
                           child: CircularProgressIndicator(
                             valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
-                            strokeWidth: 3,
+                            strokeWidth: 2.5,
                           ),
                         ),
-                      );
-                    }
-                    return _buildMountainListItem(_mountainList[index]);
-                  },
-                ),
+                      ),
+                    );
+                  }
+                  return _buildMountainListItem(_mountainList[index]);
+                },
               ),
+            ),
+      ),
+    ],
+  );
+}
+
+// 필터 칩 위젯
+Widget _buildFilterChip({
+  required String label,
+  required bool isSelected,
+  Color? color,
+  required VoidCallback onTap,
+}) {
+  final chipColor = color ?? _primaryColor;
+  
+  return GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: isSelected ? chipColor.withOpacity(0.1) : Colors.grey[100],
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isSelected ? chipColor : Colors.grey[300]!,
+          width: 1,
         ),
-      ],
-    );
-  }
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (isSelected) ...[
+            Icon(
+              Icons.check_circle,
+              size: 14,
+              color: chipColor,
+            ),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              color: isSelected ? chipColor : Colors.grey[700],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
 
   // 토글 버튼 위젯 - 부드러운 애니메이션 추가
   Widget _buildToggleButton() {
