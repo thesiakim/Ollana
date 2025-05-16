@@ -41,8 +41,9 @@ class WatchMessageListenerService : WearableListenerService() {
             val json = JSONObject(jsonString)
 
             val path = json.optString("path", "")
+            val message=json.optString("message","")
 
-            Log.d(TAG,"백그라운드 path=${path}")
+            Log.d(TAG,"백그라운드 path=${path}, message=${message}")
 
             when (path) {
 
@@ -98,6 +99,27 @@ class WatchMessageListenerService : WearableListenerService() {
                     Log.d(TAG, "✅ 인텐트 생성 완료 → startActivity 호출 직전")
                     startActivity(intent)
                     Log.d(TAG, "📢 실시간 비교 화면 실행 시도")
+                }
+                "/ETA_DISTANCE"->{
+                    val eta=json.optString("eta", "")
+                    val distance= json.optInt("distance",0)
+
+                    Log.d(TAG,"eta=${eta}, distance = ${distance}")
+
+                    vibrate()
+
+                    val intent = Intent(this,MainActivity :: class.java).apply {
+                        addFlags(
+                              Intent.FLAG_ACTIVITY_NEW_TASK or
+                                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                                    Intent.FLAG_ACTIVITY_SINGLE_TOP
+                        )
+                        putExtra("trigger","etaDistance")
+                        putExtra("eta", eta)
+                        putExtra("distance",distance)
+                        Log.d(TAG, "📢 남은거리 & 예상 도착 시간안내 화면 실행 시도")
+                    }
+                    startActivity(intent)
                 }
 
                 // 추후 페이스메이커, 도착 예상 시간 등 추가 예정

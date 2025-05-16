@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.app.NotificationCompat
 import com.c104.ollana.presentation.data.MessageSender
 import com.c104.ollana.presentation.screen.ConfirmReachedScreen
+import com.c104.ollana.presentation.screen.ETADistanceViewScreen
 import com.c104.ollana.presentation.screen.HomeScreen
 import com.c104.ollana.presentation.screen.ProgressComparisonScreen
 import com.c104.ollana.presentation.screen.TestScreen
@@ -59,6 +60,9 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
     private var trigger: String? = null
     private var progressMessage: String? = null
 
+    private var eta: String = ""
+    private var distance: Int = 0
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -93,6 +97,10 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
             }
             Log.d(TAG,"progressMessage :$progressMessage")
 
+        }else if(trigger=="etaDistance"){
+            Log.d(TAG,"etaDistance 트리커 작용")
+          eta=intent.getStringExtra("eta")?:"--:--"
+          distance = intent.getIntExtra("distance",0)
         }
 
         renderScreen()
@@ -124,6 +132,7 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
                        }
                    )
                    "progress" -> ProgressComparisonScreen(progressMessage ?: "")
+                   "etaDistance"-> ETADistanceViewScreen(eta=eta, distance = distance)
                    else ->if(isHome.value){
                        HomeScreen(
                            receivedMessage = message.value,
@@ -372,9 +381,18 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
                         badgeUrlState?.value = badgeUrl
                     }
 
-
-
-
+                }
+                "/ETA_DISTANCE"->{
+                    val data=JSONObject(payload)
+                    val etaStr = data.optString("eta", "--:--")
+                    val distance = data.optInt("distance", 0)
+                    val intent = Intent(this, MainActivity::class.java).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                        putExtra("trigger", "etaDistance")
+                        putExtra("eta", etaStr)
+                        putExtra("distance", distance)
+                    }
+                    startActivity(intent)
                 }
 
                 else -> runOnUiThread {
@@ -416,6 +434,9 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
             isHomeState?.value = true
             messageState?.value = progressMessage ?: ""
 
+        }else if(trigger=="etaDistance"){
+            eta=intent.getStringExtra("eta")?:"--:--"
+            distance=intent.getIntExtra("distance",0)
         }
         renderScreen()
     }
