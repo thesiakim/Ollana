@@ -7,7 +7,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart'; // .env 읽기용
 
 import '../models/app_state.dart';
 import 'status_info_pages.dart';
-import 'experience_bar.dart'; // ← 추가
+import 'experience_bar.dart';
 
 class StatusContainer extends StatefulWidget {
   final PageController pageController;
@@ -92,8 +92,8 @@ class _StatusContainerState extends State<StatusContainer> {
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [
-            Color.fromARGB(255, 81, 81, 81), // 연한 크림색
-            Color.fromARGB(255, 145, 145, 145), // 부드러운 따뜻한 크림
+            Color(0xFFE8FCEC), // 연한 민트 그린
+            Color(0xFFD6F9D9), // 좀 더 짙은 민트
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -108,7 +108,7 @@ class _StatusContainerState extends State<StatusContainer> {
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -128,11 +128,8 @@ class _StatusContainerState extends State<StatusContainer> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  // 경험치 바 (dynamic!)
-                  ExperienceBar(
-                    currentXp: _exp,
-                    grade: _grade,
-                  ),
+                  // 경험치 바
+                  ExperienceBar(currentXp: _exp, grade: _grade),
                 ],
               ),
             ),
@@ -168,7 +165,8 @@ class _StatusContainerState extends State<StatusContainer> {
                           width: isActive ? 12 : 8,
                           height: isActive ? 12 : 8,
                           decoration: BoxDecoration(
-                            color: isActive ? Colors.black : Colors.grey[300],
+                            color:
+                                isActive ? Colors.green[800] : Colors.grey[300],
                             shape: BoxShape.circle,
                           ),
                         );
