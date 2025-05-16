@@ -1175,34 +1175,37 @@ Widget _buildMountainDetailDialog(MountainMap mountain) {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
+        elevation: 0,
+        backgroundColor: Colors.white, // 고정된 배경색
+        scrolledUnderElevation: 0, // 스크롤 시 엘리베이션 변화 방지
+        title: const Text(
           '전체 산 지도',
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.bold,
+            color: Colors.black,
           ),
         ),
-        backgroundColor: _primaryColor,
-        foregroundColor: Colors.white,
-        elevation: 0,
+        centerTitle: true,
+        iconTheme: const IconThemeData(color: Color(0xFF52A486)),
         actions: [
           // 데이터 새로고침 버튼
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh, color: Color(0xFF52A486)),
             tooltip: '산 정보 새로고침',
             onPressed: _isLoading ? null : _refreshMountainData,
           ),
           // 필터 버튼 (사용자 경험 향상을 위한 제안)
           IconButton(
-            icon: const Icon(Icons.filter_list),
+            icon: const Icon(Icons.filter_list, color: Color(0xFF52A486)),
             tooltip: '난이도 필터',
             onPressed: () {
               // 추후 필터링 기능 구현 가능
               _showSnackBar('난이도 필터링 기능은 준비 중입니다');
             },
           ),
-          const SizedBox(width: 8),
         ],
       ),
+      // 기존 body 내용은 그대로 유지
       body: Container(
         decoration: BoxDecoration(
           // 배경 그라데이션 (지도 모드에서는 보이지 않음)
