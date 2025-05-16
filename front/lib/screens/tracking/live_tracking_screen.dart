@@ -3018,10 +3018,26 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
       final response = await http.post(url, headers: headers, body: body);
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        debugPrint('AI 서버 데이터 전송 성공: ${response.body}');
+      if (response.statusCode == 200) {
+        // 1) UTF-8로 바이트 디코딩
+        final decoded = utf8.decode(response.bodyBytes);
+
+        // 2) JSON 파싱
+        final Map<String, dynamic> data = jsonDecode(decoded);
+
+        // 3) 필드 꺼내기
+        final double score = data['score'];
+        final String level = data['level'];
+        final String message = data['message'];
+
+        debugPrint('score: $score');
+        debugPrint('level: $level');
+        debugPrint('message: $message');
+
+        _watch.sendMessage(
+            {"path": "/PACEMAKER", "level": level, "message": message});
       } else {
-        debugPrint('AI 서버 데이터 전송 실패: ${response.statusCode}, ${response.body}');
+        debugPrint('Error: ${response.statusCode}');
       }
     } catch (e) {
       debugPrint('AI 서버 데이터 전송 중 오류 발생: $e');
