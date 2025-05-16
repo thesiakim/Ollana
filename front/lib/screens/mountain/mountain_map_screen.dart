@@ -614,7 +614,7 @@ class _MountainMapScreenState extends State<MountainMapScreen> {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: Image.network(
-                    'https://${images[0]}',
+                    images[0],
                     width: 80,
                     height: 80,
                     fit: BoxFit.cover,

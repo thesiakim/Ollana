@@ -149,6 +149,7 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
                         final safeUrl = getImageUrl(imageUrl);
                         return Image.network(
                           safeUrl,
+                          width: double.infinity,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {
                             return Container(
