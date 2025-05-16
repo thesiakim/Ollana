@@ -1,14 +1,14 @@
 // status_info_pages.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:http/http.dart' as http; // HTTP 요청
 import 'package:provider/provider.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart'; // ← dotenv 로드
+import 'package:flutter_dotenv/flutter_dotenv.dart'; // .env 읽기용
 import '../../models/app_state.dart';
 
+/// 첫 번째 페이지: 등산지수 조회
 class FirstStatusInfo extends StatefulWidget {
   const FirstStatusInfo({super.key});
-
   @override
   State<FirstStatusInfo> createState() => _FirstStatusInfoState();
 }
@@ -23,12 +23,11 @@ class _FirstStatusInfoState extends State<FirstStatusInfo> {
   }
 
   Future<int> fetchClimbingIndex() async {
-    final baseUrl = dotenv.env['AI_BASE_URL']!; // ← 빈 문자열 대신 non-null 단언
-    debugPrint('▶ AI_BASE_URL = $baseUrl'); // ← 로깅 추가
-    final url = Uri.parse('$baseUrl/weather'); // ← leading slash 제거, 올바른 URI 형식
+    final baseUrl = dotenv.env['AI_BASE_URL']!;
+    final url = Uri.parse('$baseUrl/weather');
     final token = Provider.of<AppState>(context, listen: false).accessToken;
 
-    final response = await http.post(
+    final resp = await http.post(
       url,
       headers: {
         'Content-Type': 'application/json',
@@ -36,205 +35,272 @@ class _FirstStatusInfoState extends State<FirstStatusInfo> {
       },
     );
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      if (data['score'] != null) {
-        final rawScore = data['score'];
-        if (rawScore is num) {
-          return rawScore.toInt(); // ← num으로 받아서 toInt()
-        }
-        throw Exception('score 필드가 숫자가 아닙니다.');
-      }
-      throw Exception('API 응답에 score 필드가 없습니다.');
-    } else {
-      throw Exception('등산지수 조회 실패: ${response.statusCode}');
+    if (resp.statusCode == 200) {
+      final data = json.decode(resp.body);
+      final raw = data['score'];
+      if (raw is num) return raw.toInt();
+      throw Exception('score 필드가 숫자가 아닙니다.');
     }
+    throw Exception('등산지수 조회 실패 (HTTP ${resp.statusCode})');
   }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<int>(
       future: _climbingIndexFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        } else if (snapshot.hasError) {
-          return Center(
-            child: Text(
-              '오류: ${snapshot.error}', // ← 실제 예외 메시지 노출
-              style: TextStyle(color: Colors.red[700]),
-              textAlign: TextAlign.center,
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2),
             ),
           );
-        } else if (snapshot.hasData) {
-          final score = snapshot.data!;
+        }
+        if (snap.hasError) {
           return Center(
+            child: Text(
+              '정보를 불러오지 못했습니다',
+              style: TextStyle(color: Colors.red[400], fontSize: 16),
+            ),
+          );
+        }
+
+        final score = snap.data!;
+        // 색상·메시지
+        final scoreColor = score < 50
+            ? Colors.red
+            : score < 80
+                ? Colors.orange
+                : Colors.green;
+        final message = score < 50
+            ? '등산하기에 좋지 않습니다'
+            : score < 80
+                ? '적당한 등산 환경입니다'
+                : '등산하기 좋은 날씨입니다';
+
+        return Center(
+          child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Text(
                   '등산지수',
                   style: TextStyle(
-                    fontSize: 20,
+                    fontSize: 22,
                     fontWeight: FontWeight.bold,
-                    shadows: [
-                      Shadow(
-                        color: Colors.black26,
-                        offset: Offset(2, 2),
-                        blurRadius: 4,
-                      ),
-                    ],
+                    color: Colors.black,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '$score', // ← 문자열 보간 바로 적용
-                  style: const TextStyle(
-                    fontSize: 48,
+                  '$score',
+                  style: TextStyle(
+                    fontSize: 52,
                     fontWeight: FontWeight.bold,
-                    color: Colors.green,
-                    shadows: [
-                      Shadow(
-                        color: Colors.black26,
-                        offset: Offset(2, 2),
-                        blurRadius: 6,
-                      ),
-                    ],
+                    color: scoreColor,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  message,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: scoreColor.withOpacity(0.8),
                   ),
                 ),
               ],
             ),
-          );
-        }
-        return const SizedBox.shrink();
+          ),
+        );
       },
     );
   }
 }
 
-class SecondStatusInfo extends StatelessWidget {
+/// 두 번째 페이지: 최근 등산 성장 일지
+class SecondStatusInfo extends StatefulWidget {
   const SecondStatusInfo({super.key});
+  @override
+  State<SecondStatusInfo> createState() => _SecondStatusInfoState();
+}
+
+class _SecondStatusInfoState extends State<SecondStatusInfo> {
+  late Future<Map<String, dynamic>?> _growthFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _growthFuture = fetchGrowth();
+  }
+
+  Future<Map<String, dynamic>?> fetchGrowth() async {
+    final baseUrl = dotenv.env['BASE_URL']!;
+    final url = Uri.parse('$baseUrl/footprint/main');
+    final token = Provider.of<AppState>(context, listen: false).accessToken;
+
+    final resp = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'authorization': 'Bearer $token',
+      },
+    );
+
+    if (resp.statusCode == 200) {
+      final body = json.decode(utf8.decode(resp.bodyBytes));
+      return body['status'] == true
+          ? body['data']['growth'] as Map<String, dynamic>?
+          : throw Exception(body['message']);
+    }
+    throw Exception('성장 정보 조회 실패 (HTTP ${resp.statusCode})');
+  }
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, constraints) {
-      double fontSize = constraints.maxHeight < 150 ? 11.0 : 13.0;
-      double spacing = constraints.maxHeight < 150 ? 2.0 : 2.0;
-      double iconSize = constraints.maxHeight < 150 ? 8.0 : 10.0;
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: _growthFuture,
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          );
+        }
+        if (snap.hasError) {
+          return Center(
+            child: Text(
+              '성장 정보를 불러올 수 없습니다',
+              style: TextStyle(color: Colors.red[400], fontSize: 16),
+            ),
+          );
+        }
 
+        final growth = snap.data;
+
+        // 항상 스크롤 처리
+        return SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+          child: growth == null
+              ? Center(
+                  child: Text(
+                    '아직 기록된 등산 정보가 없습니다.\n등산을 하고 내 등산을 기록 해보세요!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey[700], fontSize: 15),
+                  ),
+                )
+              : _buildGrowthContent(growth),
+        );
+      },
+    );
+  }
+
+  Widget _buildGrowthContent(Map<String, dynamic> growth) {
+    final hasPast = growth['pastTime'] != null;
+    final name = growth['mountainName'] as String;
+    final date = growth['date'] as String;
+    final recent = growth['recentTime'] as int;
+
+    // pastTime이 null일 땐 recentTime만
+    if (!hasPast) {
       return Column(
-        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 등산 성장 일지 버튼
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(
-                height: 24,
-                width: 80,
-                child: ElevatedButton(
-                  onPressed: () {
-                    debugPrint('등산 성장 일지 버튼 클릭');
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.cyan,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    textStyle: const TextStyle(
-                        fontSize: 10, fontWeight: FontWeight.bold),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  child: const Text('등산 성장 일지'),
-                ),
+          Center(
+            child: ElevatedButton(
+              onPressed: () => debugPrint('최근 등산'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF29B6F6),
+                shape: const StadiumBorder(),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               ),
-            ],
-          ),
-
-          const SizedBox(height: 10),
-
-          // 성장 정보
-          Expanded(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.zero,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '한라산',
-                    style: TextStyle(
-                      fontSize: fontSize,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[800],
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
-                  Text(
-                    '(25.04.23)',
-                    style: TextStyle(
-                      fontSize: fontSize - 1,
-                      color: Colors.grey[600],
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
-                  SizedBox(height: spacing),
-                  const Text(
-                    '걸린 시간',
-                    style: TextStyle(color: Colors.red, fontSize: 10),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
-                  const Text(
-                    '2h 26m → 2h 10m',
-                    style: TextStyle(fontSize: 10),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(right: 4.0),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.arrow_upward,
-                            color: Colors.green, size: iconSize),
-                        const Flexible(
-                          child: Text(
-                            ' 16분 단축',
-                            style: TextStyle(color: Colors.green, fontSize: 10),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: spacing),
-                  const Text(
-                    '총 등반 거리',
-                    style: TextStyle(color: Colors.blue, fontSize: 10),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
-                  const Text(
-                    '8.3km',
-                    style: TextStyle(fontSize: 10),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
-                ],
-              ),
+              child: const Text('최근 등산',
+                  style: TextStyle(fontSize: 14, color: Colors.white)),
             ),
           ),
+          const SizedBox(height: 8),
+          Text(name,
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey.shade800)),
+          const SizedBox(height: 4),
+          Text('($date)',
+              style: TextStyle(fontSize: 16, color: Colors.grey.shade600)),
+          const SizedBox(height: 8),
+          const Text('걸린 시간',
+              style: TextStyle(fontSize: 14, color: Color(0xFFEF5350))),
+          const SizedBox(height: 4),
+          Text('$recent분',
+              style: const TextStyle(fontSize: 16, color: Colors.black87)),
         ],
       );
-    });
+    }
+
+    // pastTime도 있는 일반 케이스
+    final past = growth['pastTime'] as int;
+    final diff = (past - recent).abs();
+    final improved = recent < past;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Center(
+          child: ElevatedButton(
+            onPressed: () => debugPrint('최근 등산'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF29B6F6),
+              shape: const StadiumBorder(),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            ),
+            child: const Text('최근 등산',
+                style: TextStyle(fontSize: 14, color: Colors.white)),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(name,
+            style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey.shade800)),
+        const SizedBox(height: 4),
+        Text('($date)',
+            style: TextStyle(fontSize: 16, color: Colors.grey.shade600)),
+        const SizedBox(height: 8),
+        const Text('걸린 시간',
+            style: TextStyle(fontSize: 14, color: Color(0xFFEF5350))),
+        const SizedBox(height: 4),
+        Text('$past → $recent',
+            style: const TextStyle(fontSize: 16, color: Colors.black87)),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Icon(improved ? Icons.arrow_upward : Icons.arrow_downward,
+                color: improved
+                    ? const Color(0xFF66BB6A)
+                    : const Color(0xFFF44336),
+                size: 16),
+            const SizedBox(width: 6),
+            Text('$diff분 ${improved ? '단축' : '지연'}',
+                style: TextStyle(
+                    fontSize: 14,
+                    color: improved
+                        ? const Color(0xFF66BB6A)
+                        : const Color(0xFFF44336))),
+          ],
+        ),
+        const SizedBox(height: 8),
+        const Text('총 등반 거리',
+            style: TextStyle(fontSize: 14, color: Color(0xFF26A69A))),
+        const SizedBox(height: 4),
+        Text('${growth['distance'] ?? '8.3'}km',
+            style: const TextStyle(fontSize: 16, color: Colors.black87)),
+      ],
+    );
   }
 }
