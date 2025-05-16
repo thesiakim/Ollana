@@ -174,7 +174,9 @@ async def recommend(user_id:str, db: Session = Depends(get_db)):
         if not matched.empty:
             info = matched.iloc[0]
             rec_data["location"] = info.get("mountain_loc")
-        
+            rec_data["level"] = info.get("level")
+            rec_data["height"] = info.get("mountain_height")
+
     return JSONResponse({
         "cluster": int(cluster_label),
         "recommendations": recommendations
@@ -216,6 +218,8 @@ async def recommend_by_keyword(keyword: str = Body(..., embed=True)):
         if not matched.empty:
             info = matched.iloc[0]
             rec_data["location"] = info.get("mountain_loc")
+            rec_data["level"] = info.get("level")
+            rec_data["height"] = info.get("mountain_height")
     return JSONResponse({
         "keyword": keyword,
         "recommendations": recommendations
@@ -244,6 +248,9 @@ async def recommend_by_region(region: str = Body(..., embed=True)):
         if not matched.empty:
             info = matched.iloc[0]
             rec_data["location"] = info.get("mountain_loc")
+            rec_data["level"] = info.get("level")
+            rec_data["height"] = info.get("mountain_height")
+            
     return JSONResponse({
         "region": region,
         "recommendations": recommendations
