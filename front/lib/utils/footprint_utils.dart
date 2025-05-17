@@ -9,10 +9,6 @@ String formatDateForApi(DateTime date) {
   return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 }
 
-// String displayDate(DateTime? date) {
-//   return date != null ? formatDateForApi(date) : '선택';
-// }
-
 String displayDate(DateTime? date) {
   if (date == null) return '선택';
   return DateFormat('yyyy-MM-dd').format(date);

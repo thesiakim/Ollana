@@ -219,7 +219,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
         });
 
         if (detailResponse.isExceed) {
-          _showSnackBar('설정하신 기간의 등산 기록이 5개를 초과하여 최근 5개만 확인 가능합니다');
+          _showSnackBar('설정하신 기간의 등산 기록이 5개를 초과하여\n종료일 기준 최근 5개만 확인 가능합니다');
         } else if (detailResponse.records.isEmpty) {
           _showSnackBar('설정하신 기간의 등산 기록이 존재하지 않습니다');
         }
@@ -254,11 +254,45 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
     ScaffoldMessenger.of(context).removeCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
-        duration: Duration(seconds: 3),
+        content: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Icon(
+                message.contains('존재하지 않습니다') 
+                  ? Icons.info_outline 
+                  : Icons.notifications_none,
+                color: Colors.white,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: const Color(0xFF52A486),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        duration: const Duration(seconds: 2), // 더 짧은 시간으로 수정
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        margin: EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        elevation: 3,
+        margin: const EdgeInsets.all(16),
+        // 확인 버튼 제거
       ),
     );
   }
@@ -400,17 +434,18 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.white,
-        title: Text(
-          mountainName != null ? '$mountainName 발자취' : '발자취',
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-          ),
+      elevation: 0,
+      backgroundColor: Colors.white,
+      scrolledUnderElevation: 0, // 이 값을 0으로 설정
+      title: Text(
+        mountainName != null ? '$mountainName 발자취' : '발자취',
+        style: TextStyle(
+          color: Colors.black,
+          fontWeight: FontWeight.bold,
         ),
-        centerTitle: true,
       ),
+      centerTitle: true,
+    ),
       // 물음표 아이콘을 위한 FloatingActionButton 추가
       floatingActionButton: Builder(
         builder: (context) => FloatingActionButton(
@@ -672,7 +707,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                                                     fontSize: 10,
                                                     fontWeight: FontWeight.bold,
                                                     color: isSelected
-                                                        ? Colors.orange
+                                                        ? const Color(0xFF52A486) 
                                                         : Colors.black,
                                                   ),
                                                 ),

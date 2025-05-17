@@ -264,16 +264,24 @@ class _SecondStatusInfoState extends State<SecondStatusInfo> {
         // 케이스 3: 등산 기록이 없는 경우 (growth가 null)
         if (growth == null) {
           return Center(
-            child: SizedBox(
-              height: 130,
-              child: Text(
-                '등산 기록이 없어요',
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.landscape_outlined,
+                  size: 48,
+                  color: Colors.grey[400],
                 ),
-              ),
+                const SizedBox(height: 12),
+                Text(
+                  '등산 기록이 없어요',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
           );
         }
