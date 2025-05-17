@@ -32,11 +32,154 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
   Map<int, CompareResponse?> _compareDataByPath = {};
   Map<int, DateTime?> _startDatesByPath = {};
   Map<int, DateTime?> _endDatesByPath = {};
+  bool _isTooltipVisible = false; // 툴팁 표시 여부를 관리하는 상태
+  OverlayEntry? _overlayEntry; // 오버레이 엔트리
 
   @override
   void initState() {
     super.initState();
     _fetchFootprintDetail();
+  }
+
+  // dispose 메서드 추가
+  @override
+  void dispose() {
+    _removeTooltip();
+    super.dispose();
+  }
+
+  // 툴팁 토글 함수
+  void _toggleTooltip(BuildContext context) {
+    setState(() {
+      if (_isTooltipVisible) {
+        _removeTooltip(); 
+      } else {
+        _showTooltip(context);
+      }
+    });
+  }
+
+  void _showTooltip(BuildContext context) {
+    _removeTooltip(); // 기존 툴팁이 있다면 제거
+
+    _overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        right: 28, // 오른쪽에서의 거리
+        bottom: 85, // 하단에서의 거리 (FAB 위에 위치하도록)
+        child: Material(
+          color: Colors.transparent,
+          child: AnimatedOpacity(
+            duration: Duration(milliseconds: 200),
+            opacity: 1.0,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Container(
+                  width: 265, 
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: Color(0xFF52A486), 
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 12,
+                        offset: Offset(0, 5),
+                        spreadRadius: 2,
+                      ),
+                    ],
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color(0xFF5CB89A),
+                        Color(0xFF3D8A6B),
+                      ],
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.info_outline,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
+                          SizedBox(width: 10),
+                          Text(
+                            '도움말',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 12),
+                      Padding(
+                        padding: EdgeInsets.only(left: 4),
+                        child: Text(
+                          '그래프의 날짜를 클릭해서 상세 내역과 비교 결과를 조회해보세요',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // 말풍선 꼬리 부분 추가
+                Padding(
+                  padding: EdgeInsets.only(right: 15.0),
+                  child: ClipPath(
+                    clipper: TriangleClipper(),
+                    child: Container(
+                      width: 15,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Color(0xFF3D8A6B),
+                            Color(0xFF3D8A6B),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    Overlay.of(context).insert(_overlayEntry!);
+    _isTooltipVisible = true;
+  }
+
+  // 툴팁 제거 함수
+  void _removeTooltip() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+    _isTooltipVisible = false;
   }
 
   Future<void> _fetchFootprintDetail({int? pathId}) async {
@@ -258,16 +401,50 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: const Color(0xFF52A486),
+        backgroundColor: Colors.white,
         title: Text(
           mountainName != null ? '$mountainName 발자취' : '발자취',
           style: TextStyle(
-            color: Colors.white,
+            color: Colors.black,
             fontWeight: FontWeight.bold,
           ),
         ),
         centerTitle: true,
       ),
+      // 물음표 아이콘을 위한 FloatingActionButton 추가
+      floatingActionButton: Builder(
+        builder: (context) => FloatingActionButton(
+          onPressed: () {
+            _toggleTooltip(context);
+          },
+          backgroundColor: const Color(0xFF52A486),
+          foregroundColor: Colors.white,
+          elevation: 4.0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.0),
+          ),
+          child: AnimatedSwitcher(
+            duration: Duration(milliseconds: 300),
+            transitionBuilder: (Widget child, Animation<double> animation) {
+              return RotationTransition(
+                turns: animation,
+                child: ScaleTransition(
+                  scale: animation,
+                  child: child,
+                ),
+              );
+            },
+            child: Icon(
+              _isTooltipVisible ? Icons.close : Icons.help_outline,
+              key: ValueKey<bool>(_isTooltipVisible),
+              color: Colors.white,
+              size: 24,
+            ),
+          ),
+          mini: true,
+        ),
+      ),
+
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -673,4 +850,44 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
       ),
     );
   }
+
+    // 도움말 메시지를 표시하는 함수 추가
+  void _showHelpMessage(String message) {
+    ScaffoldMessenger.of(context).removeCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.info_outline, color: Colors.white),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(fontSize: 15),
+              ),
+            ),
+          ],
+        ),
+        duration: Duration(seconds: 5),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        margin: EdgeInsets.fromLTRB(16, 0, 16, 70), // 하단에 충분한 여백을 두어 FloatingActionButton과 겹치지 않도록 설정
+        backgroundColor: Colors.black.withOpacity(0.8),
+      ),
+    );
+  }
 }
+
+class TriangleClipper extends CustomClipper<Path> {
+    @override
+    Path getClip(Size size) {
+      final path = Path();
+      path.lineTo(size.width, 0);
+      path.lineTo(size.width / 2, size.height);
+      path.close();
+      return path;
+    }
+
+    @override
+    bool shouldReclip(CustomClipper<Path> oldClipper) => false;
+  }

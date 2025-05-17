@@ -486,13 +486,13 @@ Future<void> _initializeData() async {
     // 점수에 따른 메시지와 색상 설정
     if (_climbingIndex > 0) {  // 등산지수가 있는 경우에만 메시지 설정
       if (_climbingIndex < 50) {
-        _climateMessage = '오늘은 등산하기 좋지 않아요';
+        _climateMessage = '현재 등산 지수는 $_climbingIndex점!  최악의 등산 날씨에요';
         _climateMessageColor = const Color(0xFFEF5350); // 빨강
       } else if (_climbingIndex < 80) {
-        _climateMessage = '오늘은 적당한 등산 환경이에요';
+        _climateMessage = '현재 등산 지수는 $_climbingIndex점!  무난한 등산 날씨에요';
         _climateMessageColor = const Color(0xFFFF9800); // 주황
       } else {
-        _climateMessage = '오늘은 등산하기 좋은 날씨네요';
+        _climateMessage = '현재 등산 지수는 $_climbingIndex점!  최고의 등산 날씨에요';
         _climateMessageColor = const Color(0xFF52A486); // 초록
       }
     }

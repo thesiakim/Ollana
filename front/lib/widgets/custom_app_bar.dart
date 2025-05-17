@@ -156,7 +156,7 @@ class _CustomAppBarState extends State<CustomAppBar> {
             child: Text(
               _title[i],
               style: const TextStyle(
-                fontFamily: 'Dovemayo',
+                fontFamily: 'EVE',
                 fontWeight: FontWeight.w800,
                 fontSize: 25,
                 color: Colors.white,
