@@ -32,11 +32,96 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
   Map<int, CompareResponse?> _compareDataByPath = {};
   Map<int, DateTime?> _startDatesByPath = {};
   Map<int, DateTime?> _endDatesByPath = {};
+  bool _isTooltipVisible = false; // 툴팁 표시 여부를 관리하는 상태
+  OverlayEntry? _overlayEntry; // 오버레이 엔트리
 
   @override
   void initState() {
     super.initState();
     _fetchFootprintDetail();
+  }
+
+  // dispose 메서드 추가
+  @override
+  void dispose() {
+    _removeTooltip();
+    super.dispose();
+  }
+
+  // 툴팁 토글 함수
+  void _toggleTooltip(BuildContext context) {
+    setState(() {
+      if (_isTooltipVisible) {
+        _removeTooltip(); 
+      } else {
+        _showTooltip(context);
+      }
+    });
+  }
+
+  // 툴팁 표시 함수
+  void _showTooltip(BuildContext context) {
+    _removeTooltip(); // 기존 툴팁이 있다면 제거
+
+    _overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        right: 28, // 오른쪽에서의 거리
+        bottom: 85, // 하단에서의 거리 (FAB 위에 위치하도록)
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            width: 250,
+            padding: EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey[800],
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 10,
+                  offset: Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.white, size: 18),
+                    SizedBox(width: 8),
+                    Text(
+                      '도움말',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8),
+                Text(
+                  '그래프의 날짜를 클릭해서\n상세 내역을 조회해보세요',
+                  style: TextStyle(color: Colors.white, fontSize: 14),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    Overlay.of(context).insert(_overlayEntry!);
+    _isTooltipVisible = true;
+  }
+
+  // 툴팁 제거 함수
+  void _removeTooltip() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+    _isTooltipVisible = false;
   }
 
   Future<void> _fetchFootprintDetail({int? pathId}) async {
@@ -267,6 +352,20 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
           ),
         ),
         centerTitle: true,
+      ),
+      // 물음표 아이콘을 위한 FloatingActionButton 추가
+      floatingActionButton: Builder(
+        builder: (context) => FloatingActionButton(
+          onPressed: () {
+            _toggleTooltip(context);
+          },
+          backgroundColor: const Color(0xFF52A486),
+          child: Icon(
+            _isTooltipVisible ? Icons.close : Icons.help_outline,
+            color: Colors.white,
+          ),
+          mini: true, // 좀 더 작은 크기로 설정
+        ),
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -673,4 +772,44 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
       ),
     );
   }
+
+    // 도움말 메시지를 표시하는 함수 추가
+  void _showHelpMessage(String message) {
+    ScaffoldMessenger.of(context).removeCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.info_outline, color: Colors.white),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(fontSize: 15),
+              ),
+            ),
+          ],
+        ),
+        duration: Duration(seconds: 5),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        margin: EdgeInsets.fromLTRB(16, 0, 16, 70), // 하단에 충분한 여백을 두어 FloatingActionButton과 겹치지 않도록 설정
+        backgroundColor: Colors.black.withOpacity(0.8),
+      ),
+    );
+  }
 }
+
+class TriangleClipper extends CustomClipper<Path> {
+    @override
+    Path getClip(Size size) {
+      final path = Path();
+      path.lineTo(size.width, 0);
+      path.lineTo(size.width / 2, size.height);
+      path.close();
+      return path;
+    }
+
+    @override
+    bool shouldReclip(CustomClipper<Path> oldClipper) => false;
+  }
