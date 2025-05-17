@@ -8,6 +8,7 @@ import '../screens/recommend/theme_recommendation_screen.dart';
 import '../screens/recommend/location_recommendation_screen.dart';
 import '../screens/user/survey_screen.dart';
 import './status_container.dart';
+import '../../screens/user/login_screen.dart';
 
 class HomeBody extends StatefulWidget {
   const HomeBody({super.key});
@@ -678,7 +679,9 @@ Future<void> _initializeData() async {
           const SizedBox(height: 8),
           ElevatedButton(
             onPressed: () {
-              // 로그인 화면으로 이동
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+              );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF64B792),

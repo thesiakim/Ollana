@@ -1,4 +1,3 @@
-// lib/widgets/status_container.dart - 더 예쁜 디자인으로 개선
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
