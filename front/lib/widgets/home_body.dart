@@ -432,7 +432,7 @@ Future<void> _initializeData() async {
                             child: _buildSmallRecommendationCard(
                               title: '지역별 산 추천',
                               icon: Icons.map_rounded,
-                              backgroundColor: const Color(0xFF5C6BC0),
+                              backgroundColor: const Color.fromARGB(255, 147, 193, 168),
                               onTap: () => Navigator.push(
                                 context,
                                 MaterialPageRoute(
