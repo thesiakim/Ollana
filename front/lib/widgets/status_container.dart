@@ -138,29 +138,11 @@ class _StatusContainerState extends State<StatusContainer> {
                   Container(
                     width: 80,
                     height: 80,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      // 그림자와 테두리 효과 강화
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF52A486).withOpacity(0.2),
-                          blurRadius: 10,
-                          spreadRadius: 0,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                      border: Border.all(
-                        color: const Color(0xFF52A486).withOpacity(0.1),
-                        width: 2,
-                      ),
-                    ),
                     padding: const EdgeInsets.all(2),
                     child: ClipOval(
                       child: Image.asset(badgeAsset, fit: BoxFit.cover),
                     ),
                   ),
-                  
                   const SizedBox(height: 12),
                   
                   // 등급명 + 경험치 값 (중간)

@@ -59,7 +59,6 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
     });
   }
 
-  // 툴팁 표시 함수
   void _showTooltip(BuildContext context) {
     _removeTooltip(); // 기존 툴팁이 있다면 제거
 
@@ -69,42 +68,101 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
         bottom: 85, // 하단에서의 거리 (FAB 위에 위치하도록)
         child: Material(
           color: Colors.transparent,
-          child: Container(
-            width: 250,
-            padding: EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.grey[800],
-              borderRadius: BorderRadius.circular(8),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 10,
-                  offset: Offset(0, 5),
-                ),
-              ],
-            ),
+          child: AnimatedOpacity(
+            duration: Duration(milliseconds: 200),
+            opacity: 1.0,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Row(
-                  children: [
-                    Icon(Icons.info_outline, color: Colors.white, size: 18),
-                    SizedBox(width: 8),
-                    Text(
-                      '도움말',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                Container(
+                  width: 265, 
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: Color(0xFF52A486), 
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 12,
+                        offset: Offset(0, 5),
+                        spreadRadius: 2,
+                      ),
+                    ],
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color(0xFF5CB89A),
+                        Color(0xFF3D8A6B),
+                      ],
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.info_outline,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
+                          SizedBox(width: 10),
+                          Text(
+                            '도움말',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 12),
+                      Padding(
+                        padding: EdgeInsets.only(left: 4),
+                        child: Text(
+                          '그래프의 날짜를 클릭해서 상세 내역과 비교 결과를 조회해보세요',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // 말풍선 꼬리 부분 추가
+                Padding(
+                  padding: EdgeInsets.only(right: 15.0),
+                  child: ClipPath(
+                    clipper: TriangleClipper(),
+                    child: Container(
+                      width: 15,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Color(0xFF3D8A6B),
+                            Color(0xFF3D8A6B),
+                          ],
+                        ),
                       ),
                     ),
-                  ],
-                ),
-                SizedBox(height: 8),
-                Text(
-                  '그래프의 날짜를 클릭해서\n상세 내역을 조회해보세요',
-                  style: TextStyle(color: Colors.white, fontSize: 14),
+                  ),
                 ),
               ],
             ),
@@ -343,11 +401,11 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: const Color(0xFF52A486),
+        backgroundColor: Colors.white,
         title: Text(
           mountainName != null ? '$mountainName 발자취' : '발자취',
           style: TextStyle(
-            color: Colors.white,
+            color: Colors.black,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -360,13 +418,33 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
             _toggleTooltip(context);
           },
           backgroundColor: const Color(0xFF52A486),
-          child: Icon(
-            _isTooltipVisible ? Icons.close : Icons.help_outline,
-            color: Colors.white,
+          foregroundColor: Colors.white,
+          elevation: 4.0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.0),
           ),
-          mini: true, // 좀 더 작은 크기로 설정
+          child: AnimatedSwitcher(
+            duration: Duration(milliseconds: 300),
+            transitionBuilder: (Widget child, Animation<double> animation) {
+              return RotationTransition(
+                turns: animation,
+                child: ScaleTransition(
+                  scale: animation,
+                  child: child,
+                ),
+              );
+            },
+            child: Icon(
+              _isTooltipVisible ? Icons.close : Icons.help_outline,
+              key: ValueKey<bool>(_isTooltipVisible),
+              color: Colors.white,
+              size: 24,
+            ),
+          ),
+          mini: true,
         ),
       ),
+
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
