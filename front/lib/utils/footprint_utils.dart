@@ -35,7 +35,7 @@ String formatGrowthStatus(String status) {
     case 'IMPROVING':
       return '기록이 성장했어요!';
     case 'REGRESSING':
-      return '기록이 부진해요!';
+      return '기록이 떨어졌어요!';
     case 'STABLE':
       return '기록이 비슷해요!';
     default:
