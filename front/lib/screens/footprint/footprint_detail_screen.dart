@@ -219,9 +219,9 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
         });
 
         if (detailResponse.isExceed) {
-          _showSnackBar('설정하신 기간의 등산 기록이 5개를 초과하여\n종료일 기준 최근 5개만 확인 가능합니다');
+          _showSnackBar('설정하신 기간의 등산 기록이 5개를 초과하여\n종료일 기준 최근 5개만 조회했어요');
         } else if (detailResponse.records.isEmpty) {
-          _showSnackBar('설정하신 기간의 등산 기록이 존재하지 않습니다');
+          _showSnackBar('설정하신 기간의 등산 기록이 존재하지 않아요');
         }
       } else {
         final detailResponse = await service.getFootprintDetail(
@@ -1045,26 +1045,36 @@ Widget _buildSingleRecordMetric(IconData icon, Color color, String value, String
 
 Widget _buildCompactMetric(IconData icon, Color color, String value, String label) {
   return Expanded(
-    child: Column(
+    child: Row(
       mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(icon, color: color, size: 22),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.bold,
-            color: Colors.grey[800],
+        Icon(icon, color: color, size: 20),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.grey[600],
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[800],
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
-        ),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 10,
-            color: Colors.grey[600],
-          ),
-          textAlign: TextAlign.center,
         ),
       ],
     ),

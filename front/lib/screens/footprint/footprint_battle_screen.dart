@@ -510,9 +510,10 @@ class _FootprintBattleScreenState extends State<FootprintBattleScreen> {
     );
   }
 
-  Color _getResultBackgroundColor(String result) {
-    return const Color(0xFF52A486).withOpacity(0.1);
-  }
+Color _getResultBackgroundColor(String result) {
+  // 테마 색상(0xFF52A486)의 채도와 명도를 낮춘 버전 사용
+  return const Color(0xFF52A486).withOpacity(0.1);
+}
 
   Color _getResultForegroundColor(String result) {
     switch (result) {
