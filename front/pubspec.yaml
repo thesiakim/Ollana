@@ -128,6 +128,9 @@ flutter:
     - family: Dovemayo
       fonts:
         - asset: assets/fonts/Dovemayo_wild.ttf
+    - family: EVE
+      fonts:
+        - asset: assets/fonts/EVE.otf
               # weight: 500
   #       - asset: fonts/Schyler-Italic.ttf
   #         style: italic
