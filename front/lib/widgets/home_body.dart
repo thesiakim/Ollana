@@ -235,7 +235,7 @@ Future<void> _initializeData() async {
               
               // 내용
               const Text(
-                '맞춤형 산 추천을 받으시려면\n간단한 설문이 필요합니다',
+                '맞춤형 산 추천을 받으시려면\n간단한 설문이 필요해요',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,

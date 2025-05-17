@@ -264,16 +264,24 @@ class _SecondStatusInfoState extends State<SecondStatusInfo> {
         // 케이스 3: 등산 기록이 없는 경우 (growth가 null)
         if (growth == null) {
           return Center(
-            child: SizedBox(
-              height: 130,
-              child: Text(
-                '등산 기록이 없어요',
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.landscape_outlined,
+                  size: 48,
+                  color: Colors.grey[400],
                 ),
-              ),
+                const SizedBox(height: 12),
+                Text(
+                  '등산 기록이 없어요',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
           );
         }
@@ -404,9 +412,9 @@ class _SecondStatusInfoState extends State<SecondStatusInfo> {
                     ],
                   ],
                 ),
-                
-                // 시간 차이 표시 (별도 행으로 분리)
-                if (hasTimeDiff) ...[
+
+                // 첫 등산 메시지 또는 시간 차이 표시 
+                if (hasPast && hasTimeDiff) ...[
                   const SizedBox(height: 6),
                   Row(
                     children: [
@@ -427,6 +435,29 @@ class _SecondStatusInfoState extends State<SecondStatusInfo> {
                             color: isImproved 
                                 ? const Color(0xFF4CAF50) 
                                 : const Color(0xFFE57373),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ] else if (!hasPast) ...[
+                  // pastTime이 null인 경우 첫 등산 메시지
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const SizedBox(width: 22), 
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE8F5E9), // 연한 초록 배경
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          '이 코스는 첫 등산이네요!',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF4CAF50),
                           ),
                         ),
                       ),
