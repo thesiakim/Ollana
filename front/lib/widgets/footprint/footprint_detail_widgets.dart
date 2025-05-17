@@ -159,11 +159,32 @@ Widget buildCompareResult(CompareResponse compareData) {
 }
 
 Widget buildMetricCard(String label, String value, String unit, Color bgColor, Color textColor, IconData icon) {
+  // 통일된 텍스트 색상
+  final Color uniformTextColor = Colors.grey[800]!;
+  
+  // 아이콘에 따라 buildComparisonItemCute에서 사용하는 것과 동일한 배경색과 아이콘 색상 결정
+  Color updatedBgColor;
+  Color updatedIconColor;
+  
+  if (icon == Icons.favorite) {
+    // 최고 심박수
+    updatedBgColor = Colors.red[50]!;
+    updatedIconColor = Colors.red[600]!;
+  } else if (icon == Icons.monitor_heart_outlined) {
+    // 평균 심박수
+    updatedBgColor = Colors.blue[50]!;
+    updatedIconColor = Colors.blue[600]!;
+  } else {
+    // 소요 시간
+    updatedBgColor = Colors.green[50]!;
+    updatedIconColor = Colors.green[600]!;
+  }
+  
   return Container(
-    width: 100,
+    width: 98,
     padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
     decoration: BoxDecoration(
-      color: bgColor,
+      color: updatedBgColor, 
       borderRadius: BorderRadius.circular(12),
       boxShadow: [
         BoxShadow(
@@ -174,44 +195,54 @@ Widget buildMetricCard(String label, String value, String unit, Color bgColor, C
         ),
       ],
     ),
-    child: Column(
+    child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, color: textColor, size: 22),
-        const SizedBox(height: 8),
-        if (label.isNotEmpty)
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: textColor,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        const SizedBox(height: 4),
-        RichText(
-          text: TextSpan(
+        Icon(icon, color: updatedIconColor, size: 15), 
+        const SizedBox(width: 6),
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              TextSpan(
-                text: value,
+              Text(
+                icon == Icons.favorite 
+                    ? '최고 심박수'
+                    : icon == Icons.monitor_heart_outlined
+                        ? '평균 심박수'
+                        : '소요 시간',
                 style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: textColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: uniformTextColor,
                 ),
+                overflow: TextOverflow.ellipsis,
               ),
-              TextSpan(
-                text: ' $unit',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.normal,
-                  color: textColor.withOpacity(0.8),
+              RichText(
+                text: TextSpan(
+                  children: [
+                    TextSpan(
+                      text: value,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: uniformTextColor,
+                      ),
+                    ),
+                    TextSpan(
+                      text: ' $unit',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.normal,
+                        color: uniformTextColor.withOpacity(0.8),
+                      ),
+                    ),
+                  ],
                 ),
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
-          textAlign: TextAlign.center,
         ),
       ],
     )
