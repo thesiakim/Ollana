@@ -545,15 +545,6 @@ Future<void> _initializeData() async {
                             letterSpacing: -0.5,
                           ),
                         ),
-                        TextSpan(
-                          text: ' 등산',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF666666),
-                            letterSpacing: -0.5,
-                          ),
-                        ),
                       ],
                     ),
                   ),
@@ -571,7 +562,7 @@ Future<void> _initializeData() async {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    '오늘은 어떤 산행을 계획하고 계신가요?',
+                    '어떤 산행을 계획하고 계신가요?',
                     style: TextStyle(
                       fontSize: 16,
                       color: const Color(0xFF666666),
@@ -646,15 +637,6 @@ Future<void> _initializeData() async {
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF64B792),
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                        TextSpan(
-                          text: ' 등산',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF666666),
                             letterSpacing: -0.5,
                           ),
                         ),
@@ -751,7 +733,7 @@ Future<void> _initializeData() async {
           ),
           const SizedBox(height: 20),
           const Text(
-            '로그인을 하고 맞춤형 산 추천을\n받아보세요',
+            '로그인을 하고\n맞춤형 산 추천을 받아보세요',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 16,
@@ -761,16 +743,6 @@ Future<void> _initializeData() async {
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            '취향과 경험에 맞는 완벽한 산을 찾아드립니다',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              color: Color(0xFF666666),
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 24),
           ElevatedButton(
             onPressed: () {
               // 로그인 화면으로 이동

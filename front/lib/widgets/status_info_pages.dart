@@ -297,10 +297,10 @@ class _SecondStatusInfoState extends State<SecondStatusInfo> {
     final int timeDiff = hasTimeDiff ? (past - recent).abs() : 0;
     final bool isImproved = hasTimeDiff && (recent < past);
     
-    // 날짜와 시간 텍스트 스타일 (동일하게 설정)
+    // 날짜와 시간 텍스트 스타일 
     final textStyle = TextStyle(
       fontSize: 13,
-      color: Colors.grey[600],
+      color: Colors.grey[800],
     );
     
     return SizedBox(
@@ -343,12 +343,12 @@ class _SecondStatusInfoState extends State<SecondStatusInfo> {
                 
                 const SizedBox(height: 6),
                 
-                // 날짜 (더 깔끔한 아이콘으로 변경)
+                // 날짜 
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     const Icon(
-                      Icons.calendar_today_outlined, // 더 깔끔한 캘린더 아이콘
+                      Icons.calendar_today_outlined, 
                       size: 16,
                       color: Colors.grey,
                     ),
@@ -362,23 +362,23 @@ class _SecondStatusInfoState extends State<SecondStatusInfo> {
                 
                 const SizedBox(height: 6),
                 
-                // 시간 정보 (더 깔끔한 아이콘으로 변경, 텍스트 스타일 통일)
+                // 시간 정보 
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     const Icon(
-                      Icons.access_time_outlined, // 더 깔끔한 시계 아이콘
+                      Icons.access_time_outlined, 
                       size: 16,
                       color: Colors.grey,
                     ),
                     const SizedBox(width: 6),
                     
-                    // 케이스에 따른 시간 표시 (날짜와 동일한 스타일)
+                    // 케이스에 따른 시간 표시 
                     if (hasPast) ...[
                       // pastTime이 있는 경우
                       Text(
                         '$past분',
-                        style: textStyle, // 날짜와 동일한 스타일
+                        style: textStyle, 
                       ),
                       const SizedBox(width: 4),
                       
@@ -386,20 +386,20 @@ class _SecondStatusInfoState extends State<SecondStatusInfo> {
                       Icon(
                         Icons.arrow_forward,
                         size: 14,
-                        color: Colors.grey[400], // 연한 회색으로 변경
+                        color: Colors.grey[400], 
                       ),
                       const SizedBox(width: 4),
                       
                       // 현재 시간
                       Text(
                         '$recent분',
-                        style: textStyle, // 날짜와 동일한 스타일
+                        style: textStyle, 
                       ),
                     ] else ...[
                       // pastTime이 null인 경우 (현재 시간만 표시)
                       Text(
                         '$recent분',
-                        style: textStyle, // 날짜와 동일한 스타일
+                        style: textStyle, 
                       ),
                     ],
                   ],
@@ -410,7 +410,7 @@ class _SecondStatusInfoState extends State<SecondStatusInfo> {
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      const SizedBox(width: 22), // 시간 아이콘과 동일한 간격 유지
+                      const SizedBox(width: 22), 
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
