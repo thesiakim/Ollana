@@ -67,16 +67,20 @@ class _AiRecommendationScreenState extends State<AiRecommendationScreen> with Si
   }
 
   void _showDetailDialog(BuildContext context, Map<String, dynamic> mountain) {
+    // 산의 난이도에 따른 색상 가져오기
+    final level = mountain['level'] as String? ?? 'M';
+    final levelColor = RecommendationCard.getLevelColor(level);
+    
     showDialog(
       context: context,
       builder: (_) => MountainDetailDialog(
         mountain: mountain,
-        primaryColor: _primaryColor,
+        primaryColor: levelColor, // 난이도별 색상 적용
         textColor: _textColor,
       ),
     );
   }
-  
+    
   Widget _buildInfoCard({
     required IconData icon,
     required String title,

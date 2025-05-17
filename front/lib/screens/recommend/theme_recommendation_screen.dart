@@ -404,11 +404,15 @@ class _ThemeRecommendationScreenState extends State<ThemeRecommendationScreen>
                           mountain: rec,
                           index: i,
                           onTap: () {
+                            // 산의 난이도에 따른 색상 가져오기
+                            final level = rec['level'] as String? ?? 'M';
+                            final levelColor = ThemeRecommendationCard.getLevelColor(level);
+                            
                             showDialog(
                               context: context,
                               builder: (_) => MountainDetailDialog(
                                 mountain: rec,
-                                primaryColor: _primaryColor,
+                                primaryColor: levelColor, // 난이도별 색상 적용
                                 textColor: _textColor,
                               ),
                             );
