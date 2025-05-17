@@ -219,9 +219,9 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
         });
 
         if (detailResponse.isExceed) {
-          _showSnackBar('설정하신 기간의 등산 기록이 5개를 초과하여\n종료일 기준 최근 5개만 확인 가능합니다');
+          _showSnackBar('설정하신 기간의 등산 기록이 5개를 초과하여\n종료일 기준 최근 5개만 조회했어요');
         } else if (detailResponse.records.isEmpty) {
-          _showSnackBar('설정하신 기간의 등산 기록이 존재하지 않습니다');
+          _showSnackBar('설정하신 기간의 등산 기록이 존재하지 않아요');
         }
       } else {
         final detailResponse = await service.getFootprintDetail(
