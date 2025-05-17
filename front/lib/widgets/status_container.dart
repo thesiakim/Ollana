@@ -1,4 +1,4 @@
-// lib/widgets/status_container.dart - 원래 조건 유지, 디자인만 변경
+// lib/widgets/status_container.dart - 더 예쁜 디자인으로 개선
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -115,13 +115,13 @@ class _StatusContainerState extends State<StatusContainer> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24), // 더 둥글게
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 8,
+            color: const Color(0xFF64B792).withOpacity(0.15), // 녹색 계열 그림자
+            blurRadius: 10,
             spreadRadius: 0,
-            offset: const Offset(0, 3),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -135,21 +135,26 @@ class _StatusContainerState extends State<StatusContainer> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // 뱃지 (맨 위로 이동)
+                  // 뱃지 (맨 위)
                   Container(
                     width: 80,
                     height: 80,
                     decoration: BoxDecoration(
                       color: Colors.white,
                       shape: BoxShape.circle,
+                      // 그림자와 테두리 효과 강화
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF64B792).withOpacity(0.18),
-                          blurRadius: 8,
+                          color: const Color(0xFF52A486).withOpacity(0.2),
+                          blurRadius: 10,
                           spreadRadius: 0,
                           offset: const Offset(0, 3),
                         ),
                       ],
+                      border: Border.all(
+                        color: const Color(0xFF52A486).withOpacity(0.1),
+                        width: 2,
+                      ),
                     ),
                     padding: const EdgeInsets.all(2),
                     child: ClipOval(
@@ -157,20 +162,30 @@ class _StatusContainerState extends State<StatusContainer> {
                     ),
                   ),
                   
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   
-                  // 등급명 + 경험치 값 (중간으로 이동)
+                  // 등급명 + 경험치 값 (중간)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
+                      // 등급명 컨테이너
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 6, 
-                          vertical: 2
+                          horizontal: 8, 
+                          vertical: 3
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF64B792),
-                          borderRadius: BorderRadius.circular(6),
+                          // 그라데이션을 단일 색상으로 변경
+                          color: const Color(0xFF52A486), // 요청하신 색상으로 변경
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF52A486).withOpacity(0.25), // 그림자 색상도 일치시킴
+                              blurRadius: 4,
+                              spreadRadius: 0,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
                         child: Text(
                           koreanGrade,
@@ -182,12 +197,31 @@ class _StatusContainerState extends State<StatusContainer> {
                         ),
                       ),
                       const SizedBox(width: 6),
-                      Text(
-                        '${_exp}xp',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF555555),
+                      // 경험치 컨테이너 - 디자인 개선
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 4,
+                              spreadRadius: 0,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          '${_exp}xp',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF555555),
+                          ),
                         ),
                       ),
                     ],
@@ -212,7 +246,15 @@ class _StatusContainerState extends State<StatusContainer> {
               child: Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(20), // 더 둥글게
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.06),
+                      blurRadius: 8,
+                      spreadRadius: 0,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -223,6 +265,7 @@ class _StatusContainerState extends State<StatusContainer> {
                       child: PageView(
                         controller: widget.pageController,
                         onPageChanged: widget.onPageChanged,
+                        physics: const BouncingScrollPhysics(), // 스크롤 효과 추가
                         children: const [
                           FirstStatusInfo(),
                           SecondStatusInfo(),
@@ -230,7 +273,7 @@ class _StatusContainerState extends State<StatusContainer> {
                       ),
                     ),
                     
-                    // 페이지 인디케이터
+                    // 페이지 인디케이터 - 디자인 개선
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: Row(
@@ -240,13 +283,23 @@ class _StatusContainerState extends State<StatusContainer> {
                           return AnimatedContainer(
                             duration: const Duration(milliseconds: 300),
                             margin: const EdgeInsets.symmetric(horizontal: 4),
-                            width: isActive ? 16 : 8,
+                            width: isActive ? 20 : 8, // 활성 상태 더 넓게
                             height: 8,
                             decoration: BoxDecoration(
                               color: isActive 
-                                  ? const Color(0xFF64B792) 
+                                  ? const Color(0xFF4CAF50)  // 활성 색상 변경
                                   : Colors.grey[300],
                               borderRadius: BorderRadius.circular(4),
+                              boxShadow: isActive
+                                  ? [
+                                      BoxShadow(
+                                        color: const Color(0xFF4CAF50).withOpacity(0.3),
+                                        blurRadius: 4,
+                                        spreadRadius: 0,
+                                        offset: const Offset(0, 1),
+                                      ),
+                                    ]
+                                  : null,
                             ),
                           );
                         }),
