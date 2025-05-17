@@ -143,7 +143,7 @@ class _CustomAppBarState extends State<CustomAppBar> {
           ),
         ),
       ),
-      backgroundColor: Theme.of(context).colorScheme.primary,
+      backgroundColor: const Color(0xFF52A486),
       centerTitle: true,
       elevation: 0,
       title: Row(
