@@ -470,204 +470,137 @@ Future<void> _initializeData() async {
   }
   
   Widget _buildHeaderSection(AppState appState) {
-  // 디버깅 출력 추가
-  debugPrint('_buildHeaderSection: 등산지수 = ${appState.climbingIndex}');
-  
-  // 등산지수 메시지 관련 로직
-  String _climateMessage = '';
-  Color _climateMessageColor = Colors.grey;
-  
-  // 등산지수 값 가져오기
-  final int _climbingIndex = appState.climbingIndex ?? 0;
-  
-  // 디버깅 출력
-  debugPrint('등산지수 값: $_climbingIndex');
-  
-  // 점수에 따른 메시지와 색상 설정
-  if (_climbingIndex > 0) {  // 등산지수가 있는 경우에만 메시지 설정
-    if (_climbingIndex < 50) {
-      _climateMessage = '오늘은 등산하기 좋지 않아요';
-      _climateMessageColor = const Color(0xFFEF5350); // 빨강
-    } else if (_climbingIndex < 80) {
-      _climateMessage = '오늘은 적당한 등산 환경이에요';
-      _climateMessageColor = const Color(0xFFFF9800); // 주황
-    } else {
-      _climateMessage = '오늘은 등산하기 좋은 날씨네요';
-      _climateMessageColor = const Color(0xFF52A486); // 초록
+    debugPrint('_buildHeaderSection: 등산지수 = ${appState.climbingIndex}');
+    
+    // 등산지수 메시지 관련 로직
+    String _climateMessage = '';
+    Color _climateMessageColor = Colors.grey;
+    
+    // 등산지수 값 가져오기
+    final int _climbingIndex = appState.climbingIndex ?? 0;
+    
+    // 디버깅 출력
+    debugPrint('등산지수 값: $_climbingIndex');
+    
+    // 점수에 따른 메시지와 색상 설정
+    if (_climbingIndex > 0) {  // 등산지수가 있는 경우에만 메시지 설정
+      if (_climbingIndex < 50) {
+        _climateMessage = '오늘은 등산하기 좋지 않아요';
+        _climateMessageColor = const Color(0xFFEF5350); // 빨강
+      } else if (_climbingIndex < 80) {
+        _climateMessage = '오늘은 적당한 등산 환경이에요';
+        _climateMessageColor = const Color(0xFFFF9800); // 주황
+      } else {
+        _climateMessage = '오늘은 등산하기 좋은 날씨네요';
+        _climateMessageColor = const Color(0xFF52A486); // 초록
+      }
     }
-  }
-  
-  return Container(
-    padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: const BorderRadius.only(
-        bottomLeft: Radius.circular(24),
-        bottomRight: Radius.circular(24),
-      ),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.03),
-          blurRadius: 10,
-          spreadRadius: 0,
-          offset: const Offset(0, 2),
+    
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
         ),
-      ],
-    ),
-    child: appState.isLoggedIn
-        ? Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 앱 로고와 이름을 포함한 브랜드 표시
-              Row(
-                children: [
-                  // 로고 이미지
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Image.asset(
-                      'lib/assets/images/logo.png',
-                      height: 32,
-                      width: 32,
-                      fit: BoxFit.cover,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            spreadRadius: 0,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: appState.isLoggedIn
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 등산 관련 메시지
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.hiking_rounded,
+                      size: 18,
+                      color: Color(0xFF64B792),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  // 앱 이름
-                  RichText(
-                    text: const TextSpan(
-                      children: [
-                        TextSpan(
-                          text: 'ollana',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF64B792),
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              
-              // 등산 관련 메시지
-              Row(
-                children: [
-                  const Icon(
-                    Icons.hiking_rounded,
-                    size: 18,
-                    color: Color(0xFF64B792),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '어떤 산행을 계획하고 계신가요?',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: const Color(0xFF666666),
-                      height: 1.3,
-                    ),
-                  ),
-                ],
-              ),
-              
-              // 등산지수 메시지
-              if (_climbingIndex > 0) ...[
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _climateMessageColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        _climbingIndex < 50
-                            ? Icons.wb_cloudy_rounded
-                            : _climbingIndex < 80
-                                ? Icons.cloud_queue_rounded
-                                : Icons.wb_sunny_rounded,
-                        size: 20,
-                        color: _climateMessageColor,
+                    const SizedBox(width: 8),
+                    Text(
+                      '어떤 산행을 계획하고 계신가요?',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: const Color(0xFF666666),
+                        height: 1.3,
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        _climateMessage,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
+                    ),
+                  ],
+                ),
+                
+                // 등산지수 메시지
+                if (_climbingIndex > 0) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _climateMessageColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          _climbingIndex < 50
+                              ? Icons.wb_cloudy_rounded
+                              : _climbingIndex < 80
+                                  ? Icons.cloud_queue_rounded
+                                  : Icons.wb_sunny_rounded,
+                          size: 20,
                           color: _climateMessageColor,
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ],
-          )
-        : Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 앱 로고와 이름을 포함한 브랜드 표시
-              Row(
-                children: [
-                  // 로고 이미지
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Image.asset(
-                      'lib/assets/images/logo.png',
-                      height: 32,
-                      width: 32,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  // 앱 이름
-                  RichText(
-                    text: const TextSpan(
-                      children: [
-                        TextSpan(
-                          text: 'ollana',
+                        const SizedBox(width: 8),
+                        Text(
+                          _climateMessage,
                           style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF64B792),
-                            letterSpacing: -0.5,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: _climateMessageColor,
                           ),
                         ),
                       ],
                     ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 20),
-              
-              // 비로그인 상태 메시지
-              Text(
-                '로그인하고 맞춤형 산 추천 받기',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF333333),
+              ],
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 비로그인 상태 메시지
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.hiking_rounded,
+                      size: 18,
+                      color: Color(0xFF64B792),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '어떤 산행을 계획하고 계신가요?',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: const Color(0xFF666666),
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '지금 로그인하고 다양한 혜택을 누려보세요',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: const Color(0xFF666666),
-                ),
-              ),
-            ],
-          ),
-  );
-}
+              ],
+            ),
+    );
+  }
   
   Widget _buildSectionHeader({
     required String title, 
