@@ -1,9 +1,9 @@
-// lib/widgets/status_container.dart
+// lib/widgets/status_container.dart - 원래 조건 유지, 디자인만 변경
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http; // HTTP 요청
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart'; // .env 읽기용
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import '../models/app_state.dart';
 import 'status_info_pages.dart';
@@ -81,68 +81,143 @@ class _StatusContainerState extends State<StatusContainer> {
         return 'lib/assets/images/level_one.png';
     }
   }
+  
+  String _koreanGradeName(String grade) {
+    switch (grade) {
+      case 'SEED':
+        return '씨앗';
+      case 'SPROUT':
+        return '새싹';
+      case 'TREE':
+        return '나무';
+      case 'FRUIT':
+        return '열매';
+      case 'MOUNTAIN':
+        return '산';
+      default:
+        return '씨앗';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final badgeAsset = _assetForGrade(_grade);
+    final koreanGrade = _koreanGradeName(_grade);
 
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-      padding: const EdgeInsets.all(24),
+      margin: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [
-            Color(0xFFE8FCEC), // 연한 민트 그린
-            Color(0xFFD6F9D9), // 좀 더 짙은 민트
+            Color(0xFFE8F5EC), // 연한 민트 그린
+            Color(0xFFDCEFE2), // 연한 민트색
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black26,
-            blurRadius: 12,
-            offset: Offset(0, 6),
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 8,
+            spreadRadius: 0,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // 왼쪽: 등급 배지 + ExperienceBar
-            SizedBox(
-              width: 120,
+      child: Row(
+        children: [
+          // 왼쪽: 등급 배지 + 등급명 + 경험치 프로그레스 바
+          Padding(
+            padding: const EdgeInsets.all(18),
+            child: SizedBox(
+              width: 100,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // 뱃지
+                  // 뱃지 (맨 위로 이동)
                   Container(
-                    width: 70,
-                    height: 70,
-                    decoration: const BoxDecoration(shape: BoxShape.circle),
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF64B792).withOpacity(0.18),
+                          blurRadius: 8,
+                          spreadRadius: 0,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    padding: const EdgeInsets.all(2),
                     child: ClipOval(
                       child: Image.asset(badgeAsset, fit: BoxFit.cover),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  // 경험치 바
-                  ExperienceBar(currentXp: _exp, grade: _grade),
+                  
+                  const SizedBox(height: 10),
+                  
+                  // 등급명 + 경험치 값 (중간으로 이동)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6, 
+                          vertical: 2
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF64B792),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          koreanGrade,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${_exp}xp',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF555555),
+                        ),
+                      ),
+                    ],
+                  ),
+                  
+                  const SizedBox(height: 12),
+                  
+                  // 경험치 바 (맨 아래)
+                  SizedBox(
+                    width: 90,
+                    child: ExperienceBar(currentXp: _exp, grade: _grade),
+                  ),
                 ],
               ),
             ),
+          ),
 
-            const SizedBox(width: 24),
-
-            // 오른쪽: PageView + 인디케이터
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
+          // 오른쪽: PageView + 인디케이터
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(0, 16, 16, 16),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // 페이지뷰
                     SizedBox(
                       height: 140,
                       child: PageView(
@@ -154,30 +229,35 @@ class _StatusContainerState extends State<StatusContainer> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(2, (i) {
-                        final isActive = i == widget.currentStatusPage;
-                        return AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          margin: const EdgeInsets.symmetric(horizontal: 6),
-                          width: isActive ? 12 : 8,
-                          height: isActive ? 12 : 8,
-                          decoration: BoxDecoration(
-                            color:
-                                isActive ? Colors.green[800] : Colors.grey[300],
-                            shape: BoxShape.circle,
-                          ),
-                        );
-                      }),
+                    
+                    // 페이지 인디케이터
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(2, (i) {
+                          final isActive = i == widget.currentStatusPage;
+                          return AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            width: isActive ? 16 : 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: isActive 
+                                  ? const Color(0xFF64B792) 
+                                  : Colors.grey[300],
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          );
+                        }),
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
