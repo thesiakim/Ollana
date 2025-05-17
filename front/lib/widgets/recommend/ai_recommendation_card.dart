@@ -15,168 +15,228 @@ class RecommendationCard extends StatelessWidget {
     required this.onTap,
   }) : super(key: key);
 
+  // 난이도에 따른 색상 설정
+  Color _getLevelColor(String level) {
+    switch (level) {
+      case 'H':
+        return const Color(0xFFE53935); // 빨간색 (어려움)
+      case 'M':
+        return const Color(0xFFFDD835); // 노란색 (보통)
+      case 'L':
+        return const Color(0xFF52A486); // 초록색 (쉬움)
+      default:
+        return const Color(0xFF1E88E5); // 파란색 (기본)
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final name = mountain['mountain_name'] as String?;
-    final desc = mountain['mountain_description'] as String?;
+    // 산 정보 가져오기
+    final name = mountain['mountain_name'] as String? ?? '';
+    final location = mountain['location'] as String? ?? '위치 정보 없음';
     final imgUrl = formatImageUrl(mountain['image_url'] as String?);
+    final height = mountain['height'] ?? 0; 
+    final level = mountain['level'] as String? ?? 'M';
+    
+    // 난이도 텍스트 변환
+    final difficultyText = () {
+      switch (level) {
+        case 'L':
+          return '쉬움';
+        case 'M':
+          return '보통';
+        case 'H':
+          return '어려움';
+        default:
+          return '보통';
+      }
+    }();
+    
+    final levelColor = _getLevelColor(level);
     final primaryColor = const Color(0xFF52A486);
 
+    // 카드 가로 너비를 늘림 
     return FadeTransition(
       opacity: fadeAnimation,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        height: 140, // 고정된 높이로 카드 크기 제한
+        margin: const EdgeInsets.symmetric(vertical: 8), 
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          // 블러 효과를 제거하기 위해 boxShadow 제거
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              spreadRadius: 0,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Material(
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(16),
-          clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: onTap,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 이미지 영역 (왼쪽)
-                Hero(
-                  tag: 'mountain_image_$index',
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(16),
-                      bottomLeft: Radius.circular(16),
-                    ),
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  // 이미지
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
                     child: imgUrl != null
-                        ? Image.network(
-                            imgUrl,
-                            width: 140,
-                            height: 140,
-                            fit: BoxFit.cover,
-                            loadingBuilder: (ctx, child, progress) {
-                              if (progress == null) return child;
-                              return Container(
-                                width: 140,
-                                height: 140,
-                                color: Colors.grey.shade200,
-                                child: Center(
-                                  child: CircularProgressIndicator(
-                                    value: progress.expectedTotalBytes != null
-                                        ? progress.cumulativeBytesLoaded /
-                                            progress.expectedTotalBytes!
-                                        : null,
-                                    valueColor: AlwaysStoppedAnimation(primaryColor),
-                                    strokeWidth: 2,
-                                  ),
-                                ),
-                              );
-                            },
-                            errorBuilder: (ctx, err, st) {
-                              debugPrint('   이미지 에러: $err');
-                              return Image.asset(
-                                'lib/assets/images/mount_default.png',
-                                width: 140,
-                                height: 140,
-                                fit: BoxFit.cover,
-                              );
-                            },
-                          )
-                        : Image.asset(
-                            'lib/assets/images/mount_default.png',
-                            width: 140,
-                            height: 140,
-                            fit: BoxFit.cover,
-                          ),
+                      ? Image.network(
+                          imgUrl,
+                          width: 100,
+                          height: 100,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => _buildMountainPlaceholder(),
+                        )
+                      : _buildMountainPlaceholder(),
                   ),
-                ),
-                
-                // 콘텐츠 영역 (오른쪽)
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
+                  const SizedBox(width: 16), // 간격 늘림
+                  
+                  // 산 정보
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         // 산 이름
+                        Padding(
+                          padding: const EdgeInsets.only(left: 18), 
+                          child: Text(
+                            name,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 17,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(height: 8), 
+
+                        // 위치 정보
                         Row(
                           children: [
-                            Icon(
-                              Icons.terrain, 
-                              size: 16, 
-                              color: primaryColor,
-                            ),
-                            const SizedBox(width: 6),
+                            Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
+                            const SizedBox(width: 4),
                             Expanded(
                               child: Text(
-                                name ?? '',
+                                location,
                                 style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.grey[800],
+                                  fontSize: 13,
+                                  color: Colors.grey[700],
                                 ),
-                                maxLines: 1,
+                                maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 6),
                         
-                        // 설명
-                        Expanded(
-                          child: Text(
-                            desc ?? '',
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 13,
-                              height: 1.4,
-                              color: Colors.grey.shade600,
+                        // 고도와 난이도를 한 줄에 표시 
+                        Row(
+                          children: [
+                            // 고도 정보
+                            Icon(Icons.height, size: 16, color: Colors.grey[600]),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${height}m', // height 사용
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey[700],
+                              ),
                             ),
-                          ),
-                        ),
-                        
-                        // 상세 보기 버튼
-                        Align(
-                          alignment: Alignment.bottomRight,
-                          child: TextButton(
-                            onPressed: onTap,
-                            style: TextButton.styleFrom(
-                              foregroundColor: primaryColor,
-                              padding: EdgeInsets.zero,
-                              minimumSize: const Size(60, 28),
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 12),
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.visibility,
-                                  size: 14,
-                                ),
-                                const SizedBox(width: 4),
-                                const Text(
-                                  '상세 보기',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
+                            
+                            // 난이도 정보 (색상으로 구분)
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: levelColor,
+                                shape: BoxShape.circle,
+                              ),
                             ),
-                          ),
+                            const SizedBox(width: 4),
+                            Text(
+                              difficultyText,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey[700],
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
+  }
+  
+  // 산 이미지 플레이스홀더
+  Widget _buildMountainPlaceholder() {
+    return Container(
+      width: 100,
+      height: 100,
+      decoration: BoxDecoration(
+        color: Colors.grey[200],
+        borderRadius: BorderRadius.circular(14),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.grey[300]!,
+            Colors.grey[200]!,
+          ],
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.terrain,
+            size: 36,
+            color: Colors.grey[400],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '이미지 없음',
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey[500],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  // 난이도에 따른 색상을 외부에서 가져올 수 있도록 메서드 추가
+  static Color getLevelColor(String level) {
+    switch (level) {
+      case 'H':
+        return const Color(0xFFE53935); // 빨간색 (어려움)
+      case 'M':
+        return const Color(0xFFFDD835); // 노란색 (보통)
+      case 'L':
+        return const Color(0xFF52A486); // 초록색 (쉬움)
+      default:
+        return const Color(0xFF1E88E5); // 파란색 (기본)
+    }
   }
 }

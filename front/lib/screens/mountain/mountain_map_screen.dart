@@ -291,7 +291,7 @@ class _MountainMapScreenState extends State<MountainMapScreen> with SingleTicker
       case 'M':
         return const Color(0xFFFDD835); // 노란색 (보통)
       case 'L':
-        return const Color(0xFF43A047); // 초록색 (쉬움)
+        return const Color(0xFF52A486); // 초록색 (쉬움)
       default:
         return const Color(0xFF1E88E5); // 파란색 (기본)
     }
@@ -990,8 +990,7 @@ Widget _buildMountainListItem(dynamic mountain) {
   );
 }
 
-  // 산 이미지 플레이스홀더
-  // 산 이미지 플레이스홀더
+// 산 이미지 플레이스홀더
 Widget _buildMountainPlaceholder() {
   return Container(
     width: 100,
