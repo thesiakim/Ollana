@@ -197,6 +197,7 @@ class _CustomAppBarState extends State<CustomAppBar> {
   @override
   Widget build(BuildContext context) {
     final isLoggedIn = context.watch<AppState>().isLoggedIn;
+    final appState = Provider.of<AppState>(context, listen: false);
 
     return AppBar(
       backgroundColor: Colors.white,
@@ -207,10 +208,14 @@ class _CustomAppBarState extends State<CustomAppBar> {
       titleSpacing: 0, // 타이틀의 왼쪽 여백 제거
       title: GestureDetector(
         onTap: () {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const HomeScreen()),
-            (route) => false,
-          );
+          // 현재 페이지가 홈(0)이 아닌 경우에만 홈으로 이동
+          if (appState.currentPageIndex != 0) {
+            appState.changePage(0); // AppState의 currentPageIndex를 0(홈)으로 변경
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const HomeScreen()),
+              (route) => false, // 모든 경로를 제거하고 새 경로만 유지
+            );
+          }
         },
         child: Row(
           mainAxisSize: MainAxisSize.min,
