@@ -27,6 +27,128 @@ import 'tracking_result_screen.dart'; // 결과 화면 추가
 // 네이버 지도 라이브러리 임포트
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 
+// 칼만 필터 클래스 추가
+class SimpleKalmanFilter {
+  // 상태 변수
+  late double _estimate;      // 현재 추정값
+  late double _errorEstimate; // 추정 오차
+  late double _q;             // 프로세스 잡음 (환경 노이즈)
+  late double _r;             // 측정 잡음 (센서 정확도)
+  late double _lastEstimate;  // 이전 추정값
+  late double _kalmanGain;    // 칼만 게인
+
+  // 초기화
+  SimpleKalmanFilter({
+    required double processNoise,  // Q
+    required double measurementNoise,  // R
+    required double estimateError,  // 초기 추정 오차
+    double? initialValue,  // 초기값 (없으면 첫 측정값 사용)
+  }) {
+    _q = processNoise;
+    _r = measurementNoise;
+    _errorEstimate = estimateError;
+    _estimate = initialValue ?? 0.0;
+    _lastEstimate = _estimate;
+    _kalmanGain = 0.0;
+  }
+
+  // 필터 업데이트 메서드
+  double update(double measurement) {
+    // 예측 단계: 이전 상태로부터 새 상태 예측
+    final double prediction = _lastEstimate;
+    final double errorPrediction = _errorEstimate + _q;
+
+    // 업데이트 단계: 측정값으로 예측 보정
+    _kalmanGain = errorPrediction / (errorPrediction + _r);
+    _estimate = prediction + _kalmanGain * (measurement - prediction);
+    _errorEstimate = (1 - _kalmanGain) * errorPrediction;
+    _lastEstimate = _estimate;
+    
+    return _estimate;
+  }
+
+  // 현재 추정값 반환
+  double get estimate => _estimate;
+  
+  // 칼만 게인 반환 (디버깅용)
+  double get gain => _kalmanGain;
+}
+
+// GPS 위치용 2차원 칼만 필터 래퍼
+class GpsKalmanFilter {
+  // 위도와 경도에 대한 별도 필터
+  late SimpleKalmanFilter _latFilter;
+  late SimpleKalmanFilter _lngFilter;
+  double _filteredLat = 0.0;
+  double _filteredLng = 0.0;
+  int _updateCount = 0;
+  
+  GpsKalmanFilter({double? initialLat, double? initialLng}) {
+    // 위도 필터: 위도는 -90 ~ 90 범위, 일반적으로 변화가 적음
+    _latFilter = SimpleKalmanFilter(
+      processNoise: 0.00001,      // 작은 Q값: 느린 상태 변화 가정
+      measurementNoise: 0.001,    // R값: 측정 신뢰도 (GPS 정확도에 따라 조정)
+      estimateError: 1.0,         // 초기 추정 오차
+      initialValue: initialLat,
+    );
+    
+    // 경도 필터: 경도는 -180 ~ 180 범위, 동일 속도시 위도보다 큰 변화
+    _lngFilter = SimpleKalmanFilter(
+      processNoise: 0.00001,      // 작은 Q값: 느린 상태 변화 가정
+      measurementNoise: 0.001,    // R값: 측정 신뢰도 (GPS 정확도에 따라 조정)
+      estimateError: 1.0,         // 초기 추정 오차
+      initialValue: initialLng,
+    );
+    
+    if (initialLat != null) _filteredLat = initialLat;
+    if (initialLng != null) _filteredLng = initialLng;
+  }
+  
+  // 필터 업데이트 (새 GPS 측정값 적용)
+  void update(double lat, double lng, double accuracy) {
+    // GPS 정확도에 따라 측정 잡음 동적 조정
+    // 정확도가 낮을수록(값이 클수록) 측정 잡음이 커짐 = 측정을 덜 신뢰
+    double adjustedR = math.pow(accuracy / 10.0, 2).toDouble();
+    _latFilter._r = adjustedR;
+    _lngFilter._r = adjustedR;
+    
+    // 필터 업데이트
+    _filteredLat = _latFilter.update(lat);
+    _filteredLng = _lngFilter.update(lng);
+    _updateCount++;
+    
+    // 처음 몇 번의 업데이트는 원시 GPS 값에 가중치 부여 (안정화 단계)
+    if (_updateCount < 5) {
+      double weight = 1.0 - (_updateCount / 5.0);
+      _filteredLat = _filteredLat * (1 - weight) + lat * weight;
+      _filteredLng = _filteredLng * (1 - weight) + lng * weight;
+    }
+  }
+  
+  // 현재 필터링된 위치 반환
+  double get latitude => _filteredLat;
+  double get longitude => _filteredLng;
+
+  // 필터 재설정 (급격한 위치 변화 감지 시)
+  void reset(double lat, double lng) {
+    _latFilter = SimpleKalmanFilter(
+      processNoise: 0.00001,
+      measurementNoise: 0.001,
+      estimateError: 1.0,
+      initialValue: lat,
+    );
+    _lngFilter = SimpleKalmanFilter(
+      processNoise: 0.00001,
+      measurementNoise: 0.001,
+      estimateError: 1.0,
+      initialValue: lng,
+    );
+    _filteredLat = lat;
+    _filteredLng = lng;
+    _updateCount = 0;
+  }
+}
+
 // 백그라운드 작업을 위한 헬퍼 함수
 class _BackgroundTask {
   // 경로 최적화 계산 (백그라운드)
@@ -117,6 +239,12 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   double _currentAltitude = 120;
   // double _distance = 3.7; // _currentTotalDistance 또는 _completedRouteDistanceKm 로 대체
 
+  // 칼만 필터 인스턴스 추가
+  GpsKalmanFilter? _gpsFilter;
+  double _lastFilteredLat = 0.0;
+  double _lastFilteredLng = 0.0;
+  bool _isFilterInitialized = false;
+  
   // 토스트 메시지 관련 변수 추가
   bool _showToast = false;
   String _toastMessage = '';
@@ -135,7 +263,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   DateTime? _lastDistanceCalcTime;
   bool _isAnchorPointSet = false;
   double _accumulatedDistanceInMeters = 0.0;
-  double _currentTotalDistance = 0.0; // UI 표시용 총 이동 거리 (km)
+  double _currentTotalDistance = 0.0; // UI 표시용 총 이동 거리 (m)
 
   // WatchConnectivity 인스턴스 추가
   final WatchConnectivity _watch = WatchConnectivity();
@@ -241,7 +369,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   // 등산 기록 데이터 저장을 위한 변수들
   final List<Map<String, dynamic>> _trackingRecords = [];
   DateTime? _lastRecordTime;
-  final int _recordIntervalSeconds = 10; // 10초마다 records에 기록 추가
+  final int _recordIntervalSeconds = 1200; // 20분마다 records에 기록 추가
   Timer? _recordTimer;
   final bool _isSavingEnabled = true; // 기록 저장 여부 (기본값: true)
 
@@ -253,6 +381,9 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   bool _hasNotifiedWatchForPacemaker = false;
   String? _pacemakerMessage;
   String? _pacemakerLevel;
+
+  // 워치 연결 상태 확인 타이머
+  Timer? _watchConnectionTimer;
 
   // 기본 생성자 추가
   _LiveTrackingScreenState();
@@ -270,9 +401,22 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     // 워치 연결 상태 초기 확인
     _checkWatchConnection();
 
+    // 워치 연결 상태를 주기적으로 확인 (15초 간격으로 변경)
+    _watchConnectionTimer = Timer.periodic(const Duration(seconds: 15), (timer) {
+      if (!_isCheckingWatch) {  // 이미 확인 중이 아닐 때만 실행
+        _checkWatchConnection();
+      }
+    });
+
     // (1) 워치 메시지 수신 리스너 등록
     _watch.messageStream.listen((Map<String, dynamic> message) {
       debugPrint('워치 메시지 수신: $message');
+      
+      // 연결 상태가 false인데 메시지를 받은 경우, 연결 상태 재확인
+      if (!_isWatchPaired) {
+        _checkWatchConnection();
+      }
+      
       String path = message['path'];
       switch (path) {
         case '/SENSOR_DATA':
@@ -313,146 +457,6 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     _initializeMapAndTracking(appState);
 
     _sheetController.addListener(_onSheetChanged);
-  }
-
-  // 지도 및 트래킹 관련 초기화 함수
-  Future<void> _initializeMapAndTracking(AppState appState) async {
-    // 1. 현재 위치를 먼저 가져오기 시도 (지도 초기화용)
-    try {
-      PermissionStatus status = await Permission.locationWhenInUse.status;
-      if (status.isDenied) {
-        status = await Permission.locationWhenInUse.request();
-      }
-      if (status.isGranted) {
-        Position position = await Geolocator.getCurrentPosition(
-            desiredAccuracy: LocationAccuracy.high,
-            timeLimit: const Duration(seconds: 5)); // 5초 타임아웃
-        if (mounted) {
-          setState(() {
-            _currentLat = position.latitude;
-            _currentLng = position.longitude;
-            debugPrint('초기 위치 가져오기 성공: Lat: $_currentLat, Lng: $_currentLng');
-          });
-        }
-      } else {
-        debugPrint('초기 위치 권한 거부됨, 기본값 또는 AppState 값 사용');
-        // 권한이 없으면 AppState 값이나 기본값을 사용 (아래 로직에서 처리)
-      }
-    } catch (e) {
-      debugPrint('초기 위치 가져오기 실패: $e, 기본값 또는 AppState 값 사용');
-      // 오류 발생 시에도 AppState 값이나 기본값을 사용 (아래 로직에서 처리)
-    }
-
-    // 2. AppState의 트래킹 상태에 따라 데이터 로드 또는 새 트래킹 준비
-    if (appState.isTracking) {
-      final List<NLatLng> previousUserPath = List.from(appState.userPath);
-      final List<NLatLng> previousRouteCoordinates =
-          List.from(appState.routeCoordinates);
-      final double prevLat = appState.currentLat;
-      final double prevLng = appState.currentLng;
-      final double prevDist = appState.distance;
-      final double prevAltitude = appState.currentAltitude;
-      final int prevElapsedSeconds = appState.elapsedSeconds;
-      final int prevElapsedMinutes = appState.elapsedMinutes;
-      final bool prevIsNavigationMode = appState.isNavigationMode;
-      final double prevDeviceHeading = appState.deviceHeading;
-
-      bool isPrevDataValid = (prevLat.abs() > 0.001 &&
-          prevLng.abs() > 0.001 &&
-          prevLat >= -90 &&
-          prevLat <= 90 &&
-          prevLng >= -180 &&
-          prevLng <= 180 &&
-          prevDist >= 0 &&
-          prevDist < 10000);
-
-      if (isPrevDataValid) {
-        _userPath.addAll(previousUserPath);
-        if (previousRouteCoordinates.isNotEmpty) {
-          _routeCoordinates = previousRouteCoordinates;
-        }
-        // _currentLat, _currentLng는 위에서 현재 위치로 시도했으므로, 여기서는 덮어쓰지 않음
-        // 단, 초기 위치 가져오기에 실패했다면 AppState 값으로 설정될 수 있도록 함
-        if (!(await Geolocator.isLocationServiceEnabled()) ||
-            await Permission.locationWhenInUse.isDenied) {
-          _currentLat = prevLat;
-          _currentLng = prevLng;
-        }
-        _anchorPointLat = _currentLat;
-        _anchorPointLng = _currentLng;
-        _isAnchorPointSet = true;
-        _lastDistanceCalcTime = DateTime.now();
-        _currentTotalDistance = prevDist;
-        _accumulatedDistanceInMeters = _currentTotalDistance * 1000;
-
-        _currentAltitude = prevAltitude;
-        _elapsedSeconds = prevElapsedSeconds;
-        _elapsedMinutes = prevElapsedMinutes;
-        _isNavigationMode = prevIsNavigationMode;
-        _deviceHeading = prevDeviceHeading;
-
-        _calculateRemainingDistanceAndTime();
-        debugPrint(
-            '기존 트래킹 데이터 유효하여 불러옴 (초기 위치 시도 후): $_elapsedMinutes분 $_elapsedSeconds초, 거리: ${_currentTotalDistance}km');
-      } else {
-        debugPrint(
-            'AppState의 이전 위치/거리 데이터가 유효하지 않아 새 트래킹처럼 초기화합니다. Lat: $prevLat, Lng: $prevLng, Dist: $prevDist');
-        _userPath.clear();
-        _routeCoordinates.clear();
-        _loadSelectedRouteData(); // 경로 재로드
-        // _currentLat, _currentLng는 위에서 현재 위치로 시도했거나, 실패 시 기본값으로 설정될 예정
-        // 만약 _loadSelectedRouteData()에서 _currentLat/Lng를 경로 시작점으로 강제한다면, 그 값을 따를 수 있음.
-        // 여기서는 명시적으로 재설정하지 않고, _loadSelectedRouteData()나 초기 위치 가져오기 결과에 의존
-
-        _anchorPointLat = 0.0;
-        _anchorPointLng = 0.0;
-        _isAnchorPointSet = false;
-        _accumulatedDistanceInMeters = 0.0;
-        _currentTotalDistance = 0.0;
-        _currentAltitude = 0.0;
-        _elapsedSeconds = 0;
-        _elapsedMinutes = 0;
-        _isNavigationMode = true;
-        _deviceHeading = 0.0;
-        _remainingDistance = 0.0;
-        _estimatedRemainingSeconds = 0;
-        _completedPercentage = 0.0;
-        debugPrint('새로운 트래킹으로 초기화 완료 (초기 위치 시도 후)');
-      }
-    } else {
-      _loadSelectedRouteData();
-      // _currentLat, _currentLng는 위에서 현재 위치로 시도했거나, 실패 시 _loadSelectedRouteData()의 결과 또는 기본값으로 설정됨
-      // 만약 _loadSelectedRouteData()가 경로 시작점으로 _currentLat/Lng를 설정하고, 초기 위치 가져오기도 실패했다면 그 값을 사용.
-      // 초기 위치 가져오기에 성공했다면 그 값을 사용.
-      // 둘 다 실패하고 _loadSelectedRouteData()도 값을 설정 안하면, 필드 초기값(서울시청)이 사용될 수 있음.
-      // 이를 명확히 하기 위해, 초기 위치 가져오기 실패 시 _loadSelectedRouteData 결과를 _currentLat/Lng에 반영하거나 기본값 설정 필요.
-      if (!(await Geolocator.isLocationServiceEnabled()) ||
-          await Permission.locationWhenInUse.isDenied) {
-        if (_routeCoordinates.isNotEmpty) {
-          _currentLat = _routeCoordinates.first.latitude;
-          _currentLng = _routeCoordinates.first.longitude;
-        } else {
-          // _currentLat, _currentLng가 이미 필드 선언 시 기본값(서울시청)을 가지고 있음
-          // debugPrint('초기 위치 가져오기 실패 및 경로 데이터 없어 기본값 사용: $_currentLat, $_currentLng');
-        }
-      }
-
-      _anchorPointLat = 0.0;
-      _anchorPointLng = 0.0;
-      _isAnchorPointSet = false;
-      _accumulatedDistanceInMeters = 0.0;
-      _currentTotalDistance = 0.0;
-      _currentAltitude = 0.0;
-      _elapsedSeconds = 0;
-      _elapsedMinutes = 0;
-      debugPrint('새로운 트래킹 시작 (초기 위치 시도 후)');
-    }
-
-    // 3. 나머지 트래킹 관련 기능 시작
-    _checkLocationPermission(); // 내부에서 _startLocationTracking() 호출
-    _startTracking(); // 타이머, 심박수, AI 서버 전송 등
-    _startCompassTracking();
-    _startTrackingRecords();
   }
 
   void _onSheetChanged() {
@@ -504,6 +508,11 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   // 트래킹 시작
   void _startTracking() {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) async {
+      if (!mounted) {  // mounted 체크 추가
+        timer.cancel();
+        return;
+      }
+      
       if (!_isPaused) {
         setState(() {
           _elapsedSeconds++;
@@ -517,7 +526,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
               '[BG] 타이머 동작 중: $_elapsedSeconds초 경과, 백그라운드 상태: $_currentLifecycleState');
         }
 
-        // _calculateTotalDistance(); // 이 함수는 새로운 로직으로 대체됨
+        // 이동 거리는 _startLocationTracking()에서 실시간으로 계산됨
 
         if (_elapsedSeconds % 5 == 0) {
           _updateHeartRate();
@@ -552,9 +561,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       }
     });
 
-    // 트래킹 시작 시 워치에 메시지 전송 (워치 연결된 경우)
+         // 트래킹 시작 시 워치에 메시지 전송 (워치가 연결된 경우)
     if (_isWatchPaired) {
-      // _watch.isPaired -> _isWatchPaired로 수정하여 린터 오류 해결
       try {
         _watch.sendMessage({
           'path': '/START_TRACKING',
@@ -563,28 +571,27 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       } catch (e) {
         debugPrint('워치 메시지(/START_TRACKING) 전송 실패: $e');
       }
+    } else if (_isWatchPaired) {
+      debugPrint('백그라운드 상태: /START_TRACKING 메시지 전송 생략');
     }
   }
 
   // 심박수 업데이트 (실제 데이터 사용 또는 목데이터 백업)
   void _updateHeartRate() {
-    // 워치에서 최근 5초 이내에 받은 심박수 데이터가 있는지 확인
-    // 없으면 목데이터 사용 (테스트용)
-    bool useRealData = _isWatchPaired; // 실제 워치 연동 시 true로 변경 가정
+    // 워치가 연결된 경우만 실제 데이터 사용
+    bool useRealData = _isWatchPaired;
 
     if (useRealData) {
       // 실제 데이터 사용 로직 (예: _currentHeartRate가 워치에서 직접 업데이트된다고 가정)
       // 이 부분은 워치 연동 방식에 따라 달라짐
       debugPrint('현재 심박수 (워치): $_currentHeartRate');
-      debugPrint(
-          '[BG] 심박수 업데이트: $_currentHeartRate bpm, 백그라운드 상태: $_currentLifecycleState');
+      debugPrint('심박수 업데이트: $_currentHeartRate bpm');
     } else {
-      // 목데이터 사용 (실제 워치 연동 전 테스트용)
-      // _currentHeartRate 값을 직접 업데이트 (예: 80 ~ 139 사이의 랜덤 값)
-      _currentHeartRate = 0;
-      debugPrint('현재 심박수 (목데이터): $_currentHeartRate');
-      debugPrint(
-          '[BG] 심박수 업데이트(목데이터): $_currentHeartRate bpm, 백그라운드 상태: $_currentLifecycleState');
+      // 워치가 연결되지 않은 경우 심박수 값을 0으로 설정
+      if (!_isWatchPaired) {
+        _currentHeartRate = 0; // 워치 연결이 없는 경우 0으로 설정
+        debugPrint('워치 연결 없음: 심박수 0으로 설정');
+      }
     }
   }
 
@@ -889,14 +896,30 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
   // 실시간 위치 추적 시작
   void _startLocationTracking() {
+    // 거리 추적 관련 변수들 초기화
+    _isAnchorPointSet = false;
+    _accumulatedDistanceInMeters = 0.0;
+    _currentTotalDistance = 0.0;
+    _lastDistanceCalcTime = null;
+    _anchorPointLat = 0.0;
+    _anchorPointLng = 0.0;
+
+    // 칼만 필터 초기화
+    _gpsFilter = null;
+    _isFilterInitialized = false;
+    _lastFilteredLat = 0.0;
+    _lastFilteredLng = 0.0;
+
     const LocationSettings locationSettings = LocationSettings(
       accuracy: LocationAccuracy.high,
-      distanceFilter: 10, // 10m 이상 이동했을 때만 위치 업데이트 수신 (노이즈 감소)
+      distanceFilter: 1, // 1m 이상 이동 시 콜백 발생
     );
 
     _positionStream =
         Geolocator.getPositionStream(locationSettings: locationSettings)
             .listen((Position position) {
+      if (!mounted) return;
+      
       debugPrint(
           '[BG] 위치 업데이트 수신: ${position.latitude}, ${position.longitude}, 백그라운드 상태: $_currentLifecycleState');
       // 현재 위치 기록
@@ -914,60 +937,122 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
         return; // 이 위치 업데이트는 완전히 무시하고 다음 업데이트를 기다림
       }
 
-      double tempCurrentTotalDistanceKm = _currentTotalDistance;
+      // 칼만 필터 처리
+      double filteredLat = newLat;
+      double filteredLng = newLng;
+      
+      // 칼만 필터 초기화 또는 업데이트
+      if (!_isFilterInitialized) {
+        // 첫 위치 수신 시 필터 초기화 (정확도가 양호한 경우)
+        if (currentAccuracy < 10.0) {
+          _gpsFilter = GpsKalmanFilter(initialLat: newLat, initialLng: newLng);
+          _isFilterInitialized = true;
+          _lastFilteredLat = newLat;
+          _lastFilteredLng = newLng;
+          debugPrint('칼만 필터 초기화: 처음 위치(${newLat.toStringAsFixed(6)}, ${newLng.toStringAsFixed(6)})');
+        } else {
+          // 정확도가 낮은 경우 필터 초기화 미루기
+          debugPrint('필터 초기화 대기 중: GPS 정확도 미달 (${currentAccuracy.toStringAsFixed(1)}m)');
+        }
+      } else if (_gpsFilter != null) {
+        // 급격한 위치 변화 감지 (완전히 다른 위치로 이동한 경우, 예: 앱 재시작 등)
+        double distance = _calculateDistanceSync({
+          'lat1': _lastFilteredLat,
+          'lng1': _lastFilteredLng,
+          'lat2': newLat,
+          'lng2': newLng,
+        });
+        
+        if (distance > 100.0) {  // 100m 이상 순간 이동은 필터 재설정
+          debugPrint('급격한 위치 변화 감지(${distance.toStringAsFixed(1)}m): 필터 재설정');
+          _gpsFilter!.reset(newLat, newLng);
+          _lastFilteredLat = newLat;
+          _lastFilteredLng = newLng;
+        } else {
+          // 정상적인 필터 업데이트
+          _gpsFilter!.update(newLat, newLng, currentAccuracy);
+          filteredLat = _gpsFilter!.latitude;
+          filteredLng = _gpsFilter!.longitude;
+          
+          // 필터링 효과 로깅 (10초마다)
+          if (_elapsedSeconds % 10 == 0) {
+            final rawToFilteredDistance = _calculateDistanceSync({
+              'lat1': newLat,
+              'lng1': newLng,
+              'lat2': filteredLat,
+              'lng2': filteredLng,
+            });
+            debugPrint('칼만 필터 적용: 원본(${newLat.toStringAsFixed(6)}, ${newLng.toStringAsFixed(6)}) → '
+                '필터링(${filteredLat.toStringAsFixed(6)}, ${filteredLng.toStringAsFixed(6)}), '
+                '필터 보정량: ${rawToFilteredDistance.toStringAsFixed(2)}m');
+          }
+          
+          _lastFilteredLat = filteredLat;
+          _lastFilteredLng = filteredLng;
+        }
+      }
+
       NLatLng? newUserPathPointForAppstate;
 
       // --- 1. 기준점 기반 5초 간격 이동 거리 계산 ---
       if (!_isAnchorPointSet) {
-        // 첫 기준점 설정 (정확도 < 15m 조건)
+        // 첫 기준점 설정 (정확도 < 10m 조건)
         if (currentAccuracy < 10.0) {
-          _anchorPointLat = newLat;
-          _anchorPointLng = newLng;
+          _anchorPointLat = filteredLat;
+          _anchorPointLng = filteredLng;
           _lastDistanceCalcTime = now;
           _isAnchorPointSet = true;
           _accumulatedDistanceInMeters = 0.0; // 새 트래킹 시작 시 누적거리 초기화
-          tempCurrentTotalDistanceKm = 0.0; // UI용 거리도 초기화
+          _currentTotalDistance = 0.0; // UI용 거리도 초기화
           debugPrint(
-              '이동 거리 계산 기준점 설정: Lat: ${_anchorPointLat.toStringAsFixed(5)}, Lng: ${_anchorPointLng.toStringAsFixed(5)} (정확도: ${currentAccuracy.toStringAsFixed(1)}m)');
+              '이동 거리 계산 기준점 설정: Lat: ${_anchorPointLat.toStringAsFixed(6)}, Lng: ${_anchorPointLng.toStringAsFixed(6)} (정확도: ${currentAccuracy.toStringAsFixed(1)}m)');
         } else {
           debugPrint(
               '기준점 설정 대기 중: GPS 정확도 미달 (${currentAccuracy.toStringAsFixed(1)}m). 현재 위치: $newLat, $newLng');
         }
       } else if (_lastDistanceCalcTime != null) {
-        // 기준점 설정 후, 5초마다 거리 계산
-        final timeSinceLastCalcSeconds =
+        // 기준점 설정 후 더 실시간으로 거리 계산 (1초 간격)
+        final timeSinceLastCalcSeconds = 
             now.difference(_lastDistanceCalcTime!).inSeconds;
 
-        if (timeSinceLastCalcSeconds >= 5) {
+        if (timeSinceLastCalcSeconds >= 1) { // 1초 이상 간격으로 변경
           final double segmentDistanceMeters = _calculateDistanceSync({
             'lat1': _anchorPointLat,
             'lng1': _anchorPointLng,
-            'lat2': newLat,
-            'lng2': newLng,
+            'lat2': filteredLat,
+            'lng2': filteredLng,
           });
 
-          const double minDeltaForUpdateMeters = 5.0; // 5초간 최소 2m 이동해야 유효
-          const double maxDeltaForUpdateMeters =
-              25.0; // 5초간 최대 25m 이동 (5m/s * 5s)
+          // 시간에 비례한 최소/최대 합리적 이동 거리 설정
+          final double minDeltaForUpdateMeters = 0.0; // 최소 이동 거리 제한 제거
+          final double maxDeltaForUpdateMeters = 
+              _maxReasonableSpeed * timeSinceLastCalcSeconds; // 최대 5m/s * 경과 시간
 
+          // 거리가 합리적 범위 내에 있는 경우만 추가
           if (segmentDistanceMeters >= minDeltaForUpdateMeters &&
               segmentDistanceMeters <= maxDeltaForUpdateMeters) {
             _accumulatedDistanceInMeters += segmentDistanceMeters;
-            tempCurrentTotalDistanceKm = _accumulatedDistanceInMeters / 1000.0;
-            debugPrint(
-                '${timeSinceLastCalcSeconds}s 간격 이동 거리 추가: ${segmentDistanceMeters.toStringAsFixed(1)}m. 누적: ${tempCurrentTotalDistanceKm.toStringAsFixed(3)}km');
+            _currentTotalDistance = _accumulatedDistanceInMeters;
+            
+            // 로그 출력 줄이기 (5초 간격)
+            if (timeSinceLastCalcSeconds >= 5 || _elapsedSeconds % 10 == 0) {
+              debugPrint(
+                  '${timeSinceLastCalcSeconds}s 간격 이동 거리 추가: ${segmentDistanceMeters.toStringAsFixed(1)}m. 누적: ${_currentTotalDistance.toStringAsFixed(1)}m');
+            }
           } else if (segmentDistanceMeters < minDeltaForUpdateMeters) {
-            debugPrint(
-                '${timeSinceLastCalcSeconds}s 간격 이동 거리 무시 (너무 짧음): ${segmentDistanceMeters.toStringAsFixed(1)}m / ${minDeltaForUpdateMeters}m)');
+            if (_elapsedSeconds % 30 == 0) { // 로그 간소화
+              debugPrint(
+                  '이동 거리 무시 (너무 짧음): ${segmentDistanceMeters.toStringAsFixed(1)}m');
+            }
           } else {
-            // segmentDistanceMeters > maxDeltaForUpdateMeters
+            // 비정상적으로 긴 거리인 경우
             debugPrint(
-                '${timeSinceLastCalcSeconds}s 간격 이동 거리 무시 (너무 김): ${segmentDistanceMeters.toStringAsFixed(1)}m / ${maxDeltaForUpdateMeters}m)');
+                '이동 거리 이상 감지: ${segmentDistanceMeters.toStringAsFixed(1)}m / ${maxDeltaForUpdateMeters.toStringAsFixed(1)}m (${timeSinceLastCalcSeconds}초)');
           }
 
           // 새 기준점으로 현재 위치 설정 및 시간 업데이트
-          _anchorPointLat = newLat;
-          _anchorPointLng = newLng;
+          _anchorPointLat = filteredLat;
+          _anchorPointLng = filteredLng;
           _lastDistanceCalcTime = now;
         }
       }
@@ -977,13 +1062,13 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
         // UserPath의 첫 점은 정확도만 보고 추가 (최초 위치 설정)
         if (currentAccuracy < 15.0) {
           // UserPath 첫 점도 약간 더 엄격한 정확도
-          final firstPoint = NLatLng(newLat, newLng);
+          final firstPoint = NLatLng(filteredLat, filteredLng);
           _userPath.add(firstPoint);
           newUserPathPointForAppstate = firstPoint;
           _isFirstLocationUpdateForUserPath = false;
           _lastLocationUpdateTimeForUserPath = now;
           debugPrint(
-              'UserPath 첫 점 추가: Lat: ${newLat.toStringAsFixed(5)}, Lng: ${newLng.toStringAsFixed(5)}');
+              'UserPath 첫 점 추가: Lat: ${filteredLat.toStringAsFixed(6)}, Lng: ${filteredLng.toStringAsFixed(6)}');
         }
       } else if (_lastLocationUpdateTimeForUserPath != null &&
           _userPath.isNotEmpty) {
@@ -991,8 +1076,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
         final double distanceSinceLastUserPathPoint = _calculateDistanceSync({
           'lat1': prevUserPathPoint.latitude,
           'lng1': prevUserPathPoint.longitude,
-          'lat2': newLat,
-          'lng2': newLng,
+          'lat2': filteredLat,
+          'lng2': filteredLng,
         });
 
         final timeDiffMillis =
@@ -1011,7 +1096,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
               currentAccuracy < 20.0) {
             // GPS 정확도 양호
 
-            final newPoint = NLatLng(newLat, newLng);
+            final newPoint = NLatLng(filteredLat, filteredLng);
             _userPath.add(newPoint);
             newUserPathPointForAppstate = newPoint;
             _lastLocationUpdateTimeForUserPath = now;
@@ -1027,28 +1112,65 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       // --- 3. 최종 상태 업데이트 (setState) ---
       if (mounted) {
         setState(() {
-          _currentLat = newLat;
-          _currentLng = newLng;
+          _currentLat = filteredLat;
+          _currentLng = filteredLng;
           _currentAltitude = newAltitude;
-          _currentTotalDistance = tempCurrentTotalDistanceKm;
+          _currentTotalDistance = _currentTotalDistance;
 
-          // Geolocator.speed 사용
-          if (currentSpeedFromSensor >= 0) {
-            // 유효한 속도 값 (0 또는 양수)
-            // Geolocator.speed의 정확도(position.speedAccuracy)도 고려하면 좋지만, 일단 값 자체로 판단
-            _currentSpeed = currentSpeedFromSensor * 3.6; // km/h
-          } else {
-            _currentSpeed = 0.0; // 음수거나 유효하지 않으면 0으로
+          // 현재 속도 계산 개선 (Position.speed 사용)
+          double newSpeed = 0.0;
+          
+          // 1. GPS 속도 센서 값 사용 (m/s -> km/h 변환)
+          if (currentSpeedFromSensor >= 0 && currentSpeedFromSensor <= 10.0) { // 최대 36km/h 속도 제한
+            newSpeed = currentSpeedFromSensor * 3.6; // m/s -> km/h
+          } 
+          // 2. GPS 속도 센서 값이 없거나 비정상적인 경우, 위치 변화로 속도 계산
+          else if (_lastLocationUpdateTimeForUserPath != null && _userPath.length > 1) {
+            // 마지막 위치부터 현재 위치까지의 거리와 시간으로 속도 계산
+            final timeDiffSeconds = now.difference(_lastLocationUpdateTimeForUserPath!).inMilliseconds / 1000.0;
+            if (timeDiffSeconds > 0) {
+              // 현재 위치와 마지막 위치 사이의 거리 계산
+              final distanceMeters = _calculateDistanceSync({
+                'lat1': _userPath.last.latitude, 
+                'lng1': _userPath.last.longitude,
+                'lat2': filteredLat,
+                'lng2': filteredLng,
+              });
+              
+              // 속도 계산 (m/s)
+              final calculatedSpeed = distanceMeters / timeDiffSeconds;
+              
+              // 합리적인 값인지 검증 (최대 5m/s = 18km/h)
+              if (calculatedSpeed >= 0 && calculatedSpeed <= _maxReasonableSpeed) {
+                newSpeed = calculatedSpeed * 3.6; // m/s -> km/h
+                if (_elapsedSeconds % 10 == 0) {
+                  debugPrint('GPS 속도 센서 대체 계산: ${newSpeed.toStringAsFixed(1)}km/h (거리: ${distanceMeters.toStringAsFixed(1)}m, 시간: ${timeDiffSeconds.toStringAsFixed(1)}s)');
+                }
+              }
+            }
           }
+          
+          // 3. 급격한 변화 방지를 위한 스무딩 적용 (이전 값과 가중 평균)
+          if (_currentSpeed > 0 && newSpeed > 0) {
+            // 이전 값에 70%, 새 값에 30% 가중치 부여
+            _currentSpeed = (_currentSpeed * 0.7) + (newSpeed * 0.3);
+          } else {
+            // 첫 계산이거나 둘 중 하나가 0인 경우는 그대로 사용
+            _currentSpeed = newSpeed;
+          }
+          
+          // 4. 최종 속도가 합리적인 범위를 벗어나면 보정
+          if (_currentSpeed < 0) _currentSpeed = 0.0;
+          if (_currentSpeed > 20.0) _currentSpeed = 20.0; // 최대 20km/h로 제한
         });
 
         // AppState 업데이트 (currentLat/Lng, newUserPathPoint 등)
         final appState = Provider.of<AppState>(context, listen: false);
         appState.updateTrackingData(
-          currentLat: newLat, // 항상 최신 GPS 위치로 업데이트
-          currentLng: newLng,
+          currentLat: filteredLat, // 항상 최신 GPS 위치로 업데이트
+          currentLng: filteredLng,
           currentAltitude: newAltitude,
-          distance: tempCurrentTotalDistanceKm, // 새로 계산된 거리 반영
+          distance: _currentTotalDistance, // 새로 계산된 거리 반영
           newUserPathPoint:
               newUserPathPointForAppstate, // _userPath에 추가된 경우에만 값 전달
           deviceHeading: _deviceHeading,
@@ -1058,9 +1180,10 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
         if (_mapController != null && _isNavigationMode) {
           _mapController!.updateCamera(
             NCameraUpdate.withParams(
-              target: NLatLng(newLat, newLng), // 항상 최신 GPS 위치로
-              zoom: 17,
-              tilt: 50,
+              target: NLatLng(filteredLat, filteredLng), // 항상 최신 GPS 위치로
+              zoom: 17.0,
+              bearing: _deviceHeading,
+              tilt: 50.0,
             ),
           );
         }
@@ -1412,7 +1535,6 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
           '예상 남은 시간 : $_formattedRemainingTime',
           style: TextStyle(fontSize: 14),
         ),
-        SizedBox(height: 4), // 심박수 표시 전에 SizedBox 추가
         SizedBox(height: 4),
         Text(
           '현재 속도 : ${_currentSpeed.toStringAsFixed(1)} km/h',
@@ -1430,7 +1552,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
         ),
         SizedBox(height: 4),
         Text(
-          '이동 거리: ${_currentTotalDistance.toStringAsFixed(2)}km',
+          '이동 거리: ${_currentTotalDistance < 1000 ? '${_currentTotalDistance.toInt()}m' : '${(_currentTotalDistance / 1000).toStringAsFixed(2)}km'}',
           style: TextStyle(fontSize: 14),
         ),
         if (_isWatchPaired)
@@ -1486,9 +1608,9 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       _pastDistanceAtCurrentTime =
           (_modeData!.path.distance * currentElapsedTime) / totalTime;
 
-      // 현재 총 이동 거리 계산 (이미 계산되어 있으므로 추가 계산 불필요)
-      // 비동기 처리를 위해 await 추가
-      await _calculateTotalDistance();
+      // 현재 총 이동 거리는 이미 실시간으로 계산되어 _currentTotalDistance에 반영되어 있음
+      // _calculateTotalDistance() 호출은 불필요함 (중복 계산 방지)
+      // await _calculateTotalDistance();
 
       // 현재 기록과 이전 기록 비교
       final oldAheadState = _isAheadOfRecord;
@@ -1552,89 +1674,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     }
   }
 
-  // 현재까지 이동한 총 거리 계산
-  Future<void> _calculateTotalDistance() async {
-    if (_userPath.length < 2) {
-      setState(() {
-        _currentTotalDistance = 0.0;
-      });
-      return;
-    }
-
-    try {
-      double total = 0.0;
-
-      // 처음부터 모든 경로 포인트 간의 거리를 계산
-      // 최적화: 마지막 계산 이후 추가된 포인트만 계산
-      if (_userPath.length > 2 && _currentTotalDistance > 0) {
-        // 마지막 두 포인트 간의 거리만 계산해서 기존 총 거리에 더함
-        final lastIndex = _userPath.length - 1;
-        final params = {
-          'lat1': _userPath[lastIndex - 1].latitude,
-          'lng1': _userPath[lastIndex - 1].longitude,
-          'lat2': _userPath[lastIndex].latitude,
-          'lng2': _userPath[lastIndex].longitude,
-        };
-        final distance = _calculateDistanceSync(params);
-
-        // 1초에 5미터 이상 이동 필터링 (급격한 변화 방지)
-        // 마지막 포인트가 추가된 시간을 알 수 없으므로,
-        // 마지막 측정 이후 이동 거리가 극단적으로 큰 경우 무시 (임계값: 20미터)
-        const double maxReasonableDistance =
-            20.0; // 한 번의 측정에서 예상되는 최대 합리적 거리 (미터)
-
-        if (distance <= maxReasonableDistance) {
-          total = _currentTotalDistance + distance; // 미터 단위로 변환 후 계산
-          total = total / 1000; // 다시 킬로미터로 변환
-        } else {
-          total = _currentTotalDistance; // 거리가 너무 크면 이전 값 유지
-          debugPrint(
-              '비정상적인 거리 변화 감지 및 무시: ${distance.toStringAsFixed(2)}m (현재 누적 거리: ${_currentTotalDistance.toStringAsFixed(2)}km)');
-        }
-      } else {
-        // 처음 계산이거나 경로 포인트가 2개뿐인 경우, 모든 구간 계산
-        DateTime? prevTimestamp;
-        NLatLng? prevPoint;
-
-        for (int i = 1; i < _userPath.length; i++) {
-          final params = {
-            'lat1': _userPath[i - 1].latitude,
-            'lng1': _userPath[i - 1].longitude,
-            'lat2': _userPath[i].latitude,
-            'lng2': _userPath[i].longitude,
-          };
-          final distance = _calculateDistanceSync(params);
-
-          // 속도 기반 필터링 - i번째와 i-1번째 포인트 사이의 속도 추정
-          // 정확한 타임스탬프가 없으므로, 포인트 간 예상 시간 차이를
-          // 1초로 가정하고, 급격한 거리 변화 필터링
-          // (1초당 5미터 이상 필터링)
-          if (distance <= _maxReasonableSpeed) {
-            total += distance; // 미터 단위로 더함
-            debugPrint(
-                '경로 포인트 ${i - 1}->$i 거리 반영: ${distance.toStringAsFixed(2)}m');
-          } else {
-            debugPrint(
-                '경로 포인트 ${i - 1}->$i 거리 무시: ${distance.toStringAsFixed(2)}m (초당 5미터 초과)');
-          }
-        }
-        total = total / 1000; // 미터를 킬로미터로 변환
-      }
-
-      if (_elapsedSeconds % 10 == 0) {
-        debugPrint('현재 이동 거리: ${total.toStringAsFixed(2)}km');
-      }
-
-      // UI 갱신
-      if (mounted) {
-        setState(() {
-          _currentTotalDistance = total;
-        });
-      }
-    } catch (e) {
-      debugPrint('거리 계산 중 오류: $e');
-    }
-  }
+  // 현재까지 이동한 총 거리는 _startLocationTracking() 메서드에서 실시간으로 계산하여
+  // _currentTotalDistance에 저장됩니다. 기존의 _calculateTotalDistance() 함수는 삭제하였습니다.
 
   // 목적지 도착 감지
   void _checkDestinationReached() {
@@ -1675,17 +1716,18 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
             _notifyWatch('destination');
             _hasNotifiedWatchForDestination = true;
 
-            // 앱이 백그라운드이고 워치 연결 시 추가 메시지 전송
-            if (_isWatchPaired &&
-                _currentLifecycleState == AppLifecycleState.paused) {
+            // 워치가 연결된 경우 메시지 전송
+            if (_isWatchPaired) {
               try {
                 _watch.sendMessage({
                   'path': '/REACHED',
                 });
-                debugPrint('백그라운드에서 목적지 도착 메시지 (/REACHED) 워치로 전송됨');
+                debugPrint('목적지 도착 메시지 (/REACHED) 워치로 전송됨');
               } catch (e) {
-                debugPrint('백그라운드 워치 메시지(/REACHED) 전송 실패: $e');
+                debugPrint('워치 메시지(/REACHED) 전송 실패: $e');
               }
+            } else {
+              debugPrint('워치 연결 없음 또는 백그라운드 상태: 목적지 도착 메시지 전송 생략');
             }
           }
         }
@@ -1741,8 +1783,14 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     );
   }
 
-  // 워치에 알림 전송 (목데이터 사용)
+  // 워치에 알림 전송 (워치가 연결된 경우에만)
   void _notifyWatch(String status) {
+    // 워치가 연결되어 있지 않으면 알림 전송 생략
+    if (!_isWatchPaired) {
+      debugPrint('워치 연결 없음: 알림 전송 생략 ($status)');
+      return;
+    }
+    
     // 워치 알림 메시지 구성
     String notificationTitle = '등산 상태 알림';
     String notificationBody = '';
@@ -1780,7 +1828,9 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     try {
       debugPrint('워치 알림 전송 시작: $title - $messageBody');
 
-      // 워치가 연결되어 있는지 확인
+      // 필요한 초기 검사는 _notifyWatch에서 이미 수행했음
+
+      // 워치가 연결되어 있는지 한번 더 확인
       if (!await _watch.isPaired) {
         debugPrint('워치가 연결되어 있지 않습니다.');
         return;
@@ -2525,7 +2575,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     // 나침반 센서가 사용 가능한지 확인
     if (FlutterCompass.events != null) {
       _compassStream = FlutterCompass.events!.listen((CompassEvent event) {
-        if (!mounted) return;
+        if (!mounted) return;  // mounted 체크 추가
 
         // 유효한 방향 데이터가 있을 때만 업데이트
         if (event.heading != null) {
@@ -2862,8 +2912,12 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
   // 등산 기록 저장 시작
   void _startTrackingRecords() {
-    // 5초마다 현재 데이터 저장
     _recordTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (!mounted) {  // mounted 체크 추가
+        timer.cancel();
+        return;
+      }
+      
       if (!_isPaused) {
         _saveCurrentTrackingData();
       }
@@ -2884,10 +2938,10 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       // 추가할 기록 생성
       final record = {
         'time': _elapsedSeconds,
-        'distance': (_currentTotalDistance * 1000).toInt(), // km -> m 변환
+        'distance': _currentTotalDistance.toInt(), // 이미 m 단위로 저장
         'latitude': _currentLat,
         'longitude': _currentLng,
-        'heartRate': _currentHeartRate, // _avgHeartRate를 _currentHeartRate로 변경
+        'heartRate': _currentHeartRate,
       };
 
       // 기록 추가
@@ -2895,7 +2949,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       _lastRecordTime = now;
 
       debugPrint(
-          '기록 저장: ${_trackingRecords.length}번째 기록 ($_elapsedSeconds초, ${_currentTotalDistance.toStringAsFixed(2)}km)');
+          '기록 저장: ${_trackingRecords.length}번째 기록 ($_elapsedSeconds초, ${(_currentTotalDistance / 1000).toStringAsFixed(2)}km)');
     }
   }
 
@@ -2919,27 +2973,63 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   Future<void> _checkWatchConnection() async {
     if (_isCheckingWatch) return;
 
+    if (!mounted) return;  // mounted 체크 추가
+    
     setState(() {
       _isCheckingWatch = true;
       _watchStatus = '워치 연결 확인 중...';
     });
 
     try {
-      // watch_connectivity 라이브러리를 사용해 워치 연결 상태 확인
+      // 1. 기본 연결 상태 확인
       final isPaired = await _watch.isPaired;
+      
+      if (!mounted) return;  // mounted 체크 추가
+      
+      // 2. 실제 통신 가능 여부 확인을 위한 테스트 메시지 전송
+      bool isActuallyConnected = false;
+      if (isPaired) {
+        try {
+          await Future.delayed(const Duration(seconds: 1));
+          await _watch.sendMessage({'path': '/PING'});
+          isActuallyConnected = true;
+        } catch (e) {
+          debugPrint('워치 통신 테스트 실패: $e');
+          isActuallyConnected = false;
+        }
+      }
+
+      if (!mounted) return;  // mounted 체크 추가
+
+      // 3. 최종 연결 상태 결정
+      final finalConnectionState = isPaired && isActuallyConnected;
 
       setState(() {
-        _isWatchPaired = isPaired;
-        _watchStatus = isPaired ? '워치가 연결되어 있습니다' : '워치가 연결되어 있지 않습니다';
+        _isWatchPaired = finalConnectionState;
+        _watchStatus = finalConnectionState 
+            ? '워치가 연결되어 있습니다' 
+            : '워치가 연결되어 있지 않습니다';
         _isCheckingWatch = false;
       });
 
-      debugPrint('워치 연결 상태: ${isPaired ? '연결됨' : '연결되지 않음'}');
+      debugPrint('워치 연결 상태: ${finalConnectionState ? '연결됨' : '연결되지 않음'} (isPaired: $isPaired, isActuallyConnected: $isActuallyConnected)');
+
+      // 4. 연결이 끊어진 경우 관련 기능 비활성화
+      if (!finalConnectionState) {
+        setState(() {
+          _currentHeartRate = 0;
+          _pacemakerMessage = null;
+          _pacemakerLevel = null;
+        });
+      }
     } catch (e) {
       setState(() {
         _isWatchPaired = false;
         _watchStatus = '워치 연결 확인 중 오류 발생: $e';
         _isCheckingWatch = false;
+        _currentHeartRate = 0;
+        _pacemakerMessage = null;
+        _pacemakerLevel = null;
       });
       debugPrint('워치 연결 확인 중 오류: $e');
     }
@@ -2947,6 +3037,9 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
   // 워치에 메시지 전송 (watch_connectivity 사용)
   Future<void> _sendMessageToWatch() async {
+    // 1. 연결 상태 재확인
+    await _checkWatchConnection();
+    
     if (!_isWatchPaired) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('워치가 연결되어 있지 않습니다.')),
@@ -2957,7 +3050,12 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     try {
       debugPrint('워치에 메시지 전송 시도...');
 
-      // 테스트 메시지 전송
+      // 2. 메시지 전송 전 최종 연결 상태 확인
+      if (!await _watch.isPaired) {
+        throw Exception('워치 연결이 끊어졌습니다.');
+      }
+
+      // 3. 테스트 메시지 전송
       await _watch.sendMessage(
           {'path': '/PROGRESS', "type": "FAST", "difference": 300});
 
@@ -2968,6 +3066,16 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       );
     } catch (e) {
       debugPrint('워치 메시지 전송 오류: $e');
+      
+      // 4. 오류 발생 시 연결 상태 재설정
+      setState(() {
+        _isWatchPaired = false;
+        _watchStatus = '워치 연결이 끊어졌습니다';
+        _currentHeartRate = 0;
+        _pacemakerMessage = null;
+        _pacemakerLevel = null;
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('워치 메시지 전송 실패: $e')),
       );
@@ -3057,7 +3165,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
       final body = jsonEncode({
         'heartRate': _currentHeartRate,
-        'distance': (_currentTotalDistance * 1000).toInt(), // km를 m로 변환
+        'distance': _currentTotalDistance.toInt(), // 이미 m 단위로 저장
         'speed': _currentSpeed, // km/h
         'time': _elapsedSeconds,
         'altitude': _currentAltitude,
@@ -3107,8 +3215,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
           // 페이스메이커 level이 변경되었는지 확인
           if (_previousPacemakerLevel != level) {
             debugPrint('페이스메이커 level 변경: $_previousPacemakerLevel -> $level');
-            // 워치에 알람 전송
-            if (_isWatchPaired) {
+            // 워치에 알람 전송 (앱이 백그라운드 상태가 아니거나 워치가 연결된 경우만)
+            if (_isWatchPaired && _currentLifecycleState != AppLifecycleState.paused) {
               try {
                 await _watch.sendMessage({
                   "path": "/PACEMAKER_ALERT",
@@ -3119,6 +3227,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
               } catch (e) {
                 debugPrint('페이스메이커 level 변경 알람 전송 실패: $e');
               }
+            } else {
+              debugPrint('워치 연결 없음 또는 백그라운드 상태: 페이스메이커 알람 전송 생략');
             }
             // 이전 level 업데이트
             _previousPacemakerLevel = level;
@@ -3130,17 +3240,23 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
             _pacemakerLevel = level;
           });
 
-          // 기존 페이스메이커 메시지 전송
-          _watch.sendMessage({
-            "path": "/PACEMAKER",
-            "level": level,
-            "message": pacemakerMessage
-          });
+          // 워치 메시지 전송 (워치가 연결된 경우)
+          if (_isWatchPaired) {
+            _watch.sendMessage({
+              "path": "/PACEMAKER",
+              "level": level,
+              "message": pacemakerMessage
+            });
+            debugPrint('페이스메이커 메시지 전송됨');
+          }
         }
 
-        // 기존 페이스메이커 메시지 전송
-        _watch.sendMessage(
-            {"path": "/PACEMAKER", "level": level, "message": message});
+        // 워치 메시지 전송 (워치가 연결된 경우)
+        if (_isWatchPaired) {
+          _watch.sendMessage(
+              {"path": "/PACEMAKER", "level": level, "message": message});
+          debugPrint('페이스메이커 상태 전송됨');
+        }
       } else {
         debugPrint('Error: ${response.statusCode}');
       }
@@ -3165,5 +3281,132 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     debugPrint('트래킹 서비스 종료 요청');
     final FlutterBackgroundService service = FlutterBackgroundService();
     service.invoke('stop');
+  }
+
+  // 지도 및 트래킹 관련 초기화 함수
+  Future<void> _initializeMapAndTracking(AppState appState) async {
+    // 1. 현재 위치를 먼저 가져오기 시도 (지도 초기화용)
+    try {
+      PermissionStatus status = await Permission.locationWhenInUse.status;
+      if (status.isDenied) {
+        status = await Permission.locationWhenInUse.request();
+      }
+      if (status.isGranted) {
+        Position position = await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.high,
+            timeLimit: const Duration(seconds: 5)); // 5초 타임아웃
+        if (mounted) {
+          setState(() {
+            _currentLat = position.latitude;
+            _currentLng = position.longitude;
+            
+            // 초기 위치로 칼만 필터 초기화
+            if (position.accuracy < 20.0) {
+              _gpsFilter = GpsKalmanFilter(
+                initialLat: position.latitude,
+                initialLng: position.longitude
+              );
+              _lastFilteredLat = position.latitude;
+              _lastFilteredLng = position.longitude;
+              _isFilterInitialized = true;
+              debugPrint('초기 위치로 칼만 필터 초기화: Lat: ${position.latitude}, Lng: ${position.longitude}, 정확도: ${position.accuracy}m');
+            }
+            
+            debugPrint('초기 위치 가져오기 성공: Lat: $_currentLat, Lng: $_currentLng');
+          });
+        }
+      } else {
+        debugPrint('초기 위치 권한 거부됨, 기본값 또는 AppState 값 사용');
+      }
+    } catch (e) {
+      debugPrint('초기 위치 가져오기 실패: $e');
+    }
+
+    // 2. AppState의 트래킹 상태에 따라 데이터 로드 또는 새 트래킹 준비
+    if (appState.isTracking) {
+      final List<NLatLng> previousUserPath = List.from(appState.userPath);
+      final List<NLatLng> previousRouteCoordinates = List.from(appState.routeCoordinates);
+      final double prevLat = appState.currentLat;
+      final double prevLng = appState.currentLng;
+      final double prevDist = appState.distance;
+      final double prevAltitude = appState.currentAltitude;
+      final int prevElapsedSeconds = appState.elapsedSeconds;
+      final int prevElapsedMinutes = appState.elapsedMinutes;
+      final bool prevIsNavigationMode = appState.isNavigationMode;
+      final double prevDeviceHeading = appState.deviceHeading;
+
+      bool isPrevDataValid = (prevLat.abs() > 0.001 &&
+          prevLng.abs() > 0.001 &&
+          prevLat >= -90 &&
+          prevLat <= 90 &&
+          prevLng >= -180 &&
+          prevLng <= 180 &&
+          prevDist >= 0 &&
+          prevDist < 10000);
+
+      if (isPrevDataValid) {
+        _userPath.addAll(previousUserPath);
+        if (previousRouteCoordinates.isNotEmpty) {
+          _routeCoordinates = previousRouteCoordinates;
+        }
+        if (!(await Geolocator.isLocationServiceEnabled()) ||
+            await Permission.locationWhenInUse.isDenied) {
+          _currentLat = prevLat;
+          _currentLng = prevLng;
+        }
+        _anchorPointLat = _currentLat;
+        _anchorPointLng = _currentLng;
+        _isAnchorPointSet = true;
+        _lastDistanceCalcTime = DateTime.now();
+        _currentTotalDistance = prevDist;
+        _accumulatedDistanceInMeters = _currentTotalDistance * 1000;
+        _currentAltitude = prevAltitude;
+        _elapsedSeconds = prevElapsedSeconds;
+        _elapsedMinutes = prevElapsedMinutes;
+        _isNavigationMode = prevIsNavigationMode;
+        _deviceHeading = prevDeviceHeading;
+        _calculateRemainingDistanceAndTime();
+      } else {
+        _userPath.clear();
+        _routeCoordinates.clear();
+        _loadSelectedRouteData();
+        _anchorPointLat = 0.0;
+        _anchorPointLng = 0.0;
+        _isAnchorPointSet = false;
+        _accumulatedDistanceInMeters = 0.0;
+        _currentTotalDistance = 0.0;
+        _currentAltitude = 0.0;
+        _elapsedSeconds = 0;
+        _elapsedMinutes = 0;
+        _isNavigationMode = true;
+        _deviceHeading = 0.0;
+        _remainingDistance = 0.0;
+        _estimatedRemainingSeconds = 0;
+        _completedPercentage = 0.0;
+      }
+    } else {
+      _loadSelectedRouteData();
+      if (!(await Geolocator.isLocationServiceEnabled()) ||
+          await Permission.locationWhenInUse.isDenied) {
+        if (_routeCoordinates.isNotEmpty) {
+          _currentLat = _routeCoordinates.first.latitude;
+          _currentLng = _routeCoordinates.first.longitude;
+        }
+      }
+      _anchorPointLat = 0.0;
+      _anchorPointLng = 0.0;
+      _isAnchorPointSet = false;
+      _accumulatedDistanceInMeters = 0.0;
+      _currentTotalDistance = 0.0;
+      _currentAltitude = 0.0;
+      _elapsedSeconds = 0;
+      _elapsedMinutes = 0;
+    }
+
+    // 3. 나머지 트래킹 관련 기능 시작
+    _checkLocationPermission();
+    _startTracking();
+    _startCompassTracking();
+    _startTrackingRecords();
   }
 }
