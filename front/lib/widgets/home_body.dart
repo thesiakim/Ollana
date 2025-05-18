@@ -667,7 +667,7 @@ Future<void> _initializeData() async {
           ),
           const SizedBox(height: 20),
           const Text(
-            '로그인을 하고\n맞춤형 산 추천을 받아보세요',
+            '로그인을 하고 당신만을 위한\n산 추천을 받아보세요',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 16,
