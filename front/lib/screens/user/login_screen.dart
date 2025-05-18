@@ -237,15 +237,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     // 로고 또는 이미지
                     Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: _primaryColor.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.terrain,
-                        size: 50,
-                        color: _primaryColor,
+                      width: 120, // 로고 크기에 맞게 조정하세요
+                      height: 120, // 로고 크기에 맞게 조정하세요
+                      child: Image.asset(
+                        'lib/assets/images/logo.png',
+                        fit: BoxFit.contain,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -259,7 +255,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '로그인하여 다양한 서비스를 이용해보세요',
+                      '로그인해서 다양한 서비스를 이용해보세요',
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.grey[600],

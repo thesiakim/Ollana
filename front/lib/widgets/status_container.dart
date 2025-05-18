@@ -1,13 +1,12 @@
-// lib/widgets/status_container.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http; // HTTP 요청
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart'; // .env 읽기용
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import '../models/app_state.dart';
 import 'status_info_pages.dart';
-import 'experience_bar.dart'; // ← 추가
+import 'experience_bar.dart';
 
 class StatusContainer extends StatefulWidget {
   final PageController pageController;
@@ -81,105 +80,218 @@ class _StatusContainerState extends State<StatusContainer> {
         return 'lib/assets/images/level_one.png';
     }
   }
+  
+  String _koreanGradeName(String grade) {
+    switch (grade) {
+      case 'SEED':
+        return '씨앗';
+      case 'SPROUT':
+        return '새싹';
+      case 'TREE':
+        return '나무';
+      case 'FRUIT':
+        return '열매';
+      case 'MOUNTAIN':
+        return '산';
+      default:
+        return '씨앗';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final badgeAsset = _assetForGrade(_grade);
+    final koreanGrade = _koreanGradeName(_grade);
 
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-      padding: const EdgeInsets.all(24),
+      margin: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [
-            Color.fromARGB(255, 81, 81, 81), // 연한 크림색
-            Color.fromARGB(255, 145, 145, 145), // 부드러운 따뜻한 크림
+            Color(0xFFE8F5EC), // 연한 민트 그린
+            Color(0xFFDCEFE2), // 연한 민트색
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24), // 더 둥글게
         boxShadow: [
           BoxShadow(
-            color: Colors.black26,
-            blurRadius: 12,
-            offset: Offset(0, 6),
+            color: const Color(0xFF64B792).withOpacity(0.15), // 녹색 계열 그림자
+            blurRadius: 10,
+            spreadRadius: 0,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // 왼쪽: 등급 배지 + ExperienceBar
-            SizedBox(
-              width: 120,
+      child: Row(
+        children: [
+          // 왼쪽: 등급 배지 + 등급명 + 경험치 프로그레스 바
+          Padding(
+            padding: const EdgeInsets.all(18),
+            child: SizedBox(
+              width: 100,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // 뱃지
+                  // 뱃지 (맨 위)
                   Container(
-                    width: 70,
-                    height: 70,
-                    decoration: const BoxDecoration(shape: BoxShape.circle),
+                    width: 80,
+                    height: 80,
+                    padding: const EdgeInsets.all(2),
                     child: ClipOval(
                       child: Image.asset(badgeAsset, fit: BoxFit.cover),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  // 경험치 바 (dynamic!)
-                  ExperienceBar(
-                    currentXp: _exp,
-                    grade: _grade,
+                  const SizedBox(height: 12),
+                  
+                  // 등급명 + 경험치 값 (중간)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // 등급명 컨테이너
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8, 
+                          vertical: 3
+                        ),
+                        decoration: BoxDecoration(
+                          // 그라데이션을 단일 색상으로 변경
+                          color: const Color(0xFF52A486), // 요청하신 색상으로 변경
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF52A486).withOpacity(0.25), // 그림자 색상도 일치시킴
+                              blurRadius: 4,
+                              spreadRadius: 0,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          koreanGrade,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      // 경험치 컨테이너 - 디자인 개선
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 4,
+                              spreadRadius: 0,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          '${_exp}xp',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF555555),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  
+                  const SizedBox(height: 12),
+                  
+                  // 경험치 바 (맨 아래)
+                  SizedBox(
+                    width: 90,
+                    child: ExperienceBar(currentXp: _exp, grade: _grade),
                   ),
                 ],
               ),
             ),
+          ),
 
-            const SizedBox(width: 24),
-
-            // 오른쪽: PageView + 인디케이터
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
+          // 오른쪽: PageView + 인디케이터
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(0, 16, 16, 16),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20), // 더 둥글게
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.06),
+                      blurRadius: 8,
+                      spreadRadius: 0,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // 페이지뷰
                     SizedBox(
                       height: 140,
                       child: PageView(
                         controller: widget.pageController,
                         onPageChanged: widget.onPageChanged,
+                        physics: const BouncingScrollPhysics(), // 스크롤 효과 추가
                         children: const [
                           FirstStatusInfo(),
                           SecondStatusInfo(),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(2, (i) {
-                        final isActive = i == widget.currentStatusPage;
-                        return AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          margin: const EdgeInsets.symmetric(horizontal: 6),
-                          width: isActive ? 12 : 8,
-                          height: isActive ? 12 : 8,
-                          decoration: BoxDecoration(
-                            color: isActive ? Colors.black : Colors.grey[300],
-                            shape: BoxShape.circle,
-                          ),
-                        );
-                      }),
+                    
+                    // 페이지 인디케이터 - 디자인 개선
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(2, (i) {
+                          final isActive = i == widget.currentStatusPage;
+                          return AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            width: isActive ? 20 : 8, // 활성 상태 더 넓게
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: isActive 
+                                  ? const Color(0xFF4CAF50)  // 활성 색상 변경
+                                  : Colors.grey[300],
+                              borderRadius: BorderRadius.circular(4),
+                              boxShadow: isActive
+                                  ? [
+                                      BoxShadow(
+                                        color: const Color(0xFF4CAF50).withOpacity(0.3),
+                                        blurRadius: 4,
+                                        spreadRadius: 0,
+                                        offset: const Offset(0, 1),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                          );
+                        }),
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

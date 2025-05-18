@@ -32,11 +32,154 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
   Map<int, CompareResponse?> _compareDataByPath = {};
   Map<int, DateTime?> _startDatesByPath = {};
   Map<int, DateTime?> _endDatesByPath = {};
+  bool _isTooltipVisible = false; // 툴팁 표시 여부를 관리하는 상태
+  OverlayEntry? _overlayEntry; // 오버레이 엔트리
 
   @override
   void initState() {
     super.initState();
     _fetchFootprintDetail();
+  }
+
+  // dispose 메서드 추가
+  @override
+  void dispose() {
+    _removeTooltip();
+    super.dispose();
+  }
+
+  // 툴팁 토글 함수
+  void _toggleTooltip(BuildContext context) {
+    setState(() {
+      if (_isTooltipVisible) {
+        _removeTooltip(); 
+      } else {
+        _showTooltip(context);
+      }
+    });
+  }
+
+  void _showTooltip(BuildContext context) {
+    _removeTooltip(); // 기존 툴팁이 있다면 제거
+
+    _overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        right: 28, // 오른쪽에서의 거리
+        bottom: 85, // 하단에서의 거리 (FAB 위에 위치하도록)
+        child: Material(
+          color: Colors.transparent,
+          child: AnimatedOpacity(
+            duration: Duration(milliseconds: 200),
+            opacity: 1.0,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Container(
+                  width: 265, 
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: Color(0xFF52A486), 
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 12,
+                        offset: Offset(0, 5),
+                        spreadRadius: 2,
+                      ),
+                    ],
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color(0xFF5CB89A),
+                        Color(0xFF3D8A6B),
+                      ],
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.info_outline,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
+                          SizedBox(width: 10),
+                          Text(
+                            '도움말',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 12),
+                      Padding(
+                        padding: EdgeInsets.only(left: 4),
+                        child: Text(
+                          '그래프의 날짜를 클릭해서 상세 내역과 비교 결과를 조회해보세요',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // 말풍선 꼬리 부분 추가
+                Padding(
+                  padding: EdgeInsets.only(right: 15.0),
+                  child: ClipPath(
+                    clipper: TriangleClipper(),
+                    child: Container(
+                      width: 15,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Color(0xFF3D8A6B),
+                            Color(0xFF3D8A6B),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    Overlay.of(context).insert(_overlayEntry!);
+    _isTooltipVisible = true;
+  }
+
+  // 툴팁 제거 함수
+  void _removeTooltip() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+    _isTooltipVisible = false;
   }
 
   Future<void> _fetchFootprintDetail({int? pathId}) async {
@@ -76,9 +219,9 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
         });
 
         if (detailResponse.isExceed) {
-          _showSnackBar('설정하신 기간의 등산 기록이 5개를 초과하여 최근 5개만 확인 가능합니다');
+          _showSnackBar('설정하신 기간의 등산 기록이 5개를 초과하여\n종료일 기준 최근 5개만 조회했어요');
         } else if (detailResponse.records.isEmpty) {
-          _showSnackBar('설정하신 기간의 등산 기록이 존재하지 않습니다');
+          _showSnackBar('설정하신 기간의 등산 기록이 존재하지 않아요');
         }
       } else {
         final detailResponse = await service.getFootprintDetail(
@@ -111,11 +254,45 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
     ScaffoldMessenger.of(context).removeCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
-        duration: Duration(seconds: 3),
+        content: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Icon(
+                message.contains('존재하지 않습니다') 
+                  ? Icons.info_outline 
+                  : Icons.notifications_none,
+                color: Colors.white,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: const Color(0xFF52A486),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        duration: const Duration(seconds: 2), // 더 짧은 시간으로 수정
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        margin: EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        elevation: 3,
+        margin: const EdgeInsets.all(16),
+        // 확인 버튼 제거
       ),
     );
   }
@@ -257,17 +434,52 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        elevation: 0,
-        backgroundColor: const Color(0xFF52A486),
-        title: Text(
-          mountainName != null ? '$mountainName 발자취' : '발자취',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+      elevation: 0,
+      backgroundColor: Colors.white,
+      scrolledUnderElevation: 0, // 이 값을 0으로 설정
+      title: Text(
+        mountainName != null ? '$mountainName 발자취' : '발자취',
+        style: TextStyle(
+          color: Colors.black,
+          fontWeight: FontWeight.bold,
         ),
-        centerTitle: true,
       ),
+      centerTitle: true,
+    ),
+      // 물음표 아이콘을 위한 FloatingActionButton 추가
+      floatingActionButton: Builder(
+        builder: (context) => FloatingActionButton(
+          onPressed: () {
+            _toggleTooltip(context);
+          },
+          backgroundColor: const Color(0xFF52A486),
+          foregroundColor: Colors.white,
+          elevation: 4.0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.0),
+          ),
+          child: AnimatedSwitcher(
+            duration: Duration(milliseconds: 300),
+            transitionBuilder: (Widget child, Animation<double> animation) {
+              return RotationTransition(
+                turns: animation,
+                child: ScaleTransition(
+                  scale: animation,
+                  child: child,
+                ),
+              );
+            },
+            child: Icon(
+              _isTooltipVisible ? Icons.close : Icons.help_outline,
+              key: ValueKey<bool>(_isTooltipVisible),
+              color: Colors.white,
+              size: 24,
+            ),
+          ),
+          mini: true,
+        ),
+      ),
+
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -357,13 +569,119 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                             ],
                           ),
                           const Divider(height: 24),
+
                           AspectRatio(
                             aspectRatio: 1.7,
                             child: Padding(
-                              padding: const EdgeInsets.only(
-                                  right: 16.0, top: 8.0, bottom: 8.0),
-                              child: LineChart(
-                                LineChartData(
+                              padding: const EdgeInsets.only(right: 16.0, top: 8.0, bottom: 8.0),
+                              child: path.records.length <= 1
+                                  ? LayoutBuilder(
+                                      builder: (context, constraints) {
+                                        // 사용 가능한 높이와 너비를 기준으로 레이아웃 설계
+                                        return Container(
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.circular(16),
+                                          ),
+                                          child: path.records.isEmpty 
+                                              ? Center(
+                                                  child: Column(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      Icon(
+                                                        Icons.insert_chart_outlined,
+                                                        size: 40,
+                                                        color: Color(0xFF52A486),
+                                                      ),
+                                                      const SizedBox(height: 12),
+                                                      Text(
+                                                        "그래프를 보려면 기록이 필요해요",
+                                                        style: TextStyle(
+                                                          fontSize: 14,
+                                                          color: Colors.grey[600],
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                )
+                                              : Stack(
+                                                  children: [
+                                                    // 상단 안내 메시지
+                                                    Positioned(
+                                                      left: 0,
+                                                      right: 0,
+                                                      child: Center(
+                                                        child: Text(
+                                                          "그래프를 확인하려면 기록이 2개 이상 필요해요!",
+                                                          style: TextStyle(
+                                                            fontSize: 13,
+                                                            fontWeight: FontWeight.w500,
+                                                            color: Colors.grey[600],
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    
+                                                    // 날짜 배지
+                                                    Positioned(
+                                                      top: constraints.maxHeight * 0.25,
+                                                      left: 0,
+                                                      right: 0,
+                                                      child: Center(
+                                                        child: Container(
+                                                          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 14),
+                                                          decoration: BoxDecoration(
+                                                            color: const Color(0xFF52A486),
+                                                            borderRadius: BorderRadius.circular(20),
+                                                          ),
+                                                          child: Text(
+                                                            formatDate(path.records[0].date),
+                                                            style: const TextStyle(
+                                                              fontSize: 14,
+                                                              color: Colors.white,
+                                                              fontWeight: FontWeight.bold,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    
+                                                    // 데이터 표시
+                                                    Positioned(
+                                                      bottom: constraints.maxHeight * 0.15,
+                                                      left: 16,
+                                                      right: 16,
+                                                      child: Row(
+                                                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                                        children: [
+                                                          _buildCompactMetric(
+                                                            Icons.favorite,
+                                                            Colors.red[400]!,
+                                                            "${path.records[0].maxHeartRate}",
+                                                            "최고 심박수",
+                                                          ),
+                                                          _buildCompactMetric(
+                                                            Icons.monitor_heart_outlined,
+                                                            Colors.blue[400]!,
+                                                            "${path.records[0].averageHeartRate.toStringAsFixed(1)}",
+                                                            "평균 심박수",
+                                                          ),
+                                                          _buildCompactMetric(
+                                                            Icons.timer,
+                                                            Colors.green[400]!,
+                                                            "${path.records[0].time}분",
+                                                            "소요 시간",
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                        );
+                                      }
+                                    )
+                                  : LineChart(
+                                      LineChartData(
                                   minX: 0,
                                   maxX: path.records.isEmpty
                                       ? 0
@@ -495,7 +813,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                                                     fontSize: 10,
                                                     fontWeight: FontWeight.bold,
                                                     color: isSelected
-                                                        ? Colors.orange
+                                                        ? const Color(0xFF52A486) 
                                                         : Colors.black,
                                                   ),
                                                 ),
@@ -593,72 +911,72 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                               ),
                             ),
                           ),
-                          const SizedBox(height: 12),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Flexible(
-                                child: ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF52A486),
-                                    foregroundColor: Colors.white,
-                                    minimumSize: Size(120, 36),
-                                    padding: EdgeInsets.symmetric(horizontal: 8),
-                                  ),
-                                  onPressed: () =>
-                                      _showDatePickerModal(path.pathId, true),
-                                  child: Text(
-                                    _startDatesByPath[path.pathId] == null
-                                        ? '시작일 선택'
-                                        : displayDate(_startDatesByPath[path.pathId]),
-                                    style: TextStyle(fontSize: 14),
+                          // 수정된 버튼 섹션: 기록이 2개 이상인 경우에만 표시
+                          if (path.records.length >= 2) ...[
+                            const SizedBox(height: 12), // 버튼과 그래프 사이 간격
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Flexible(
+                                  child: ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF52A486),
+                                      foregroundColor: Colors.white,
+                                      minimumSize: Size(120, 36),
+                                      padding: EdgeInsets.symmetric(horizontal: 8),
+                                    ),
+                                    onPressed: () => _showDatePickerModal(path.pathId, true),
+                                    child: Text(
+                                      _startDatesByPath[path.pathId] == null
+                                          ? '시작일 선택'
+                                          : displayDate(_startDatesByPath[path.pathId]),
+                                      style: TextStyle(fontSize: 14),
+                                    ),
                                   ),
                                 ),
-                              ),
-                              if (_startDatesByPath[path.pathId] != null &&
-                                  _endDatesByPath[path.pathId] != null) ...[
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[200],
-                                    borderRadius: BorderRadius.circular(12),
+                                if (_startDatesByPath[path.pathId] != null &&
+                                    _endDatesByPath[path.pathId] != null) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[200],
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      '~',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black54,
+                                      ),
+                                    ),
                                   ),
-                                  child: Text(
-                                    '~',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black54,
+                                ],
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF52A486),
+                                      foregroundColor: Colors.white,
+                                      minimumSize: Size(120, 36),
+                                      padding: EdgeInsets.symmetric(horizontal: 8),
+                                    ),
+                                    onPressed: _startDatesByPath[path.pathId] == null
+                                        ? null
+                                        : () => _showDatePickerModal(path.pathId, false),
+                                    child: Text(
+                                      _endDatesByPath[path.pathId] == null
+                                          ? '종료일 선택'
+                                          : displayDate(_endDatesByPath[path.pathId]),
+                                      style: TextStyle(fontSize: 14),
                                     ),
                                   ),
                                 ),
                               ],
-                              const SizedBox(width: 8),
-                              Flexible(
-                                child: ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF52A486),
-                                    foregroundColor: Colors.white,
-                                    minimumSize: Size(120, 36),
-                                    padding: EdgeInsets.symmetric(horizontal: 8),
-                                  ),
-                                  onPressed: _startDatesByPath[path.pathId] == null
-                                      ? null
-                                      : () =>
-                                          _showDatePickerModal(path.pathId, false),
-                                  child: Text(
-                                    _endDatesByPath[path.pathId] == null
-                                        ? '종료일 선택'
-                                        : displayDate(_endDatesByPath[path.pathId]),
-                                    style: TextStyle(fontSize: 14),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                           if (compareData != null && compareData.records.isNotEmpty) ...[
-                            const SizedBox(height: 20),
                             buildCompareResult(compareData),
                           ],
                         ],
@@ -673,4 +991,106 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
       ),
     );
   }
+
+    // 도움말 메시지를 표시하는 함수 추가
+  void _showHelpMessage(String message) {
+    ScaffoldMessenger.of(context).removeCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.info_outline, color: Colors.white),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(fontSize: 15),
+              ),
+            ),
+          ],
+        ),
+        duration: Duration(seconds: 5),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        margin: EdgeInsets.fromLTRB(16, 0, 16, 70), // 하단에 충분한 여백을 두어 FloatingActionButton과 겹치지 않도록 설정
+        backgroundColor: Colors.black.withOpacity(0.8),
+      ),
+    );
+  }
 }
+
+Widget _buildSingleRecordMetric(IconData icon, Color color, String value, String label) {
+  return Column(
+    children: [
+      Icon(icon, color: color, size: 22),
+      const SizedBox(height: 8),
+      Text(
+        value,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          color: Colors.grey[800],
+        ),
+      ),
+      Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          color: Colors.grey[600],
+        ),
+      ),
+    ],
+  );
+}
+
+Widget _buildCompactMetric(IconData icon, Color color, String value, String label) {
+  return Expanded(
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, color: color, size: 20),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.grey[600],
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[800],
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class TriangleClipper extends CustomClipper<Path> {
+    @override
+    Path getClip(Size size) {
+      final path = Path();
+      path.lineTo(size.width, 0);
+      path.lineTo(size.width / 2, size.height);
+      path.close();
+      return path;
+    }
+
+    @override
+    bool shouldReclip(CustomClipper<Path> oldClipper) => false;
+  }

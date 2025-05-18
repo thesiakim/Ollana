@@ -331,7 +331,7 @@ class _AdditionalInfoScreenState extends State<AdditionalInfoScreen> {
 
   Widget _buildGenderOption(String value, String label, IconData icon) {
     final theme = Theme.of(context);
-    final primaryColor = Color(0xFF52A486); // SignUpScreen과 동일한 색상으로 변경
+    final primaryColor = Color(0xFF52A486); 
     final onPrimary = Colors.white;
     final isSelected = _gender == value;
 

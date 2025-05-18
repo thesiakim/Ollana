@@ -90,50 +90,27 @@ class _ThemeRecommendationScreenState extends State<ThemeRecommendationScreen>
   
   Widget _buildLoadingView() {
     return Center(
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              spreadRadius: 1,
-              blurRadius: 20,
-              offset: const Offset(0, 5),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 48,
+            height: 48,
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+              strokeWidth: 4,
             ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 60,
-              height: 60,
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation(_primaryColor),
-                strokeWidth: 3,
-              ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            '추천 산을 불러오는 중',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey[700],
             ),
-            const SizedBox(height: 24),
-            Text(
-              '추천 산을 불러오는 중',
-              style: TextStyle(
-                color: _textColor,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              '잠시만 기다려주세요',
-              style: TextStyle(
-                color: Colors.grey.shade600,
-                fontSize: 15,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -427,11 +404,15 @@ class _ThemeRecommendationScreenState extends State<ThemeRecommendationScreen>
                           mountain: rec,
                           index: i,
                           onTap: () {
+                            // 산의 난이도에 따른 색상 가져오기
+                            final level = rec['level'] as String? ?? 'M';
+                            final levelColor = ThemeRecommendationCard.getLevelColor(level);
+                            
                             showDialog(
                               context: context,
                               builder: (_) => MountainDetailDialog(
                                 mountain: rec,
-                                primaryColor: _primaryColor,
+                                primaryColor: levelColor, // 난이도별 색상 적용
                                 textColor: _textColor,
                               ),
                             );

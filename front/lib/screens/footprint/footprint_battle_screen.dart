@@ -510,19 +510,10 @@ class _FootprintBattleScreenState extends State<FootprintBattleScreen> {
     );
   }
 
-  // 결과에 따른 배경색 - 무승부 카드 헤더 색상을 더 진하게 변경
-  Color _getResultBackgroundColor(String result) {
-    switch (result) {
-      case 'W':
-        return _winColor.withOpacity(0.1);
-      case 'L':
-        return _loseColor.withOpacity(0.1);
-      case 'S':
-        return _drawCardColor; // 무승부 카드 헤더 색상을 더 진하게 적용
-      default:
-        return Colors.grey.withOpacity(0.1);
-    }
-  }
+Color _getResultBackgroundColor(String result) {
+  // 테마 색상(0xFF52A486)의 채도와 명도를 낮춘 버전 사용
+  return const Color(0xFF52A486).withOpacity(0.1);
+}
 
   Color _getResultForegroundColor(String result) {
     switch (result) {

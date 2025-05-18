@@ -67,16 +67,20 @@ class _AiRecommendationScreenState extends State<AiRecommendationScreen> with Si
   }
 
   void _showDetailDialog(BuildContext context, Map<String, dynamic> mountain) {
+    // 산의 난이도에 따른 색상 가져오기
+    final level = mountain['level'] as String? ?? 'M';
+    final levelColor = RecommendationCard.getLevelColor(level);
+    
     showDialog(
       context: context,
       builder: (_) => MountainDetailDialog(
         mountain: mountain,
-        primaryColor: _primaryColor,
+        primaryColor: levelColor, // 난이도별 색상 적용
         textColor: _textColor,
       ),
     );
   }
-  
+    
   Widget _buildInfoCard({
     required IconData icon,
     required String title,
@@ -130,50 +134,27 @@ class _AiRecommendationScreenState extends State<AiRecommendationScreen> with Si
     return Center(
       child: FadeTransition(
         opacity: _fadeAnimation,
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                spreadRadius: 1,
-                blurRadius: 20,
-                offset: const Offset(0, 5),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 48,
+              height: 48,
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+                strokeWidth: 4, // MountainMapScreen과 동일
               ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 60,
-                height: 60,
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation(_primaryColor),
-                  strokeWidth: 3,
-                ),
+            ),
+            const SizedBox(height: 24), // MountainMapScreen과 동일
+            Text(
+              '맞춤 추천을 불러오는 중', // 문맥에 맞게 수정
+              style: TextStyle(
+                fontSize: 16, // MountainMapScreen과 동일
+                fontWeight: FontWeight.w500, // MountainMapScreen과 동일
+                color: Colors.grey[700], // MountainMapScreen과 동일
               ),
-              const SizedBox(height: 24),
-              Text(
-                '맞춤 추천을 불러오는 중',
-                style: TextStyle(
-                  color: _textColor,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                '잠시만 기다려주세요',
-                style: TextStyle(
-                  color: Colors.grey.shade600,
-                  fontSize: 15,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

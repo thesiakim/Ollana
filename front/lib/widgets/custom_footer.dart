@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 
 import '../models/app_state.dart';
 import '../services/mountain_service.dart';
+import '../../screens/user/login_screen.dart';
 
 class CustomFooter extends StatelessWidget {
   const CustomFooter({super.key});
@@ -131,19 +132,120 @@ class CustomFooter extends StatelessWidget {
     return GestureDetector(
       onTap: () async {
         // 🔥 로그아웃 상태에서 0이 아닌 탭 선택 시 모달 안내
-// 로그아웃 상태에서 홈(0) 또는 지도(2) 탭만 허용, 그 외에는 안내 모달
+        // 로그아웃 상태에서 홈(0) 또는 지도(2) 탭만 허용, 그 외에는 안내 모달
         if (!appState.isLoggedIn && index != 0 && index != 2) {
           await showDialog(
             context: context,
-            builder: (ctx) => AlertDialog(
-              title: const Text('알림'),
-              content: const Text('로그인 후 이용해주세요 !'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  child: const Text('확인'),
+            barrierColor: Colors.black54,
+            builder: (ctx) => Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.rectangle,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 10.0,
+                      offset: const Offset(0.0, 10.0),
+                    ),
+                  ],
                 ),
-              ],
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Color(0xFF52A486).withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.lock_outline,
+                        color: Color(0xFF52A486),
+                        size: 40,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      '로그인이 필요합니다',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF333333),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      '이 기능을 사용하기 위해서는\n로그인이 필요해요',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: Color(0xFF666666),
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.of(ctx).pop(),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.grey[700],
+                              side: BorderSide(color: Colors.grey[300]!),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text(
+                              '취소',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.of(ctx).pop();
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                                );
+                              },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Color(0xFF52A486),
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text(
+                              '로그인',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ),
           );
           return;

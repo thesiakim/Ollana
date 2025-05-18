@@ -35,6 +35,7 @@ class _SurveyScreenState extends State<SurveyScreen> {
   final Color _secondaryColor = const Color(0xFF3D7A64);
   final Color _backgroundColor = const Color(0xFFF5F9F7);
   final Color _accentColor = const Color(0xFFFF8551);
+  final Color _textColor = const Color(0xFF333333);
 
   final List<String> _themes = ['단풍', '아름다운', '계곡'];
   final List<String> _experiences = ['초급', '중급', '고급'];
@@ -229,48 +230,149 @@ class _SurveyScreenState extends State<SurveyScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              decoration: InputDecoration(
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
+            // 드롭다운 대신 커스텀 UI 사용
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: Colors.grey.withOpacity(0.3),
+                  width: 1.5,
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: _primaryColor, width: 2),
-                ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                filled: true,
-                fillColor: Colors.white,
+                borderRadius: BorderRadius.circular(12),
               ),
-              value: selectedValue,
-              isExpanded: true,
-              icon: Icon(Icons.arrow_drop_down, color: _primaryColor),
-              style: TextStyle(color: Colors.grey.shade800, fontSize: 16),
-              onChanged: onChanged,
-              items: options.map((item) {
-                return DropdownMenuItem<String>(
-                  value: item,
-                  child: Row(
-                    children: [
-                      if (itemIcons != null && itemIcons.containsKey(item))
-                        Padding(
-                          padding: const EdgeInsets.only(right: 12),
-                          child: Icon(itemIcons[item], color: _primaryColor, size: 20),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () {
+                    // 커스텀 드롭다운 모달 표시
+                    _showCustomSelectionModal(
+                      context: context,
+                      title: title,
+                      options: options,
+                      selectedValue: selectedValue,
+                      onChanged: onChanged,
+                      itemIcons: itemIcons,
+                    );
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            if (selectedValue != null && itemIcons != null && itemIcons.containsKey(selectedValue))
+                              Padding(
+                                padding: const EdgeInsets.only(right: 12),
+                                child: Icon(itemIcons[selectedValue], color: _primaryColor, size: 20),
+                              ),
+                            Text(
+                              selectedValue ?? '선택',
+                              style: TextStyle(
+                                color: _textColor,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
                         ),
-                      Text(item),
-                    ],
+                        Icon(
+                          Icons.keyboard_arrow_down,
+                          color: _primaryColor,
+                          size: 24,
+                        ),
+                      ],
+                    ),
                   ),
-                );
-              }).toList(),
+                ),
+              ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  // 커스텀 선택 모달 표시 함수
+  void _showCustomSelectionModal({
+    required BuildContext context,
+    required String title,
+    required List<String> options,
+    required String? selectedValue,
+    required Function(String?) onChanged,
+    Map<String, IconData>? itemIcons,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.check_circle_outline,
+                      color: _primaryColor,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: _textColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: options.length,
+                  itemBuilder: (context, index) {
+                    final option = options[index];
+                    final isSelected = option == selectedValue;
+                    
+                    return ListTile(
+                      title: Text(
+                        option,
+                        style: TextStyle(
+                          color: _textColor,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          fontSize: 16,
+                        ),
+                      ),
+                      leading: isSelected 
+                          ? Icon(Icons.check_circle, color: _primaryColor) 
+                          : const Icon(Icons.circle_outlined, color: Colors.grey),
+                      trailing: itemIcons != null && itemIcons.containsKey(option)
+                          ? Icon(itemIcons[option], color: _primaryColor)
+                          : null,
+                      onTap: () {
+                        onChanged(option);
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -317,7 +419,7 @@ class _SurveyScreenState extends State<SurveyScreen> {
                           ],
                         ),
                         padding: const EdgeInsets.all(16),
-                        child: Image.asset('lib/assets/images/ai_recommend.png'),
+                        child: Image.asset('lib/assets/images/logo.png'),
                       ),
                       const SizedBox(height: 16),
                       Text(
@@ -345,7 +447,7 @@ class _SurveyScreenState extends State<SurveyScreen> {
                 
                 // 테마 선택
                 _buildSelectionCard(
-                  title: '테마 선택',
+                  title: '테마',
                   icon: Icons.filter_vintage,
                   selectedValue: _selectedTheme,
                   options: _themes,
@@ -357,7 +459,7 @@ class _SurveyScreenState extends State<SurveyScreen> {
                 
                 // 난이도 선택
                 _buildSelectionCard(
-                  title: '난이도 선택',
+                  title: '난이도',
                   icon: Icons.terrain,
                   selectedValue: _selectedExperience,
                   options: _experiences,
@@ -369,7 +471,7 @@ class _SurveyScreenState extends State<SurveyScreen> {
                 
                 // 지역 선택
                 _buildSelectionCard(
-                  title: '지역 선택',
+                  title: '지역',
                   icon: Icons.place,
                   selectedValue: _selectedRegion,
                   options: _regions,
@@ -389,7 +491,6 @@ class _SurveyScreenState extends State<SurveyScreen> {
                       backgroundColor: Color(0xFF52A486),
                       foregroundColor: Colors.white,
                       disabledBackgroundColor: Colors.grey.shade400,
-                      elevation: 4,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),

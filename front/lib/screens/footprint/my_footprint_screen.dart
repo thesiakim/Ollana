@@ -171,7 +171,7 @@ class _MyFootprintScreenState extends State<MyFootprintScreen> {
                                 children: [
                                   Text(
                                     footprints.isEmpty
-                                        ? '아직 등산하신 적이 없어요'
+                                        ? '아직 등산하신 적이 없어요\n등산을 하고 산 뱃지를 모아보세요!'
                                         : '총 등산 거리',
                                     style: TextStyle(
                                       fontSize: 14,
@@ -318,13 +318,6 @@ class _MyFootprintScreenState extends State<MyFootprintScreen> {
                                           ? Padding(
                                               padding: const EdgeInsets.symmetric(vertical: 20.0),
                                               child: Center(
-                                                // child: Text(
-                                                //   '모든 발자취를 불러왔습니다',
-                                                //   style: TextStyle(
-                                                //     color: Colors.grey[600],
-                                                //     fontSize: 14,
-                                                //   ),
-                                                // ),
                                               ),
                                             )
                                           : const SizedBox.shrink(),
@@ -360,7 +353,7 @@ class _MyFootprintScreenState extends State<MyFootprintScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            '첫 등산을 기록하고 발자취를 남겨보세요!',
+            '첫 등산을 기록하고 발자취를 남겨볼까요?',
             style: TextStyle(
               fontSize: 14,
               color: Colors.grey[600],

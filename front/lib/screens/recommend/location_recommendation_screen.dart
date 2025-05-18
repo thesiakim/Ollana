@@ -112,50 +112,27 @@ class _LocationRecommendationScreenState
     return Center(
       child: FadeTransition(
         opacity: _fadeAnimation,
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                spreadRadius: 1,
-                blurRadius: 20,
-                offset: const Offset(0, 5),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 48,
+              height: 48,
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+                strokeWidth: 4,
               ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 60,
-                height: 60,
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation(_primaryColor),
-                  strokeWidth: 3,
-                ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              '추천 산을 불러오는 중',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[700],
               ),
-              const SizedBox(height: 24),
-              Text(
-                '추천 산을 불러오는 중',
-                style: TextStyle(
-                  color: _textColor,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                '잠시만 기다려주세요',
-                style: TextStyle(
-                  color: Colors.grey.shade600,
-                  fontSize: 15,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -298,13 +275,196 @@ class _LocationRecommendationScreenState
           ),
           const SizedBox(height: 8),
           Text(
-            '"추천 보기"를 눌러주세요',
+            '"선택"을 눌러주세요',
             style: TextStyle(
               fontSize: 18,
               color: Colors.grey.shade700,
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildRecommendationCard(Map<String, dynamic> mountain, int index) {
+    final name = mountain['mountain_name'] as String? ?? '';
+    final location = mountain['location'] as String? ?? '위치 정보 없음';
+    final rawImg = mountain['image_url'] as String?;
+    final imgUrl = formatImageUrl(rawImg);
+    final height = mountain['height'] ?? 0;
+    final level = mountain['level'] as String? ?? 'M';
+    
+    // 난이도 텍스트 변환
+    final difficultyText = () {
+      switch (level) {
+        case 'L':
+          return '쉬움';
+        case 'M':
+          return '보통';
+        case 'H':
+          return '어려움';
+        default:
+          return '보통';
+      }
+    }();
+    
+    final levelColor = _getLevelColor(level);
+    
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 8), 
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              spreadRadius: 0,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            onTap: () {
+              // 난이도에 따른 색상으로 모달창 표시
+              showDialog(
+                context: context,
+                builder: (_) => MountainDetailDialog(
+                  mountain: mountain,
+                  primaryColor: levelColor,
+                  textColor: _textColor,
+                ),
+              );
+            },
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  // 이미지
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: imgUrl != null
+                      ? Image.network(
+                          imgUrl,
+                          width: 100,
+                          height: 100,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (ctx, child, progress) {
+                            if (progress == null) return child;
+                            return Container(
+                              width: 100,
+                              height: 100,
+                              color: Colors.grey.shade200,
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  value: progress.expectedTotalBytes != null
+                                      ? progress.cumulativeBytesLoaded /
+                                          progress.expectedTotalBytes!
+                                      : null,
+                                  valueColor: AlwaysStoppedAnimation(_primaryColor),
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) => _buildMountainPlaceholder(),
+                        )
+                      : _buildMountainPlaceholder(),
+                  ),
+                  const SizedBox(width: 16),
+                  
+                  // 산 정보
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // 산 이름
+                        Padding(
+                          padding: const EdgeInsets.only(left: 18), 
+                          child: Text(
+                            name,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 17,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(height: 8), 
+
+                        // 위치 정보
+                        Row(
+                          children: [
+                            Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                location,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey[700],
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        
+                        // 고도와 난이도를 한 줄에 표시 
+                        Row(
+                          children: [
+                            // 고도 정보
+                            Icon(Icons.height, size: 16, color: Colors.grey[600]),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${height}m',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey[700],
+                              ),
+                            ),
+                            
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 12),
+                            ),
+                            
+                            // 난이도 정보 (색상으로 구분)
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: levelColor,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              difficultyText,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey[700],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -455,7 +615,7 @@ class _LocationRecommendationScreenState
                         ),
                       ),
                       child: const Text(
-                        '추천 보기',
+                        '선택',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -487,217 +647,11 @@ class _LocationRecommendationScreenState
                         return _buildEmptyView();
                       }
                       return ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
                         itemCount: recs.length,
                         itemBuilder: (ctx, i) {
                           final rec = recs[i] as Map<String, dynamic>;
-                          final name = rec['mountain_name'] as String? ?? '';
-                          final desc = rec['mountain_description'] as String? ?? '';
-                          final rawImg = rec['image_url'] as String?;
-                          final imgUrl = formatImageUrl(rawImg);
-
-                          return FadeTransition(
-                            opacity: _fadeAnimation,
-                            child: Container(
-                              margin: const EdgeInsets.only(bottom: 20),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.08),
-                                    spreadRadius: 1,
-                                    blurRadius: 15,
-                                    offset: const Offset(0, 5),
-                                  ),
-                                ],
-                              ),
-                              child: Material(
-                                color: Colors.transparent,
-                                borderRadius: BorderRadius.circular(20),
-                                clipBehavior: Clip.antiAlias,
-                                child: InkWell(
-                                  onTap: () {
-                                    showDialog(
-                                      context: context,
-                                      builder: (_) => MountainDetailDialog(
-                                        mountain: rec,
-                                        primaryColor: _primaryColor,
-                                        textColor: _textColor,
-                                      ),
-                                    );
-                                  },
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      ClipRRect(
-                                        borderRadius: const BorderRadius.vertical(
-                                          top: Radius.circular(20),
-                                        ),
-                                        child: Stack(
-                                          children: [
-                                            imgUrl != null
-                                                ? Image.network(
-                                                    imgUrl,
-                                                    height: 200,
-                                                    width: double.infinity,
-                                                    fit: BoxFit.cover,
-                                                    loadingBuilder: (ctx, child, progress) {
-                                                      if (progress == null) return child;
-                                                      return Container(
-                                                        height: 200,
-                                                        width: double.infinity,
-                                                        color: Colors.grey.shade200,
-                                                        child: Center(
-                                                          child: CircularProgressIndicator(
-                                                            value: progress.expectedTotalBytes != null
-                                                                ? progress.cumulativeBytesLoaded /
-                                                                    progress.expectedTotalBytes!
-                                                                : null,
-                                                            valueColor:
-                                                                AlwaysStoppedAnimation(_primaryColor),
-                                                          ),
-                                                        ),
-                                                      );
-                                                    },
-                                                    errorBuilder: (ctx, err, st) {
-                                                      return Image.asset(
-                                                        'lib/assets/images/mount_default.png',
-                                                        height: 200,
-                                                        width: double.infinity,
-                                                        fit: BoxFit.cover,
-                                                      );
-                                                    },
-                                                  )
-                                                : Image.asset(
-                                                    'lib/assets/images/mount_default.png',
-                                                    height: 200,
-                                                    width: double.infinity,
-                                                    fit: BoxFit.cover,
-                                                  ),
-                                            // 산 이름 영역
-                                            Positioned(
-                                              bottom: 0,
-                                              left: 0,
-                                              right: 0,
-                                              child: Container(
-                                                padding: const EdgeInsets.symmetric(
-                                                  horizontal: 20,
-                                                  vertical: 8,
-                                                ),
-                                                child: Row(
-                                                  children: [
-                                                    // 아이콘에 테두리 효과 추가
-                                                    Stack(
-                                                      children: [
-                                                        // 테두리를 위한 아이콘 (검은색)
-                                                        const Icon(
-                                                          Icons.terrain,
-                                                          color: Colors.black,
-                                                          size: 24, // 약간 더 크게 설정하여 테두리 효과
-                                                        ),
-                                                        // 원래 아이콘
-                                                        const Icon(
-                                                          Icons.terrain,
-                                                          color: Colors.white,
-                                                          size: 20,
-                                                        ),
-                                                      ],
-                                                    ),
-                                                    const SizedBox(width: 8),
-                                                    // 텍스트에 테두리 효과 추가
-                                                    Expanded(
-                                                      child: Stack(
-                                                        children: [
-                                                          // 테두리 효과를 위한 텍스트
-                                                          Text(
-                                                            name,
-                                                            style: TextStyle(
-                                                              fontSize: 18,
-                                                              fontWeight: FontWeight.bold,
-                                                              foreground: Paint()
-                                                                ..style = PaintingStyle.stroke
-                                                                ..strokeWidth = 3
-                                                                ..color = Colors.black,
-                                                            ),
-                                                            maxLines: 1,
-                                                            overflow: TextOverflow.ellipsis,
-                                                          ),
-                                                          // 원래의 텍스트
-                                                          Text(
-                                                            name,
-                                                            style: const TextStyle(
-                                                              color: Colors.white,
-                                                              fontSize: 18,
-                                                              fontWeight: FontWeight.bold,
-                                                              shadows: [
-                                                                Shadow(
-                                                                  offset: Offset(1, 1),
-                                                                  blurRadius: 3,
-                                                                  color: Color.fromARGB(150, 0, 0, 0),
-                                                                ),
-                                                              ],
-                                                            ),
-                                                            maxLines: 1,
-                                                            overflow: TextOverflow.ellipsis,
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Padding(
-                                        padding: const EdgeInsets.all(20),
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              desc,
-                                              maxLines: 3,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(
-                                                fontSize: 16,
-                                                height: 1.5,
-                                                color: Colors.grey.shade700,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 16),
-                                            Row(
-                                              mainAxisAlignment: MainAxisAlignment.end,
-                                              children: [
-                                                TextButton.icon(
-                                                  onPressed: () {
-                                                    showDialog(
-                                                      context: context,
-                                                      builder: (_) => MountainDetailDialog(
-                                                        mountain: rec,
-                                                        primaryColor: _primaryColor,
-                                                        textColor: _textColor,
-                                                      ),
-                                                    );
-                                                  },
-                                                  icon: const Icon(Icons.visibility),
-                                                  label: const Text('자세히 보기'),
-                                                  style: TextButton.styleFrom(
-                                                    foregroundColor: _primaryColor,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
+                          return _buildRecommendationCard(rec, i);
                         },
                       );
                     },
@@ -708,7 +662,7 @@ class _LocationRecommendationScreenState
     );
   }
 
-    // 커스텀 드롭다운 메뉴 표시
+  // 커스텀 드롭다운 메뉴 표시
   void _showCustomDropdown(BuildContext context) {
     // 더 안정적인 방법으로 드롭다운 메뉴 구현
     showModalBottomSheet(
@@ -781,6 +735,59 @@ class _LocationRecommendationScreenState
           ),
         );
       },
+    );
+  }
+
+  // 난이도별 색상 가져오는 유틸리티 함수 추가
+  Color _getLevelColor(String level) {
+    switch (level) {
+      case 'H':
+        return const Color(0xFFE53935); // 빨간색 (어려움)
+      case 'M':
+        return const Color(0xFFFDD835); // 노란색 (보통)
+      case 'L':
+        return const Color(0xFF43A047); // 초록색 (쉬움)
+      default:
+        return const Color(0xFF1E88E5); // 파란색 (기본)
+    }
+  }
+
+  // 산 플레이스홀더 위젯 추가
+  Widget _buildMountainPlaceholder() {
+    return Container(
+      width: 100,
+      height: 100,
+      decoration: BoxDecoration(
+        color: Colors.grey[200],
+        borderRadius: BorderRadius.circular(14),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.grey[300]!,
+            Colors.grey[200]!,
+          ],
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.terrain,
+            size: 36,
+            color: Colors.grey[400],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '이미지 없음',
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey[500],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
