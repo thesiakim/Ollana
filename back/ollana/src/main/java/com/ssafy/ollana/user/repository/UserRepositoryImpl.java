@@ -25,7 +25,7 @@ public class UserRepositoryImpl implements UserRepositoryCustom {
     private final JPAQueryFactory queryFactory;
 
     @Override
-    public List<FriendInfoResponseDto> searchFriends(String nickname, Integer mountainId, Integer pathId) {
+    public List<FriendInfoResponseDto> searchFriends(String nickname, Integer mountainId, Integer pathId, Integer excludeUserId) {
         // 서브쿼리를 통해 사용자별 등산 기록 존재 여부 확인
         List<Tuple> results = queryFactory
                 .select(
@@ -44,7 +44,10 @@ public class UserRepositoryImpl implements UserRepositoryCustom {
                                 .exists()
                 )
                 .from(user)
-                .where(user.nickname.containsIgnoreCase(nickname))
+                .where(
+                        user.nickname.containsIgnoreCase(nickname),
+                        user.id.ne(excludeUserId) // 자기 자신은 제외
+                )
                 .fetch();
 
         // 결과 변환

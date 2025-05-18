@@ -87,10 +87,11 @@ public class TrackingController {
      * [나 VS 친구] 모드 선택 시 친구 정보 조회
      */
     @GetMapping("/friends")
-    public ResponseEntity<Response<FriendListResponseDto>> getFriendsInfo(@RequestParam Integer mountainId,
+    public ResponseEntity<Response<FriendListResponseDto>> getFriendsInfo(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                                                          @RequestParam Integer mountainId,
                                                                           @RequestParam Integer pathId,
                                                                           @RequestParam String nickname) {
-        FriendListResponseDto response = trackingService.getFriendsInfo(mountainId, pathId, nickname);
+        FriendListResponseDto response = trackingService.getFriendsInfo(userDetails.getUser().getId(), mountainId, pathId, nickname);
         return ResponseEntity.ok(Response.success(response));
     }
 
