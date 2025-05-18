@@ -67,6 +67,8 @@ class _TrackingResultScreenState extends State<TrackingResultScreen> {
 
   // 나 vs 나 모드 결과 화면
   Widget _buildVsMeResult() {
+    final appState = Provider.of<AppState>(context, listen: false);
+    final modeData = appState.modeData;
     final timeDiff = widget.resultData['timeDiff'];
     final String timeDiffText = timeDiff != null
         ? timeDiff < 0
@@ -77,13 +79,61 @@ class _TrackingResultScreenState extends State<TrackingResultScreen> {
     // badge URL 가져오기
     final String badgeUrl = widget.resultData['badge'] ?? '';
 
+    // 산 이름 가져오기 (AppState에서)
+    final String mountainName = appState.selectedMountain ?? '등산';
+
+    // 과거 심박수 데이터 (modeData.opponent.records에서 계산)
+    int prevMaxHeartRate = 0;
+    double prevAvgHeartRate = 0;
+    if (modeData?.opponent != null && modeData!.opponent!.records.isNotEmpty) {
+      final records = modeData.opponent!.records;
+      prevMaxHeartRate =
+          records.map((r) => r.heartRate).reduce((a, b) => a > b ? a : b);
+      prevAvgHeartRate =
+          records.map((r) => r.heartRate).reduce((a, b) => a + b) /
+              records.length;
+    }
+    // 현재 심박수 데이터 (resultData에서)
+    final int currMaxHeartRate = widget.resultData['maxHeartRate'] ?? 0;
+    final int currAvgHeartRate = widget.resultData['averageHeartRate'] ?? 0;
+
+    // 심박수 차이 계산
+    final int maxHrDiff = currMaxHeartRate - prevMaxHeartRate;
+    final double avgHrDiff = currAvgHeartRate - prevAvgHeartRate;
+
+    String maxHrComment = '';
+    if (maxHrDiff > 0) {
+      maxHrComment = '최고 심박수 ${maxHrDiff}bpm 증가';
+    } else if (maxHrDiff < 0) {
+      maxHrComment = '최고 심박수 ${maxHrDiff.abs()}bpm 감소';
+    } else {
+      maxHrComment = '최고 심박수 변화 없음';
+    }
+
+    String avgHrComment = '';
+    if (avgHrDiff > 0) {
+      avgHrComment = '평균 심박수 ${avgHrDiff.toStringAsFixed(1)}bpm 증가';
+    } else if (avgHrDiff < 0) {
+      avgHrComment = '평균 심박수 ${(avgHrDiff.abs()).toStringAsFixed(1)}bpm 감소';
+    } else {
+      avgHrComment = '평균 심박수 변화 없음';
+    }
+
+    // 코멘트 문장 조합
+    String comment = '';
+    if (timeDiffText.isNotEmpty) {
+      comment += '시간 $timeDiffText! ';
+    }
+    comment += maxHrComment;
+    comment += ', ' + avgHrComment;
+
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
-            'XX산 등반 결과',
+            '$mountainName 등반 결과',
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 16),
@@ -308,7 +358,7 @@ class _TrackingResultScreenState extends State<TrackingResultScreen> {
                           SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              '시간 12분 단축! 최고 심박수 2bpm 증가, 평균 심박수 3bpm 감소',
+                              comment,
                               style: TextStyle(fontSize: 13),
                             ),
                           ),
@@ -618,8 +668,17 @@ class _TrackingResultScreenState extends State<TrackingResultScreen> {
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: ElevatedButton(
-        onPressed: () {
-          // 홈 화면으로 이동
+        onPressed: () async {
+          // 1. AppState 트래킹 데이터 초기화
+          final appState = Provider.of<AppState>(context, listen: false);
+          appState.endTracking();
+
+          // 2. SharedPreferences 등 임시 데이터 초기화 (필요시)
+          // import 'package:shared_preferences/shared_preferences.dart'; 필요
+          // final prefs = await SharedPreferences.getInstance();
+          // await prefs.clear(); // 또는 특정 키만 remove
+
+          // 3. 홈 화면으로 이동
           Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
         },
         style: ElevatedButton.styleFrom(
