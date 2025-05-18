@@ -267,10 +267,17 @@ class _SecondStatusInfoState extends State<SecondStatusInfo> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.landscape_outlined,
-                  size: 48,
-                  color: Colors.grey[400],
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF52A486).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.landscape_outlined,
+                    size: 36,
+                    color: Color(0xFF52A486),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Text(
