@@ -200,10 +200,11 @@ class _CustomAppBarState extends State<CustomAppBar> {
 
     return AppBar(
       backgroundColor: Colors.white,
-      centerTitle: true,
+      centerTitle: false, // 타이틀을 중앙에서 왼쪽으로 변경
       elevation: 0,
       scrolledUnderElevation: 0,
       surfaceTintColor: Colors.transparent,
+      titleSpacing: 0, // 타이틀의 왼쪽 여백 제거
       title: GestureDetector(
         onTap: () {
           Navigator.of(context).pushAndRemoveUntil(
@@ -214,11 +215,14 @@ class _CustomAppBarState extends State<CustomAppBar> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Image.asset(
-              'lib/assets/images/logo.png',
-              width: 32,
-              height: 32,
-              fit: BoxFit.contain,
+            Padding(
+              padding: const EdgeInsets.only(left: 16.0), // 왼쪽에 약간의 패딩 추가
+              child: Image.asset(
+                'lib/assets/images/logo.png',
+                width: 32,
+                height: 32,
+                fit: BoxFit.contain,
+              ),
             ),
             const SizedBox(width: 8),
             const Text(
@@ -226,7 +230,7 @@ class _CustomAppBarState extends State<CustomAppBar> {
               style: TextStyle(
                 fontFamily: 'EVE',
                 fontWeight: FontWeight.w800,
-                fontSize: 25,
+                fontSize: 19,
                 color: Color(0xFF52A486),
               ),
             ),
