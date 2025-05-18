@@ -103,7 +103,7 @@ class _FirstStatusInfoState extends State<FirstStatusInfo> {
             ? const Color(0xFFE53935)
             : score < 80
                 ? const Color(0xFFFF8F00)
-                : const Color(0xFF43A047);
+                : const Color(0xFF52A486);
 
         return Center(
           child: SizedBox(
