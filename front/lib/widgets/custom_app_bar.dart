@@ -1,4 +1,3 @@
-// lib/widgets/custom_app_bar.dart
 import 'dart:async';
 import 'dart:convert';
 
@@ -23,147 +22,129 @@ class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
 
 class _CustomAppBarState extends State<CustomAppBar> {
   final String _title = 'ollana';
-  int _bounceIndex = -1;
 
   @override
   void initState() {
     super.initState();
-    _startBounceLoop();
-  }
-
-  void _startBounceLoop() {
-    Future(() async {
-      while (mounted) {
-        for (int i = 0; i < _title.length; i++) {
-          if (!mounted) return;
-          setState(() => _bounceIndex = i);
-          await Future.delayed(const Duration(milliseconds: 400));
-        }
-        if (!mounted) return;
-        setState(() => _bounceIndex = -1);
-        await Future.delayed(const Duration(seconds: 5));
-      }
-    });
   }
 
   Future<void> _handleLogout() async {
-  final scaffold = ScaffoldMessenger.of(context);
-  final navigator = Navigator.of(context);
-  final appState = context.read<AppState>();
-  final token = appState.accessToken;
-  final baseUrl = dotenv.get('BASE_URL');
+    final scaffold = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final appState = context.read<AppState>();
+    final token = appState.accessToken;
+    final baseUrl = dotenv.get('BASE_URL');
 
-  final confirm = await showDialog<bool>(
-    context: context,
-    barrierColor: Colors.black54,
-    builder: (ctx) => Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
-      elevation: 0,
-      backgroundColor: Colors.transparent,
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.rectangle,
+    final confirm = await showDialog<bool>(
+      context: context,
+      barrierColor: Colors.black54,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black26,
-              blurRadius: 10.0,
-              offset: const Offset(0.0, 10.0),
-            ),
-          ],
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF52A486).withOpacity(0.1),
-                shape: BoxShape.circle,
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.rectangle,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black26,
+                blurRadius: 10.0,
+                offset: const Offset(0.0, 10.0),
               ),
-              child: const Icon(
-                Icons.logout_rounded,
-                color: Color(0xFF52A486),
-                size: 40,
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF52A486).withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.logout_rounded,
+                  color: Color(0xFF52A486),
+                  size: 40,
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              '로그아웃',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF333333),
+              const SizedBox(height: 20),
+              const Text(
+                '로그아웃',
+                style: TextStyle(
+                  fontSize: 20,
+                  color: Color(0xFF666666),
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              '정말 로그아웃 하시나요?',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 15,
-                color: Color(0xFF666666),
-                height: 1.4,
+              const SizedBox(height: 12),
+              const Text(
+                '정말 로그아웃 하시나요?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Color(0xFF666666),
+                  height: 1.4,
+                ),
               ),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.of(ctx).pop(false),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.grey[700],
-                      side: BorderSide(color: Colors.grey[300]!),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(ctx).pop(false),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.grey[700],
+                        side: BorderSide(color: Colors.grey[300]!),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                    ),
-                    child: const Text(
-                      '취소',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
+                      child: const Text(
+                        '취소',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.of(ctx).pop(true),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF52A486),
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.of(ctx).pop(true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF52A486),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                    ),
-                    child: const Text(
-                      '로그아웃',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
+                      child: const Text(
+                        '로그아웃',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
-    ),
-  );
-  
-  if (confirm != true || !mounted) return;
+    );
+
+    if (confirm != true || !mounted) return;
 
     final res = await http.post(
       Uri.parse('$baseUrl/auth/logout'),
@@ -198,7 +179,6 @@ class _CustomAppBarState extends State<CustomAppBar> {
       if (success) {
         appState.clearAuth();
         appState.changePage(0);
-        //scaffold.showSnackBar(const SnackBar(content: Text('로그아웃되었습니다.')));
         navigator.pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const HomeScreen()),
           (route) => false,
@@ -219,45 +199,39 @@ class _CustomAppBarState extends State<CustomAppBar> {
     final isLoggedIn = context.watch<AppState>().isLoggedIn;
 
     return AppBar(
-      leading: GestureDetector(
+      backgroundColor: Colors.white,
+      centerTitle: true,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      surfaceTintColor: Colors.transparent,
+      title: GestureDetector(
         onTap: () {
-          // 로고 클릭 시 홈으로 이동
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (_) => const HomeScreen()),
             (route) => false,
           );
         },
-        child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Image.asset(
-            'lib/assets/images/logo.png',
-            width: 32,
-            height: 32,
-            fit: BoxFit.contain,
-          ),
-        ),
-      ),
-      backgroundColor: const Color(0xFF52A486),
-      centerTitle: true,
-      elevation: 0,
-      title: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: List.generate(_title.length, (i) {
-          return AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            transform:
-                Matrix4.translationValues(0, _bounceIndex == i ? -8 : 0, 0),
-            child: Text(
-              _title[i],
-              style: const TextStyle(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              'lib/assets/images/logo.png',
+              width: 32,
+              height: 32,
+              fit: BoxFit.contain,
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'ollana',
+              style: TextStyle(
                 fontFamily: 'EVE',
                 fontWeight: FontWeight.w800,
                 fontSize: 25,
-                color: Colors.white,
+                color: Color(0xFF52A486),
               ),
             ),
-          );
-        }),
+          ],
+        ),
       ),
       actions: [
         TextButton(
@@ -271,7 +245,7 @@ class _CustomAppBarState extends State<CustomAppBar> {
             }
           },
           style: TextButton.styleFrom(
-            foregroundColor: Colors.white,
+            foregroundColor: const Color(0xFF666666),
             textStyle: const TextStyle(
               fontFamily: 'GmarketSans',
               fontWeight: FontWeight.w500,
