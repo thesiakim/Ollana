@@ -8,18 +8,11 @@ android {
     namespace = "com.c104.ollana"
     compileSdk = 35
 
-    defaultConfig {
-        applicationId = "com.c104.ollana"
-        minSdk = 31
-        targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
-    }
 
     signingConfigs {
         // 기존에 있는 debug 설정에 접근해서 수정
         getByName("debug") {
-            storeFile = file("${rootProject.rootDir}/app/debug.keystore");
+            storeFile = file("${rootProject.rootDir}/app/debug.keystore")
             storePassword = "ssafy1234";
             keyAlias = "ollanadebugkey";
             keyPassword = "ssafy1234";
@@ -34,6 +27,11 @@ android {
         }
     }
 
+    defaultConfig {
+        applicationId = "com.c104.ollana"
+        minSdk = 31
+        targetSdk = 35
+    }
     buildTypes {
         getByName("debug") {
             signingConfig = signingConfigs.getByName("debug")

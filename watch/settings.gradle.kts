@@ -21,4 +21,3 @@ dependencyResolutionManagement {
 
 rootProject.name = "Ollana"
 include(":app")
- 
