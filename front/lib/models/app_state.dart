@@ -60,6 +60,7 @@ class AppState extends ChangeNotifier {
   int _avgHeartRate = 0;
   bool _isNavigationMode = true;
   double _deviceHeading = 0;
+  int? _climbingIndex;
 
   // ===== 모드 데이터 =====
   ModeData? _modeData;
@@ -96,6 +97,7 @@ class AppState extends ChangeNotifier {
   bool get isNavigationMode => _isNavigationMode;
   double get deviceHeading => _deviceHeading;
   ModeData? get modeData => _modeData;
+  int? get climbingIndex => _climbingIndex;
 
   // ===== 인증 관련 메서드 =====
 
@@ -255,6 +257,47 @@ class AppState extends ChangeNotifier {
       debugPrint('fetchSurveyStatus 오류: $e');
     }
   }
+
+  void updateClimbingIndex(int index) {
+    _climbingIndex = index;
+    notifyListeners();
+  }
+
+  // AppState의 fetchClimbingIndex 메서드 수정
+  Future<void> fetchClimbingIndex() async {
+    if (!_isLoggedIn || _accessToken == null) return;
+    
+    try {
+      debugPrint('등산지수 가져오기 시작');
+      final baseUrl = dotenv.env['AI_BASE_URL']!;
+      final url = Uri.parse('$baseUrl/weather');
+      
+      final resp = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'authorization': 'Bearer $_accessToken',
+        },
+      );
+
+      if (resp.statusCode == 200) {
+        final data = json.decode(resp.body);
+        final score = data['score'];
+        if (score is num) {
+          _climbingIndex = score.toInt();
+          debugPrint('등산지수 설정됨: $_climbingIndex');
+          notifyListeners();
+        } else {
+          debugPrint('등산지수가 숫자가 아님: $score');
+        }
+      } else {
+        debugPrint('등산지수 조회 실패: HTTP ${resp.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('등산지수 조회 오류: $e');
+    }
+  }
+  
 
   // ===== 네비게이션 관련 메서드 =====
 

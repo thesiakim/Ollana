@@ -135,8 +135,8 @@ public class TrackingService {
      * [나 VS 친구] 모드 선택 시 친구 정보 조회
      */
     @Transactional(readOnly = true)
-    public FriendListResponseDto getFriendsInfo(Integer mountainId, Integer pathId, String nickname) {
-        List<FriendInfoResponseDto> friends = userRepository.searchFriends(nickname, mountainId, pathId);
+    public FriendListResponseDto getFriendsInfo(Integer userId, Integer mountainId, Integer pathId, String nickname) {
+        List<FriendInfoResponseDto> friends = userRepository.searchFriends(nickname, mountainId, pathId, userId);
 
         return FriendListResponseDto.builder()
                                     .users(friends)

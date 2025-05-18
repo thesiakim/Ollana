@@ -1,126 +1,294 @@
-// status_container.dart
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'status_info_pages.dart';
+import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-class StatusContainer extends StatelessWidget {
+import '../models/app_state.dart';
+import 'status_info_pages.dart';
+import 'experience_bar.dart';
+
+class StatusContainer extends StatefulWidget {
   final PageController pageController;
   final int currentStatusPage;
-  final Function(int) onPageChanged;
+  final ValueChanged<int> onPageChanged;
 
   const StatusContainer({
-    super.key,
+    Key? key,
     required this.pageController,
     required this.currentStatusPage,
     required this.onPageChanged,
-  });
+  }) : super(key: key);
+
+  @override
+  _StatusContainerState createState() => _StatusContainerState();
+}
+
+class _StatusContainerState extends State<StatusContainer> {
+  String _grade = 'SEED';
+  int _exp = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchFootprint();
+  }
+
+  Future<void> _fetchFootprint() async {
+    try {
+      final baseUrl = dotenv.env['BASE_URL']!;
+      final url = Uri.parse('$baseUrl/footprint/main');
+      final token = Provider.of<AppState>(context, listen: false).accessToken;
+
+      final resp = await http.get(url, headers: {
+        'Content-Type': 'application/json',
+        'authorization': 'Bearer $token',
+      });
+
+      if (resp.statusCode == 200) {
+        final body =
+            json.decode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
+        final user = body['data']?['user'] as Map<String, dynamic>?;
+        if (user != null) {
+          setState(() {
+            _grade = user['grade'] as String? ?? 'SEED';
+            _exp = (user['exp'] as num?)?.toInt() ?? 0;
+          });
+          debugPrint('▶ grade=$_grade, exp=$_exp');
+        }
+      } else {
+        debugPrint('▶ Footprint API error: HTTP ${resp.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('▶ Footprint API exception: $e');
+    }
+  }
+
+  String _assetForGrade(String grade) {
+    switch (grade) {
+      case 'SEED':
+        return 'lib/assets/images/level_one.png';
+      case 'SPROUT':
+        return 'lib/assets/images/level_two.png';
+      case 'TREE':
+        return 'lib/assets/images/level_three.png';
+      case 'FRUIT':
+        return 'lib/assets/images/level_four.png';
+      case 'MOUNTAIN':
+        return 'lib/assets/images/level_five.png';
+      default:
+        return 'lib/assets/images/level_one.png';
+    }
+  }
+  
+  String _koreanGradeName(String grade) {
+    switch (grade) {
+      case 'SEED':
+        return '씨앗';
+      case 'SPROUT':
+        return '새싹';
+      case 'TREE':
+        return '나무';
+      case 'FRUIT':
+        return '열매';
+      case 'MOUNTAIN':
+        return '산';
+      default:
+        return '씨앗';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final badgeAsset = _assetForGrade(_grade);
+    final koreanGrade = _koreanGradeName(_grade);
+
     return Container(
-      // 전체 넓이 꽉, 높이 최소200 최대220
-      width: double.infinity,
-      constraints: const BoxConstraints(minHeight: 200, maxHeight: 220),
-      padding: const EdgeInsets.all(16), // 안쪽 여백
-      margin: const EdgeInsets.only(top: 16), // 위쪽 바깥 여백
+      margin: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
       decoration: BoxDecoration(
-        color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(16),
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFFE8F5EC), // 연한 민트 그린
+            Color(0xFFDCEFE2), // 연한 민트색
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24), // 더 둥글게
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF64B792).withOpacity(0.15), // 녹색 계열 그림자
+            blurRadius: 10,
+            spreadRadius: 0,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // ─────────── 왼쪽 영역 (캐릭터 + 경험치) ───────────
-          SizedBox(
-            width: 80, // 고정 너비
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // 1) 캐릭터 이미지
-                Container(
-                  width: 70, height: 70, // 이미지 크기
-                  decoration: BoxDecoration(
-                    color: Colors.orange[300],
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: Image.asset('lib/assets/images/seed.png'),
-                  ),
-                ),
-
-                const SizedBox(height: 12), // 이미지 ↔ 경험치 텍스트 간격
-
-                // 2) 경험치 바
-                Column(
-                  children: [
-                    const Text('경험치', style: TextStyle(fontSize: 12)),
-                    const SizedBox(height: 4),
-                    Container(
-                      height: 8, // 바 높이
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 35, // 현재 XP 비율에 맞춰 조절 가능
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: Colors.yellow[300],
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          ),
-                        ],
-                      ),
+          // 왼쪽: 등급 배지 + 등급명 + 경험치 프로그레스 바
+          Padding(
+            padding: const EdgeInsets.all(18),
+            child: SizedBox(
+              width: 100,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 뱃지 (맨 위)
+                  Container(
+                    width: 80,
+                    height: 80,
+                    padding: const EdgeInsets.all(2),
+                    child: ClipOval(
+                      child: Image.asset(badgeAsset, fit: BoxFit.cover),
                     ),
-                    const SizedBox(height: 4),
-                    const Text('100xp', style: TextStyle(fontSize: 12)),
-                  ],
-                ),
-              ],
+                  ),
+                  const SizedBox(height: 12),
+                  
+                  // 등급명 + 경험치 값 (중간)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // 등급명 컨테이너
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8, 
+                          vertical: 3
+                        ),
+                        decoration: BoxDecoration(
+                          // 그라데이션을 단일 색상으로 변경
+                          color: const Color(0xFF52A486), // 요청하신 색상으로 변경
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF52A486).withOpacity(0.25), // 그림자 색상도 일치시킴
+                              blurRadius: 4,
+                              spreadRadius: 0,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          koreanGrade,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      // 경험치 컨테이너 - 디자인 개선
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 4,
+                              spreadRadius: 0,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          '${_exp}xp',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF555555),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  
+                  const SizedBox(height: 12),
+                  
+                  // 경험치 바 (맨 아래)
+                  SizedBox(
+                    width: 90,
+                    child: ExperienceBar(currentXp: _exp, grade: _grade),
+                  ),
+                ],
+              ),
             ),
           ),
 
-          const SizedBox(width: 16), // 왼쪽 ↔ 오른쪽 간격
-
-          // ─────────── 오른쪽 영역 (PageView + 인디케이터) ───────────
+          // 오른쪽: PageView + 인디케이터
           Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // 1) PageView 높이 지정
-                SizedBox(
-                  height: 140, // 실제 페이지 컨텐츠 높이
-                  child: PageView(
-                    controller: pageController,
-                    onPageChanged: onPageChanged,
-                    children: const [
-                      FirstStatusInfo(),
-                      SecondStatusInfo(),
-                    ],
-                  ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(0, 16, 16, 16),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20), // 더 둥글게
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.06),
+                      blurRadius: 8,
+                      spreadRadius: 0,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
                 ),
-
-                const SizedBox(height: 12), // PageView ↔ 인디케이터 간격
-
-                // 2) 페이지 인디케이터
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(2, (i) {
-                    return Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: currentStatusPage == i
-                            ? Colors.black
-                            : Colors.grey[300],
-                        shape: BoxShape.circle,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // 페이지뷰
+                    SizedBox(
+                      height: 140,
+                      child: PageView(
+                        controller: widget.pageController,
+                        onPageChanged: widget.onPageChanged,
+                        physics: const BouncingScrollPhysics(), // 스크롤 효과 추가
+                        children: const [
+                          FirstStatusInfo(),
+                          SecondStatusInfo(),
+                        ],
                       ),
-                    );
-                  }),
+                    ),
+                    
+                    // 페이지 인디케이터 - 디자인 개선
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(2, (i) {
+                          final isActive = i == widget.currentStatusPage;
+                          return AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            width: isActive ? 20 : 8, // 활성 상태 더 넓게
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: isActive 
+                                  ? const Color(0xFF4CAF50)  // 활성 색상 변경
+                                  : Colors.grey[300],
+                              borderRadius: BorderRadius.circular(4),
+                              boxShadow: isActive
+                                  ? [
+                                      BoxShadow(
+                                        color: const Color(0xFF4CAF50).withOpacity(0.3),
+                                        blurRadius: 4,
+                                        spreadRadius: 0,
+                                        offset: const Offset(0, 1),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                          );
+                        }),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ],

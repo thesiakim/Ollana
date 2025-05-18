@@ -1,31 +1,10 @@
-// lib/screens/recommend/ai_recommendation_screen.dart
-import 'dart:async'; // 🔥 TimeoutException 사용
-import 'dart:convert';
-
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-
-import '../../models/app_state.dart';
-
-/// 긴 문자열을 여러 청크로 나눠서 찍어주는 디버그용 함수
-void _printFullBody(String body) {
-  const int chunkSize = 800;
-  for (var i = 0; i < body.length; i += chunkSize) {
-    final end = (i + chunkSize < body.length) ? i + chunkSize : body.length;
-    debugPrint(body.substring(i, end));
-  }
-}
-
-/// Isolate에서 JSON 파싱
-Map<String, dynamic> _parseJson(String body) {
-  debugPrint('🔧 [_parseJson] isolate 파싱 시작');
-  final result = jsonDecode(body);
-  debugPrint('🔧 [_parseJson] isolate 파싱 완료');
-  return result;
-}
+import 'dart:ui';
+import '../../services/ai_recommendation_service.dart';
+import '../../utils/ai_utils.dart';
+import '../../widgets/recommend/ai_recommendation_card.dart';
+import '../../widgets/recommend/mountain_detail_dialog.dart';
 
 class AiRecommendationScreen extends StatefulWidget {
   const AiRecommendationScreen({Key? key}) : super(key: key);
@@ -34,232 +13,453 @@ class AiRecommendationScreen extends StatefulWidget {
   _AiRecommendationScreenState createState() => _AiRecommendationScreenState();
 }
 
-class _AiRecommendationScreenState extends State<AiRecommendationScreen> {
+class _AiRecommendationScreenState extends State<AiRecommendationScreen> with SingleTickerProviderStateMixin {
   late final Future<Map<String, dynamic>> _futureRecos;
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<double> _slideAnimation;
+  
+  // 테마 색상
+  final Color _primaryColor = const Color(0xFF52A486);
+  final Color _secondaryColor = const Color(0xFF3D7A64);
+  final Color _backgroundColor = const Color(0xFFF9F9F9);
+  final Color _accentColor = const Color(0xFFFFA270);
+  final Color _textColor = const Color(0xFF333333);
+  
+  // 배경 그라데이션 색상
+  final List<Color> _gradientColors = const [
+    Color(0xFFF9FCFB),
+    Color(0xFFEEF8F3),
+  ];
 
   @override
   void initState() {
     super.initState();
-    debugPrint('▶ initState: _fetchRecommendation 호출');
-    _futureRecos = _fetchRecommendation();
+    debugPrint('▶ initState: AiRecommendationService 호출');
+    _futureRecos = AiRecommendationService().fetchRecommendation(context);
+    
+    _animationController = AnimationController(
+      vsync: this, 
+      duration: const Duration(milliseconds: 1800),
+    );
+    
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.1, 1.0, curve: Curves.easeOutCubic),
+      ),
+    );
+    
+    _slideAnimation = Tween<double>(begin: 30.0, end: 0.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.1, 0.8, curve: Curves.easeOutCubic),
+      ),
+    );
+    
+    _animationController.forward();
   }
 
-  Future<Map<String, dynamic>> _fetchRecommendation() async {
-    debugPrint('▶ _fetchRecommendation: 시작');
-    final app = context.read<AppState>();
-    final userId = app.userId;
-    final token = app.accessToken;
-    debugPrint('   userId=$userId, token=${token?.substring(0, 10)}...');
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
 
-    if (userId == null || token == null) {
-      debugPrint('⚠️ 인증 정보 없음');
-      throw Exception('로그인 정보가 없습니다.');
-    }
-
-    final urlStr = '${dotenv.get('AI_BASE_URL')}/recommend/$userId';
-    debugPrint('   요청 URL: $urlStr');
-    final resp = await http.post(
-      Uri.parse(urlStr),
-      headers: {
-        'Content-Type': 'application/json',
-        'authorization': 'Bearer $token',
-      },
-    ).timeout(const Duration(seconds: 10), onTimeout: () {
-      debugPrint('⚠️ 요청 타임아웃');
-      throw TimeoutException('요청 시간이 초과되었습니다.');
-    });
-    debugPrint('   HTTP 상태 코드: ${resp.statusCode}');
-
-    if (resp.statusCode != 200) {
-      debugPrint('⚠️ 서버 오류: ${resp.statusCode}');
-      throw Exception('서버 오류 (${resp.statusCode})');
-    }
-
-    final bodyString = utf8.decode(resp.bodyBytes);
-    _printFullBody(bodyString); // 🔥 전체 raw body 출력
-
-    debugPrint('   compute() 호출 전');
-    final data = await compute(_parseJson, bodyString);
-    debugPrint('   compute() 호출 후, data.keys=${data.keys}');
-
-    if (data['recommendations'] == null ||
-        (data['recommendations'] as List).isEmpty) {
-      debugPrint('⚠️ 추천 데이터 없음, message=${data['message']}');
-      throw Exception(data['message'] ?? '추천된 산이 없습니다.');
-    }
-
-    debugPrint('▶ _fetchRecommendation: 완료, cluster=${data['cluster']}');
-    return data;
+  void _showDetailDialog(BuildContext context, Map<String, dynamic> mountain) {
+    // 산의 난이도에 따른 색상 가져오기
+    final level = mountain['level'] as String? ?? 'M';
+    final levelColor = RecommendationCard.getLevelColor(level);
+    
+    showDialog(
+      context: context,
+      builder: (_) => MountainDetailDialog(
+        mountain: mountain,
+        primaryColor: levelColor, // 난이도별 색상 적용
+        textColor: _textColor,
+      ),
+    );
+  }
+    
+  Widget _buildInfoCard({
+    required IconData icon,
+    required String title,
+    required String value,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: color.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: _textColor.withOpacity(0.7),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: _textColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildLoadingView() {
+    return Center(
+      child: FadeTransition(
+        opacity: _fadeAnimation,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 48,
+              height: 48,
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+                strokeWidth: 4, // MountainMapScreen과 동일
+              ),
+            ),
+            const SizedBox(height: 24), // MountainMapScreen과 동일
+            Text(
+              '맞춤 추천을 불러오는 중', // 문맥에 맞게 수정
+              style: TextStyle(
+                fontSize: 16, // MountainMapScreen과 동일
+                fontWeight: FontWeight.w500, // MountainMapScreen과 동일
+                color: Colors.grey[700], // MountainMapScreen과 동일
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildErrorView(String errorMessage) {
+    return Center(
+      child: FadeTransition(
+        opacity: _fadeAnimation,
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: _accentColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.error_outline_rounded,
+                  color: _accentColor,
+                  size: 60,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                '오류가 발생했습니다',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: _textColor,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                errorMessage,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                  height: 1.5,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+              const SizedBox(height: 32),
+              ElevatedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _futureRecos = AiRecommendationService().fetchRecommendation(context);
+                  });
+                },
+                icon: const Icon(Icons.refresh),
+                label: const Text('다시 시도'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32, 
+                    vertical: 16,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 2,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildEmptyView() {
+    return Center(
+      child: FadeTransition(
+        opacity: _fadeAnimation,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade200,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.sentiment_dissatisfied_rounded,
+                size: 70,
+                color: Colors.grey.shade500,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              '추천된 산이 없습니다',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: _textColor,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: Text(
+                '다른 조건으로 다시 시도해보세요',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('▶ build() 호출');
-    final primary = Theme.of(context).colorScheme.primary;
-
     return Scaffold(
+      backgroundColor: _backgroundColor,
       appBar: AppBar(
-        backgroundColor: primary,
+        backgroundColor: Colors.white,
         elevation: 0,
-        centerTitle: true,
+        scrolledUnderElevation: 0,
         title: const Text(
           'AI 산 추천',
           style: TextStyle(
-              color: Colors.white,
-              fontFamily: 'Dovemayo',
-              fontWeight: FontWeight.w800),
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF333333),
+          ),
         ),
+        centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            debugPrint('⏪ 뒤로가기');
-            Navigator.of(context).pop();
-          },
+          icon: const Icon(
+            Icons.arrow_back_ios,
+            color: Color(0xFF333333),
+            size: 20,
+          ),
+          onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: FutureBuilder<Map<String, dynamic>>(
-        future: _futureRecos,
-        builder: (ctx, snap) {
-          debugPrint('   FutureBuilder 상태=${snap.connectionState}');
-          if (snap.connectionState != ConnectionState.done) {
-            debugPrint('   → 로딩 중...');
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snap.hasError) {
-            debugPrint('⚠️ 에러: ${snap.error}');
-            return Center(
-              child: Text(
-                '오류: ${snap.error}',
-                style: const TextStyle(color: Colors.red, fontSize: 16),
-                textAlign: TextAlign.center,
-              ),
-            );
-          }
-
-          final data = snap.data!;
-          final recs = data['recommendations'] as List;
-          debugPrint('   🔥 추천 개수: ${recs.length}');
-
-          if (recs.isEmpty) {
-            debugPrint('⚠️ 추천 리스트 비어 있음');
-            return const Center(child: Text('추천된 산이 없습니다.'));
-          }
-
-          // 🔥 전체 리스트를 Column으로 렌더링
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+      body: Column(
+        children: [
+          // 메인 헤더 (배너 형식)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
             child: Column(
-              children: recs.map((r) {
-                final rec = r as Map<String, dynamic>;
-                final name = rec['mountain_name'] as String?;
-                final desc = rec['mountain_description'] as String?;
-                // 🔥 URL 스킴 보정
-                final rawImg = rec['image_url'] as String?;
-                final imgUrl = (rawImg != null && rawImg.isNotEmpty)
-                    ? (rawImg.startsWith('http://') ||
-                            rawImg.startsWith('https://')
-                        ? rawImg
-                        : 'https://$rawImg')
-                    : null;
-
-                return GestureDetector(
-                  // 🔥 카드 터치 시 모달 띄우기
-                  onTap: () => showDialog(
-                    context: context,
-                    builder: (_) => AlertDialog(
-                      title: Text(name ?? '추천 산'),
-                      content: SingleChildScrollView(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AnimatedBuilder(
+                  animation: _animationController,
+                  builder: (context, child) {
+                    return Opacity(
+                      opacity: _fadeAnimation.value,
+                      child: Transform.translate(
+                        offset: Offset(0, _slideAnimation.value),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: _primaryColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.landscape_rounded,
+                          size: 28,
+                          color: _primaryColor,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (imgUrl != null)
-                              Image.network(imgUrl, fit: BoxFit.cover),
-                            const SizedBox(height: 12),
                             Text(
-                              desc ?? '',
-                              style: const TextStyle(fontSize: 16),
+                              '당신만을 위한',
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '맞춤 산 추천',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: _textColor,
+                              ),
                             ),
                           ],
                         ),
                       ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          child: const Text('닫기'),
-                        ),
-                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                AnimatedBuilder(
+                  animation: _animationController,
+                  builder: (context, child) {
+                    return Opacity(
+                      opacity: _fadeAnimation.value,
+                      child: Transform.translate(
+                        offset: Offset(0, _slideAnimation.value * 0.7),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: Text(
+                    '당신의 등산 경험과 선호도를 기반으로 추천된 산들입니다',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 14,
                     ),
                   ),
-                  child: Card(
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    elevation: 4,
-                    margin: const EdgeInsets.symmetric(vertical: 8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ClipRRect(
-                          borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(12)),
-                          child: imgUrl != null
-                              ? Image.network(
-                                  imgUrl,
-                                  height: 200,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                  loadingBuilder: (ctx, child, progress) =>
-                                      progress == null
-                                          ? child
-                                          : const Center(
-                                              child:
-                                                  CircularProgressIndicator()),
-                                  errorBuilder: (ctx, err, st) {
-                                    debugPrint('   이미지 에러: $err');
-                                    return Image.asset(
-                                      'lib/assets/images/mount_default.png',
-                                      height: 200,
-                                      width: double.infinity,
-                                      fit: BoxFit.cover,
-                                    );
-                                  },
-                                )
-                              : Image.asset(
-                                  'lib/assets/images/mount_default.png',
-                                  height: 200,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const SizedBox(height: 8),
-                              Text(
-                                name ?? '',
-                                style: const TextStyle(
-                                    fontSize: 20, fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(height: 8),
-                              // 🔥 설명을 3줄 초과 시 말줄임표(...) 처리
-                              Text(
-                                desc ?? '',
-                                maxLines: 3,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontSize: 16),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
+                ),
+              ],
             ),
-          );
-        },
+          ),
+          
+          // 추천 목록 영역
+          Expanded(
+            child: FutureBuilder<Map<String, dynamic>>(
+              future: _futureRecos,
+              builder: (ctx, snap) {
+                debugPrint('   FutureBuilder 상태=${snap.connectionState}');
+                
+                if (snap.connectionState != ConnectionState.done) {
+                  debugPrint('   → 로딩 중...');
+                  return _buildLoadingView();
+                }
+                
+                if (snap.hasError) {
+                  debugPrint('⚠️ 에러: ${snap.error}');
+                  return _buildErrorView(snap.error.toString());
+                }
+
+                final data = snap.data!;
+                final recs = data['recommendations'] as List;
+                debugPrint('   🔥 추천 개수: ${recs.length}');
+
+                if (recs.isEmpty) {
+                  debugPrint('⚠️ 추천 리스트 비어 있음');
+                  return _buildEmptyView();
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                  itemCount: recs.length,
+                  itemBuilder: (context, index) {
+                    final rec = recs[index] as Map<String, dynamic>;
+                    return AnimatedBuilder(
+                      animation: _animationController,
+                      builder: (context, child) {
+                        final delay = 0.2 + (index * 0.1);
+                        final curvedAnimation = CurvedAnimation(
+                          parent: _animationController,
+                          curve: Interval(delay, 1.0, curve: Curves.easeOutQuint),
+                        );
+                        final itemFade = curvedAnimation.value;
+                        final itemSlide = (1.0 - curvedAnimation.value) * 50;
+                        
+                        return Opacity(
+                          opacity: itemFade,
+                          child: Transform.translate(
+                            offset: Offset(0, itemSlide),
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: RecommendationCard(
+                        mountain: rec,
+                        fadeAnimation: _fadeAnimation,
+                        index: index,
+                        onTap: () => _showDetailDialog(context, rec),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
