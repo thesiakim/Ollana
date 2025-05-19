@@ -190,6 +190,7 @@ class ModeService {
                       'id': item['userId'],
                       'nickname': item['nickname'],
                       'isPossible': item['isPossible'],
+                      'profileImg': item['profileImg'],
                     }))
                 .toList();
           }
@@ -303,6 +304,48 @@ class ModeService {
       return null;
     }
   }
+
+  /// 친구의 이전 등산 기록 목록 조회
+  Future<List<Map<String, dynamic>>> getFriendTrackingOptions({
+    required int mountainId,
+    required int pathId,
+    required int opponentId,
+    required String token,
+  }) async {
+    final uri = Uri.parse(
+        '$_baseUrl/tracking/options?mountainId=$mountainId&pathId=$pathId&opponentId=$opponentId');
+
+    try {
+      final headers = {
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token',
+      };
+
+      final response = await _client.get(uri, headers: headers);
+
+      if (response.statusCode == 200) {
+        final body = utf8.decode(response.bodyBytes);
+        final jsonData = jsonDecode(body);
+
+        debugPrint('친구 등산 기록 목록 응답: ${jsonData['status']}');
+
+        if (jsonData['status'] == true &&
+            jsonData['data'] != null &&
+            jsonData['data']['records'] != null) {
+          final List<dynamic> records =
+              jsonData['data']['records'] as List<dynamic>;
+          return records.map((item) => item as Map<String, dynamic>).toList();
+        }
+      }
+
+      debugPrint('친구 등산 기록 목록 없음: ${response.statusCode}');
+      return [];
+    } catch (e) {
+      debugPrint('친구 등산 기록 목록 조회 오류: $e');
+      return [];
+    }
+  }
+
 
   /// Client 자원 정리
   void dispose() {
