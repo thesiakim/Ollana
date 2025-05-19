@@ -497,6 +497,23 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
     return location;
   }
 
+  String _formatDuration(String minutesStr) {
+    int minutes = int.tryParse(minutesStr) ?? 0;
+    
+    if (minutes < 60) {
+      return '$minutes분';
+    } else {
+      int hours = minutes ~/ 60;
+      int remainingMinutes = minutes % 60;
+      
+      if (remainingMinutes == 0) {
+        return '$hours시간';
+      } else {
+        return '$hours시간 $remainingMinutes분';
+      }
+    }
+  }
+
   // 난이도 텍스트 변환
   String _getLevelText(String level) {
     switch (level) {
@@ -634,7 +651,7 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                '소요 시간: 약 $pathTime분',
+                                '소요 시간: 약 ${_formatDuration(pathTime)}',
                                 style: const TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w500,
