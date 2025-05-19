@@ -5,6 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter/services.dart';
 
 class MountainDetailScreen extends StatefulWidget {
   final int mountainId;
@@ -23,6 +24,8 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
   Map<String, dynamic> _mountainData = {};
   int _currentImageIndex = 0;
   NaverMapController? _mapController;
+  ScrollController _scrollController = ScrollController();
+  bool _isCollapsed = false;
   
   // 테마 색상
   final Color _primaryColor = const Color(0xFF52A486);
@@ -31,6 +34,27 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
   void initState() {
     super.initState();
     _loadMountainDetail();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    // 스크롤 리스너 해제
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.hasClients) {
+      // 확장 높이의 절반 이상 스크롤 했을 때 상태 변경
+      final bool isCollapsed = _scrollController.offset > 160;
+      if (isCollapsed != _isCollapsed) {
+        setState(() {
+          _isCollapsed = isCollapsed;
+        });
+      }
+    }
   }
 
   // 산 상세 정보 로드
@@ -85,6 +109,14 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 시스템 UI 설정을 앱 전체에 적용
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+      ),
+    );
+    
     return Scaffold(
       backgroundColor: Colors.white,
       body: _isLoading
@@ -161,6 +193,7 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
   // 상세 정보 화면
   Widget _buildDetailView() {
     return CustomScrollView(
+      controller: _scrollController, 
       physics: const BouncingScrollPhysics(),
       slivers: [
         // 앱바 및 이미지 슬라이더
@@ -206,19 +239,29 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
       expandedHeight: 320,
       pinned: true,
       stretch: true,
-      backgroundColor: _primaryColor,
+      backgroundColor: Colors.white,
       elevation: 0,
-      leading: Container(
-        margin: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.2),
-          shape: BoxShape.circle,
-        ),
-        child: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ),
+      surfaceTintColor: Colors.white,
+      scrolledUnderElevation: 0,
+      systemOverlayStyle: SystemUiOverlayStyle.dark,
+      // 스크롤 상태에 따라 leading 위젯 변경
+      leading: _isCollapsed
+          // 축소된 상태 - 기본 뒤로가기 버튼 사용
+          ? null
+          // 확장된 상태 - 둥근 컨테이너
+          : Container(
+              margin: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.5),
+                shape: BoxShape.circle,
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ),
+      iconTheme: IconThemeData(color: Colors.black), // 아이콘 색상 설정
+      foregroundColor: Colors.black, // 텍스트 색상 설정
       flexibleSpace: FlexibleSpaceBar(
         background: Stack(
           fit: StackFit.expand,
@@ -497,6 +540,23 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
     return location;
   }
 
+  String _formatDuration(String minutesStr) {
+    int minutes = int.tryParse(minutesStr) ?? 0;
+    
+    if (minutes < 60) {
+      return '$minutes분';
+    } else {
+      int hours = minutes ~/ 60;
+      int remainingMinutes = minutes % 60;
+      
+      if (remainingMinutes == 0) {
+        return '$hours시간';
+      } else {
+        return '$hours시간 $remainingMinutes분';
+      }
+    }
+  }
+
   // 난이도 텍스트 변환
   String _getLevelText(String level) {
     switch (level) {
@@ -634,7 +694,7 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                '소요 시간: 약 $pathTime분',
+                                '소요 시간: 약 ${_formatDuration(pathTime)}',
                                 style: const TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w500,

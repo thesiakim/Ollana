@@ -243,25 +243,19 @@ class _CustomAppBarState extends State<CustomAppBar> {
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: () {
-            if (!isLoggedIn) {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-              );
-            } else {
-              _handleLogout();
-            }
-          },
-          style: TextButton.styleFrom(
-            foregroundColor: const Color(0xFF666666),
-            textStyle: const TextStyle(
-              fontFamily: 'GmarketSans',
-              fontWeight: FontWeight.w500,
+        if (isLoggedIn) // 로그인 상태일 때만 버튼 표시
+          TextButton(
+            onPressed: _handleLogout, // 로그인 상태일 때는 항상 로그아웃 기능만 필요
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF666666),
+              textStyle: const TextStyle(
+                fontFamily: 'GmarketSans',
+                fontWeight: FontWeight.w500,
+              ),
             ),
+            child: const Text('로그아웃'),
           ),
-          child: Text(isLoggedIn ? '로그아웃' : '로그인'),
-        ),
+        // 비로그인 상태일 때는 아무것도 표시하지 않음
       ],
     );
   }

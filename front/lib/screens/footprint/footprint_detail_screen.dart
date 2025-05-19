@@ -596,85 +596,64 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                                             ],
                                           ),
                                         )
-                                      : Stack(
-                                          children: [
-                                            // 상단 안내 메시지
-                                            Positioned(
-                                              left: 0,
-                                              right: 0,
-                                              top: 10,
-                                              child: Center(
-                                                child: Text(
-                                                  "그래프를 확인하려면 기록이 2개 이상 필요해요",
-                                                  style: TextStyle(
-                                                    fontSize: 13,
-                                                    fontWeight: FontWeight.w500,
-                                                    color: Colors.grey[600],
-                                                  ),
+                                      : Center(
+                                          child: Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              Container(
+                                                padding: EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.grey[50],
+                                                ),
+                                                child: Column(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Icon(
+                                                      Icons.show_chart,
+                                                      size: 36,
+                                                      color: Color(0xFF52A486),
+                                                    ),
+                                                    SizedBox(height: 12),
+                                                    Text(
+                                                      "그래프를 확인하려면",
+                                                      style: TextStyle(
+                                                        fontSize: 14,
+                                                        fontWeight: FontWeight.w500,
+                                                        color: Colors.grey[800],
+                                                      ),
+                                                    ),
+                                                    SizedBox(height: 4),
+                                                    Text(
+                                                      "기록이 2개 이상 필요해요!",
+                                                      style: TextStyle(
+                                                        fontSize: 14,
+                                                        fontWeight: FontWeight.w500,
+                                                        color: Colors.grey[800],
+                                                      ),
+                                                    ),
+                                                    SizedBox(height: 8),
+                                                    Container(
+                                                      padding: EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+                                                      decoration: BoxDecoration(
+                                                        color: Color(0xFFEDF7F2),
+                                                        borderRadius: BorderRadius.circular(12),
+                                                      ),
+                                                      child: Text(
+                                                        "꾸준히 등산해서 기록을 비교해 보세요",
+                                                        style: TextStyle(
+                                                          fontSize: 12,
+                                                          fontWeight: FontWeight.w500, 
+                                                          color: Color(0xFF52A486),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                               ),
-                                            ),
-                                            
-                                            // 컨텐츠를 중앙에 배치
-                                            Center(
-                                              child: Column(
-                                                mainAxisAlignment: MainAxisAlignment.center,
-                                                children: [
-                                                  // 날짜 배지
-                                                  Container(
-                                                    padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 14),
-                                                    decoration: BoxDecoration(
-                                                      color: const Color(0xFF52A486),
-                                                      borderRadius: BorderRadius.circular(20),
-                                                    ),
-                                                    child: Text(
-                                                      formatDate(path.records[0].date),
-                                                      style: const TextStyle(
-                                                        fontSize: 14,
-                                                        color: Colors.white,
-                                                        fontWeight: FontWeight.bold,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  
-                                                  const SizedBox(height: 16),
-                                                  
-                                                  // 데이터 표시 (buildMetricCard 함수 사용)
-                                                  Row(
-                                                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                                    children: [
-                                                      buildMetricCard(
-                                                        '',
-                                                        "${path.records[0].maxHeartRate}",
-                                                        'bpm',
-                                                        Colors.red[100]!,
-                                                        Colors.red[700]!,
-                                                        Icons.favorite,
-                                                      ),
-                                                      buildMetricCard(
-                                                        '',
-                                                        "${path.records[0].averageHeartRate.toStringAsFixed(1)}",
-                                                        'bpm',
-                                                        Colors.blue[100]!,
-                                                        Colors.blue[700]!,
-                                                        Icons.monitor_heart_outlined,
-                                                      ),
-                                                      buildMetricCard(
-                                                        '',
-                                                        "${path.records[0].time}",
-                                                        '분',
-                                                        Colors.green[100]!,
-                                                        Colors.green[700]!,
-                                                        Icons.timer,
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
+                                            ],
+                                          ),
                                         )
-                                    )
+                                      )
                                   : LineChart(
                                       LineChartData(
                                   minX: 0,
@@ -903,9 +882,72 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                                     ),
                                   ],
                                 ),
-                              ),
+                              ),  
                             ),
                           ),
+                          if (path.records.length == 1) ...[
+                            const SizedBox(height: 12),
+                            Card(
+                              elevation: 0,
+                              margin: const EdgeInsets.symmetric(vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                side: BorderSide(color: Colors.grey[300]!, width: 1),
+                                borderRadius: BorderRadius.circular(15),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF52A486),
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: Text(
+                                        DateFormat('yyyy-MM-dd').format(path.records[0].date),
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                      children: [
+                                        buildMetricCard(
+                                          '',
+                                          "${path.records[0].maxHeartRate}",
+                                          'bpm',
+                                          Colors.red[100]!,
+                                          Colors.red[700]!,
+                                          Icons.favorite,
+                                        ),
+                                        buildMetricCard(
+                                          '',
+                                          "${path.records[0].averageHeartRate.toStringAsFixed(1)}",
+                                          'bpm',
+                                          Colors.blue[100]!,
+                                          Colors.blue[700]!,
+                                          Icons.monitor_heart_outlined,
+                                        ),
+                                        buildMetricCard(
+                                          '',
+                                          "${path.records[0].time}",
+                                          '분',
+                                          Colors.green[100]!,
+                                          Colors.green[700]!,
+                                          Icons.timer,
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                           // 수정된 버튼 섹션: 기록이 2개 이상인 경우에만 표시
                           if (path.records.length >= 2) ...[
                             const SizedBox(height: 12), // 버튼과 그래프 사이 간격

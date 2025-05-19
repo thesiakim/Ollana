@@ -268,7 +268,7 @@ class _SecondStatusInfoState extends State<SecondStatusInfo> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: const Color(0xFF52A486).withOpacity(0.1),
                     shape: BoxShape.circle,
@@ -319,7 +319,7 @@ class _SecondStatusInfoState extends State<SecondStatusInfo> {
     );
     
     return SizedBox(
-      height: 130,
+      height: 150,
       child: Center(
         child: Card(
           elevation: 0,
@@ -327,7 +327,7 @@ class _SecondStatusInfoState extends State<SecondStatusInfo> {
             borderRadius: BorderRadius.circular(12),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(10),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -449,26 +449,24 @@ class _SecondStatusInfoState extends State<SecondStatusInfo> {
                   ),
                 ] else if (!hasPast) ...[
                   // pastTime이 null인 경우 첫 등산 메시지
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      const SizedBox(width: 22), 
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE8F5E9), // 연한 초록 배경
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: const Text(
-                          '이 코스는 첫 등산이네요!',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF4CAF50),
-                          ),
+                  const SizedBox(height: 4), // 6에서 4로 줄임
+                  Padding(
+                    padding: const EdgeInsets.only(left: 22),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), // 패딩 축소
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8F5E9),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        '이 코스는 처음이네요!', 
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF4CAF50),
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ],
               ],
