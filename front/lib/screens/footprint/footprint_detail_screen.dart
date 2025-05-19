@@ -1127,6 +1127,7 @@ class TriangleClipper extends CustomClipper<Path> {
       path.close();
       return path;
     }
+    
 
     @override
     bool shouldReclip(CustomClipper<Path> oldClipper) => false;
