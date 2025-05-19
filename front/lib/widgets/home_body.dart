@@ -86,13 +86,11 @@ class _HomeBodyState extends State<HomeBody> {
 
   // 툴팁 토글 함수
   void _toggleTooltip(BuildContext context) {
-    setState(() {
-      if (_isTooltipVisible) {
-        _removeTooltip(); 
-      } else {
-        _showTooltip(context);
-      }
-    });
+    if (_overlayEntry != null) {
+      _removeTooltip();
+    } else {
+      _showTooltip(context);
+    }
   }
 
   // 등급 아이콘 사이의 화살표
@@ -365,52 +363,30 @@ void _showTooltip(BuildContext context) {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 헤더 및 닫기 버튼
+                    // 헤더 부분 수정 - 중첩된 Row 제거
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment: MainAxisAlignment.start, // 왼쪽 정렬로 변경
                       children: [
-                        // 도움말 제목
-                        Row(
-                          children: [
-                            Container(
-                              padding: EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.3),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(
-                                Icons.info_outline,
-                                color: Colors.white,
-                                size: 24,
-                              ),
-                            ),
-                            SizedBox(width: 14),
-                            Text(
-                              '도움말',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 22,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ],
+                        Container(
+                          padding: EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            Icons.info_outline,
+                            color: Colors.white,
+                            size: 24,
+                          ),
                         ),
-                        
-                        // 닫기 버튼
-                        IconButton(
-                          onPressed: _removeTooltip,
-                          icon: Container(
-                            padding: EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.3),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.close,
-                              color: Colors.white,
-                              size: 20,
-                            ),
+                        SizedBox(width: 14),
+                        Text(
+                          '도움말',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 22,
+                            letterSpacing: 0.5,
                           ),
                         ),
                       ],
@@ -454,7 +430,7 @@ void _showTooltip(BuildContext context) {
                 ),
               ),
               
-              // 하단 닫기 버튼 (선택적)
+              // 하단 닫기 버튼
               Positioned(
                 bottom: 20,
                 left: 0,
@@ -506,7 +482,6 @@ void _showTooltip(BuildContext context) {
   );
 
   Overlay.of(context).insert(_overlayEntry!);
-  _isTooltipVisible = true;
 }
 
   // 도움말 섹션 제목 위젯
@@ -534,18 +509,18 @@ void _showTooltip(BuildContext context) {
 
   // 도움말 텍스트 위젯
   Widget _buildHelpText(String text) {
-    return Padding(
-      padding: EdgeInsets.only(left: 5),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 16, // 더 큰 글꼴
-          height: 1.5,
-        ),
+  return Padding(
+    padding: EdgeInsets.only(left: 5),
+    child: Text(
+      text,
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: 16, // 더 큰 글꼴
+        height: 1.5,
       ),
-    );
-  }
+    ),
+  );
+}
 
   // 등급 아이콘 위젯
   Widget _buildLevelIcons() {
@@ -627,7 +602,6 @@ void _showTooltip(BuildContext context) {
   void _removeTooltip() {
     _overlayEntry?.remove();
     _overlayEntry = null;
-    _isTooltipVisible = false;
   }
 
   void _showErrorSnackBar(String message) {
@@ -905,30 +879,16 @@ void _showTooltip(BuildContext context) {
           onPressed: () {
             _toggleTooltip(context);
           },
-          // 도움말 박스 색상과 동일하게 설정
           backgroundColor: Color.fromARGB(255, 113, 186, 152),
           foregroundColor: Colors.white,
           elevation: 4.0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16.0),
           ),
-          child: AnimatedSwitcher(
-            duration: Duration(milliseconds: 300),
-            transitionBuilder: (Widget child, Animation<double> animation) {
-              return RotationTransition(
-                turns: animation,
-                child: ScaleTransition(
-                  scale: animation,
-                  child: child,
-                ),
-              );
-            },
-            child: Icon(
-            _isTooltipVisible ? Icons.close : Icons.help_outline,
-            key: ValueKey<bool>(_isTooltipVisible),
+          child: Icon(
+            Icons.help_outline,  // 항상 고정된 아이콘 사용
             color: Colors.white,
             size: 24,
-          ),
           ),
           mini: true,
         ),
