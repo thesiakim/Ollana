@@ -17,6 +17,7 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
   Friend? _selectedFriend;
   List<Friend> _searchResults = [];
   bool _isSearching = false;
+  int? _selectedRecordId;
 
   @override
   void dispose() {
@@ -118,7 +119,6 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
         color: Colors.white,
         child: Column(
           children: [
-            // 검색창
             Padding(
               padding: EdgeInsets.fromLTRB(20, 20, 20, 16),
               child: Container(
@@ -140,7 +140,7 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                 child: TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
-                    hintText: '닉네임으로 검색해보세요',
+                    hintText: '닉네임을 검색해보세요',
                     hintStyle: TextStyle(
                       color: Colors.grey[400],
                       fontSize: 12,
@@ -179,8 +179,6 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                 ),
               ),
             ),
-
-            // 로딩 표시 또는 검색 결과
             Expanded(
               child: Container(
                 color: Colors.white,
@@ -240,13 +238,10 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                                 margin: EdgeInsets.only(bottom: 16),
                                 child: InkWell(
                                   onTap: () {
-                                    // isPossible이 false인 경우 경고창 표시
                                     if (!isPossible) {
                                       _showNotPossibleDialog(context, friend.nickname);
                                       return;
                                     }
-
-                                    // 친구 선택
                                     setState(() {
                                       _selectedFriend = friend;
                                     });
@@ -276,19 +271,15 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                                     ),
                                     child: Column(
                                       children: [
-                                        // 상단 부분 - 친구 정보
                                         Container(
                                           padding: EdgeInsets.all(16),
                                           decoration: BoxDecoration(
                                             color: Colors.white,
-                                            borderRadius: BorderRadius.vertical(
-                                              top: Radius.circular(16),
-                                            ),
+                                            borderRadius: BorderRadius.circular(16),
                                           ),
                                           child: Row(
                                             crossAxisAlignment: CrossAxisAlignment.center,
                                             children: [
-                                              // 프로필 아바타
                                               Container(
                                                 width: 48,
                                                 height: 48,
@@ -296,55 +287,106 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                                                   shape: BoxShape.circle,
                                                   color: Color(0xFF52A486).withOpacity(0.1),
                                                   border: Border.all(
-                                                    color: isSelected
-                                                        ? Color(0xFF52A486)
-                                                        : Colors.grey.shade200,
+                                                    color: Colors.grey.shade200,
                                                     width: 1,
                                                   ),
                                                 ),
-                                                child: Center(
-                                                  child: Text(
-                                                    friend.nickname.isNotEmpty
-                                                        ? friend.nickname[0].toUpperCase()
-                                                        : "?",
-                                                    style: TextStyle(
-                                                      color: Color(0xFF52A486),
-                                                      fontSize: 20,
-                                                      fontWeight: FontWeight.bold,
-                                                    ),
-                                                  ),
+                                                child: ClipRRect(
+                                                  borderRadius: BorderRadius.circular(24),
+                                                  child: friend.profileImg != null && friend.profileImg!.isNotEmpty
+                                                      ? Image.network(
+                                                          friend.profileImg!,
+                                                          width: 48,
+                                                          height: 48,
+                                                          fit: BoxFit.cover,
+                                                          errorBuilder: (context, error, stackTrace) {
+                                                            return Center(
+                                                              child: Text(
+                                                                friend.nickname.isNotEmpty
+                                                                    ? friend.nickname[0].toUpperCase()
+                                                                    : "?",
+                                                                style: TextStyle(
+                                                                  color: Color(0xFF52A486),
+                                                                  fontSize: 20,
+                                                                  fontWeight: FontWeight.bold,
+                                                                ),
+                                                              ),
+                                                            );
+                                                          },
+                                                          loadingBuilder: (context, child, loadingProgress) {
+                                                            if (loadingProgress == null) {
+                                                              return child;
+                                                            }
+                                                            return Center(
+                                                              child: CircularProgressIndicator(
+                                                                color: Color(0xFF52A486),
+                                                                strokeWidth: 2,
+                                                                value: loadingProgress.expectedTotalBytes != null
+                                                                    ? loadingProgress.cumulativeBytesLoaded /
+                                                                        loadingProgress.expectedTotalBytes!
+                                                                    : null,
+                                                              ),
+                                                            );
+                                                          },
+                                                        )
+                                                      : Center(
+                                                          child: Text(
+                                                            friend.nickname.isNotEmpty
+                                                                ? friend.nickname[0].toUpperCase()
+                                                                : "?",
+                                                            style: TextStyle(
+                                                              color: Color(0xFF52A486),
+                                                              fontSize: 20,
+                                                              fontWeight: FontWeight.bold,
+                                                            ),
+                                                          ),
+                                                        ),
                                                 ),
                                               ),
                                               SizedBox(width: 16),
-                                              
-                                              // 친구 정보
                                               Expanded(
                                                 child: Column(
                                                   crossAxisAlignment: CrossAxisAlignment.start,
                                                   children: [
-                                                    Row(
-                                                      children: [
-                                                        Text(
-                                                          friend.nickname,
-                                                          style: TextStyle(
-                                                            fontWeight: FontWeight.bold,
-                                                            fontSize: 16,
-                                                            color: Color(0xFF333333),
-                                                          ),
-                                                        ),
-                                                        SizedBox(width: 8),
-                                                        if (!isPossible)
-                                                          Container(
+                                                    Text(
+                                                      friend.nickname,
+                                                      style: TextStyle(
+                                                        fontWeight: FontWeight.bold,
+                                                        fontSize: 13,
+                                                        color: Color(0xFF333333),
+                                                      ),
+                                                    ),
+                                                    SizedBox(height: 4),
+                                                    isPossible
+                                                        ? Container(
                                                             padding: EdgeInsets.symmetric(
-                                                              horizontal: 8, 
-                                                              vertical: 2
+                                                              horizontal: 8,
+                                                              vertical: 2,
+                                                            ),
+                                                            decoration: BoxDecoration(
+                                                              color: Color(0xFFEBF7F3),
+                                                              borderRadius: BorderRadius.circular(12),
+                                                            ),
+                                                            child: Text(
+                                                              '등산 기록 있음',
+                                                              style: TextStyle(
+                                                                fontSize: 10,
+                                                                fontWeight: FontWeight.w500,
+                                                                color: Color(0xFF52A486),
+                                                              ),
+                                                            ),
+                                                          )
+                                                        : Container(
+                                                            padding: EdgeInsets.symmetric(
+                                                              horizontal: 8,
+                                                              vertical: 2,
                                                             ),
                                                             decoration: BoxDecoration(
                                                               color: Color(0xFFFFEFEF),
                                                               borderRadius: BorderRadius.circular(12),
                                                             ),
                                                             child: Text(
-                                                              '기록 없음',
+                                                              '등산 기록 없음',
                                                               style: TextStyle(
                                                                 fontSize: 10,
                                                                 fontWeight: FontWeight.w500,
@@ -352,109 +394,12 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                                                               ),
                                                             ),
                                                           ),
-                                                      ],
-                                                    ),
-                                                    SizedBox(height: 4),
-                                                    Text(
-                                                      _searchController.text,
-                                                      style: TextStyle(
-                                                        color: Colors.grey.shade600,
-                                                        fontSize: 14,
-                                                      ),
-                                                    ),
                                                   ],
                                                 ),
-                                              ),
-                                              
-                                              // 선택 표시 (오른쪽)
-                                              Container(
-                                                width: 28,
-                                                height: 28,
-                                                decoration: BoxDecoration(
-                                                  shape: BoxShape.circle,
-                                                  color: isSelected
-                                                      ? Color(0xFF52A486)
-                                                      : Colors.transparent,
-                                                  border: Border.all(
-                                                    color: isSelected
-                                                        ? Color(0xFF52A486)
-                                                        : Colors.grey.shade300,
-                                                    width: 1.5,
-                                                  ),
-                                                ),
-                                                child: isSelected
-                                                    ? Icon(
-                                                        Icons.check,
-                                                        size: 16,
-                                                        color: Colors.white,
-                                                      )
-                                                    : null,
                                               ),
                                             ],
                                           ),
                                         ),
-                                        
-                                        // 하단 부분 - 등산 가능 여부 표시 (조건부 표시)
-                                        if (isPossible)
-                                          Container(
-                                            width: double.infinity,
-                                            padding: EdgeInsets.symmetric(vertical: 10),
-                                            decoration: BoxDecoration(
-                                              color: Color(0xFF52A486).withOpacity(0.05),
-                                              borderRadius: BorderRadius.vertical(
-                                                bottom: Radius.circular(14),
-                                              ),
-                                            ),
-                                            child: Row(
-                                              mainAxisAlignment: MainAxisAlignment.center,
-                                              children: [
-                                                Icon(
-                                                  Icons.check_circle_outline,
-                                                  size: 14,
-                                                  color: Color(0xFF52A486),
-                                                ),
-                                                SizedBox(width: 6),
-                                                Text(
-                                                  "함께 등산 가능",
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w500,
-                                                    color: Color(0xFF52A486),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          )
-                                        else
-                                          Container(
-                                            width: double.infinity,
-                                            padding: EdgeInsets.symmetric(vertical: 10),
-                                            decoration: BoxDecoration(
-                                              color: Color(0xFFFFEFEF),
-                                              borderRadius: BorderRadius.vertical(
-                                                bottom: Radius.circular(14),
-                                              ),
-                                            ),
-                                            child: Row(
-                                              mainAxisAlignment: MainAxisAlignment.center,
-                                              children: [
-                                                Icon(
-                                                  Icons.info_outline,
-                                                  size: 14,
-                                                  color: Color(0xFFFF5151),
-                                                ),
-                                                SizedBox(width: 6),
-                                                Text(
-                                                  "이 등산로에 기록이 없어요",
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w500, 
-                                                    color: Color(0xFFFF5151),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
                                       ],
                                     ),
                                   ),
@@ -464,8 +409,6 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                           ),
               ),
             ),
-
-            // 시작하기 버튼 (검색 결과가 있을 때만 표시)
             if (_searchResults.isNotEmpty)
               Container(
                 color: Colors.white,
@@ -475,13 +418,7 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                   height: 54,
                   child: ElevatedButton(
                     onPressed: _selectedFriend != null && _selectedFriend!.isPossible
-                        ? () async {
-                            Navigator.of(context).pop();
-                            await appState.startTracking(
-                              '나 vs 친구',
-                              opponentId: _selectedFriend!.id.toInt(),
-                            );
-                          }
+                        ? () => _showFriendTrackingOptionsModal(context, appState)
                         : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Color(0xFF52A486),
@@ -495,18 +432,12 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          '친구와 함께 등산하기',
+                          '선택 완료',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                            fontSize: 15,
                             color: Colors.white,
                           ),
-                        ),
-                        SizedBox(width: 8),
-                        Icon(
-                          Icons.arrow_forward_rounded,
-                          size: 16,
-                          color: Colors.white,
                         ),
                       ],
                     ),
@@ -519,13 +450,11 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
     );
   }
 
-  // 친구 검색 API 호출
   Future<void> _searchFriends(String query, AppState appState) async {
     if (query.isEmpty) return;
 
     setState(() {
       _isSearching = true;
-      _selectedFriend = null; // 새 검색 시 선택 초기화
     });
 
     try {
@@ -556,14 +485,334 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('친구 검색 중 오류가 발생했습니다'),
-            backgroundColor: Colors.red,
+            backgroundColor: Color(0xFFFF5151),
           ),
         );
       }
     }
   }
 
-  // 등산 기록이 없는 친구 선택 시 표시할 다이얼로그
+  Future<void> _showFriendTrackingOptionsModal(
+      BuildContext context, AppState appState) async {
+    if (_selectedFriend == null) return;
+
+    final modeService = ModeService();
+    _selectedRecordId = null;
+
+    try {
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF52A486)),
+              ),
+            );
+          },
+        );
+      }
+
+      final mountainId = appState.selectedRoute?.mountainId ?? 0;
+      final pathId = appState.selectedRoute?.id ?? 0;
+      final token = appState.accessToken ?? '';
+      final opponentId = _selectedFriend!.id.toInt();
+
+      final recordsList = await modeService.getFriendTrackingOptions(
+        mountainId: mountainId.toInt(),
+        pathId: pathId.toInt(),
+        opponentId: opponentId,
+        token: token,
+      );
+
+      if (!mounted) return;
+      if (context.mounted) Navigator.of(context).pop();
+
+      if (recordsList.isEmpty) {
+        if (!mounted) return;
+        if (context.mounted) {
+          _showNoRecordsDialog(context);
+        }
+        return;
+      }
+
+      if (!mounted) return;
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return StatefulBuilder(
+              builder: (context, setState) {
+                return Dialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '${_selectedFriend!.nickname}님의 등산 기록',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF333333),
+                          ),
+                        ),
+                        SizedBox(height: 10),
+                        Container(
+                          constraints: BoxConstraints(
+                            maxHeight: MediaQuery.of(context).size.height * 0.4,
+                          ),
+                          child: ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: recordsList.length,
+                            itemBuilder: (context, index) {
+                              final record = recordsList[index];
+                              final recordId = record['recordId'];
+                              final date = record['date'];
+                              final time = record['time'];
+
+                              final isSelected = _selectedRecordId == recordId;
+
+                              return InkWell(
+                                onTap: () {
+                                  setState(() {
+                                    _selectedRecordId = recordId;
+                                  });
+                                },
+                                child: Container(
+                                  margin: EdgeInsets.symmetric(vertical: 5),
+                                  padding: EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? Color(0xFF52A486).withOpacity(0.1)
+                                        : Colors.white,
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? Color(0xFF52A486)
+                                          : Colors.grey.shade300,
+                                      width: isSelected ? 2 : 1,
+                                    ),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      isSelected
+                                          ? Icon(Icons.check_circle,
+                                              color: Color(0xFF52A486))
+                                          : Icon(Icons.circle_outlined,
+                                              color: Colors.grey),
+                                      SizedBox(width: 10),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            date,
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF333333),
+                                            ),
+                                          ),
+                                          SizedBox(height: 4),
+                                          Text(
+                                            '등반 시간: ${_formatMinutes(time)}',
+                                            style: TextStyle(
+                                              color: Colors.grey.shade700,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        SizedBox(height: 20),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            TextButton(
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                              },
+                              child: Text(
+                                '취소',
+                                style: TextStyle(
+                                  color: Colors.grey.shade700,
+                                ),
+                              ),
+                            ),
+                            ElevatedButton(
+                              onPressed: _selectedRecordId != null
+                                  ? () {
+                                      final selectedRecord =
+                                          recordsList.firstWhere(
+                                        (record) =>
+                                            record['recordId'] ==
+                                            _selectedRecordId,
+                                      );
+
+                                      final timeInSeconds =
+                                          ((selectedRecord['time'] as num) * 60)
+                                              .toInt();
+
+                                      appState.setOpponentRecordData(
+                                        date: selectedRecord['date'],
+                                        time: timeInSeconds,
+                                        maxHeartRate:
+                                            selectedRecord['maxHeartRate'],
+                                        avgHeartRate:
+                                            selectedRecord['averageHeartRate'],
+                                      );
+
+                                      Navigator.of(context).pop();
+                                      Navigator.of(context).pop();
+                                      appState.startTracking(
+                                        '나 vs 친구',
+                                        opponentId: _selectedFriend!.id.toInt(),
+                                        recordId: _selectedRecordId,
+                                      );
+                                    }
+                                  : null,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Color(0xFF52A486),
+                                disabledBackgroundColor: Colors.grey.shade400,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(30),
+                                ),
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 10),
+                              ),
+                              child: Text(
+                                '시작하기',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        );
+      }
+    } catch (e) {
+      debugPrint('친구 등산 기록 목록 조회 오류: $e');
+      if (context.mounted) {
+        Navigator.of(context).pop();
+        _showNoRecordsDialog(context);
+      }
+    }
+  }
+
+  String _formatMinutes(num minutes) {
+    final int hrs = (minutes / 60).floor();
+    final int mins = (minutes % 60).toInt();
+
+    if (hrs > 0) {
+      return '${hrs}시간 ${mins}분';
+    } else {
+      return '${mins}분';
+    }
+  }
+
+  void _showNoRecordsDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: const Text(
+                    '등산 기록 없음',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF333333),
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Color(0xFFFF5151).withOpacity(0.3), width: 1),
+                    borderRadius: BorderRadius.circular(15),
+                    color: Color(0xFFFFEFEF),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      '해당 산/등산로에 대한\n친구의 등산 기록이 없습니다.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Color(0xFF333333),
+                      ),
+                    ),
+                  ),
+                ),
+                Container(
+                  margin: const EdgeInsets.only(top: 20),
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFF52A486),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                    ),
+                    child: const Text(
+                      '확인',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void _showNotPossibleDialog(BuildContext context, String nickname) {
     showDialog(
       context: context,
@@ -581,7 +830,6 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // 상단 아이콘
                 Container(
                   padding: EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -595,8 +843,6 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                   ),
                 ),
                 SizedBox(height: 16),
-                
-                // 제목
                 Text(
                   '등산 기록 없음',
                   style: TextStyle(
@@ -606,8 +852,6 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                   ),
                 ),
                 SizedBox(height: 12),
-                
-                // 내용
                 Text(
                   '$nickname님은 선택하신 곳의\n등산 기록이 없네요\n다른 친구를 검색해보세요',
                   textAlign: TextAlign.center,
@@ -618,8 +862,6 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                   ),
                 ),
                 SizedBox(height: 24),
-                
-                // 확인 버튼
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
