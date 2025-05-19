@@ -40,6 +40,7 @@ class _FirstStatusInfoState extends State<FirstStatusInfo> {
     if (resp.statusCode == 200) {
       final data = json.decode(resp.body);
       final raw = data['score'];
+      debugPrint('등산지수 조회 : $data');
       if (raw is num) {
         final score = raw.toInt();
         
@@ -284,7 +285,7 @@ class _SecondStatusInfoState extends State<SecondStatusInfo> {
                   '등산 기록이 없어요',
                   style: TextStyle(
                     color: Colors.grey[600],
-                    fontSize: 14,
+                    fontSize: 11,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -425,23 +426,27 @@ class _SecondStatusInfoState extends State<SecondStatusInfo> {
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      const SizedBox(width: 22), 
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: isImproved 
-                              ? const Color(0xFFE8F5E9) // 연한 초록 배경
-                              : const Color(0xFFFFEBEE), // 연한 빨강 배경
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          isImproved ? '${timeDiff}분 단축되었어요!' : '${timeDiff}분 증가했어요!',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
+                      const SizedBox(width: 22),
+                      ConstrainedBox( // 여기에 ConstrainedBox 추가
+                        constraints: BoxConstraints(maxWidth: 150), // 최대 너비 제한
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
                             color: isImproved 
-                                ? const Color(0xFF4CAF50) 
-                                : const Color(0xFFE57373),
+                                ? const Color(0xFFE8F5E9) 
+                                : const Color(0xFFFFEBEE),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            isImproved ? '${timeDiff}분 단축되었어요!' : '${timeDiff}분 증가했어요!',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                              color: isImproved 
+                                  ? const Color(0xFF4CAF50) 
+                                  : const Color(0xFFE57373),
+                            ),
+                            overflow: TextOverflow.visible, // overflow 처리 방식 지정
                           ),
                         ),
                       ),
@@ -452,18 +457,22 @@ class _SecondStatusInfoState extends State<SecondStatusInfo> {
                   const SizedBox(height: 4), // 6에서 4로 줄임
                   Padding(
                     padding: const EdgeInsets.only(left: 22),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), // 패딩 축소
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE8F5E9),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        '이 코스는 처음이네요!', 
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFF4CAF50),
+                    child: ConstrainedBox( // 여기에 ConstrainedBox 추가
+                      constraints: BoxConstraints(maxWidth: 150), // 최대 너비 제한
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE8F5E9),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          '이 코스는 처음이네요!',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF4CAF50),
+                          ),
+                          overflow: TextOverflow.visible, // overflow 처리 방식 지정
                         ),
                       ),
                     ),

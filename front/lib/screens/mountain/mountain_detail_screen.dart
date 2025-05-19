@@ -889,62 +889,75 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
         _buildSectionTitle('날씨 정보', Icons.cloud),
         const SizedBox(height: 16),
 
-        // 날씨 카드 목록
         SizedBox(
           height: 140,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.all(2),
-            itemCount:
-                dailyWeather.length > 5 ? 5 : dailyWeather.length, // 최대 5일치만 표시
+            itemCount: dailyWeather.length > 5 ? 5 : dailyWeather.length, // 최대 5일치만 표시
             itemBuilder: (context, index) {
               final weather = dailyWeather[index];
               final date = weather['date'] ?? '';
-              final minTemp =
-                  weather['temperatureMin']?.toStringAsFixed(1) ?? '-';
-              final maxTemp =
-                  weather['temperatureMax']?.toStringAsFixed(1) ?? '-';
+              final minTemp = weather['temperatureMin']?.toStringAsFixed(1) ?? '-';
+              final maxTemp = weather['temperatureMax']?.toStringAsFixed(1) ?? '-';
               final weatherIcon = weather['weather']?['icon'] ?? '01d';
-              final weatherDesc = weather['weather']?['description'] ?? '';
 
-              // 날짜 포맷팅
+              // 날짜 포맷팅 로직 개선
               String dayText = '오늘';
               if (date.isNotEmpty) {
-                final dateTime = DateTime.parse(date);
-                final today = DateTime.now();
-                final difference = dateTime.difference(today).inDays;
-
-                if (difference == 0) {
-                  dayText = '오늘';
-                } else if (difference == 1) {
-                  dayText = '내일';
-                } else {
-                  // 요일 구하기 (0: 월, 1: 화, ... 6: 일)
-                  final weekday = dateTime.weekday;
-                  switch (weekday) {
-                    case 1:
-                      dayText = '월';
-                      break;
-                    case 2:
-                      dayText = '화';
-                      break;
-                    case 3:
-                      dayText = '수';
-                      break;
-                    case 4:
-                      dayText = '목';
-                      break;
-                    case 5:
-                      dayText = '금';
-                      break;
-                    case 6:
-                      dayText = '토';
-                      break;
-                    case 7:
-                      dayText = '일';
-                      break;
+                try {
+                  // API에서 받은 날짜 파싱
+                  final dateTime = DateTime.parse(date);
+                  
+                  // 현재 날짜 (시간 정보 제외)
+                  final today = DateTime.now();
+                  final todayOnly = DateTime(today.year, today.month, today.day);
+                  
+                  // 비교할 날짜 (시간 정보 제외)
+                  final dateOnly = DateTime(dateTime.year, dateTime.month, dateTime.day);
+                  
+                  // 날짜 차이 계산
+                  final differenceInDays = dateOnly.difference(todayOnly).inDays;
+                  
+                  // 날짜 텍스트 설정
+                  if (differenceInDays == 0) {
+                    dayText = '오늘';
+                  } else if (differenceInDays == 1) {
+                    dayText = '내일';
+                  } else if (differenceInDays > 1) {
+                    // 요일 구하기
+                    switch (dateTime.weekday) {
+                      case DateTime.monday:
+                        dayText = '월';
+                        break;
+                      case DateTime.tuesday:
+                        dayText = '화';
+                        break;
+                      case DateTime.wednesday:
+                        dayText = '수';
+                        break;
+                      case DateTime.thursday:
+                        dayText = '목';
+                        break;
+                      case DateTime.friday:
+                        dayText = '금';
+                        break;
+                      case DateTime.saturday:
+                        dayText = '토';
+                        break;
+                      case DateTime.sunday:
+                        dayText = '일';
+                        break;
+                    }
+                  } else {
+                    // 과거 날짜인 경우 (이런 경우는 보통 없지만, 방어 코드)
+                    dayText = '이전';
                   }
+                } catch (e) {
+                  // 날짜 파싱 에러 처리
+                  print('날짜 파싱 에러: $e');
+                  dayText = '날짜 오류';
                 }
               }
 
