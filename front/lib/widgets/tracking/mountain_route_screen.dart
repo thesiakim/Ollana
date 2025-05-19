@@ -676,7 +676,7 @@ Widget build(BuildContext context) {
                           hintText: '산 이름을 검색해보세요',
                           hintStyle: TextStyle(
                             color: Colors.grey[400],
-                            fontSize: 14,  // 힌트 텍스트 크기 증가
+                            fontSize: 12,  // 힌트 텍스트 크기 증가
                             fontWeight: FontWeight.w400,
                           ),
                           border: InputBorder.none,

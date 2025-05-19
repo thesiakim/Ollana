@@ -666,7 +666,7 @@ Widget _buildEnhancedModeCard({
                 Text(
                   '등산 기록 없음',
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF333333),
                   ),
@@ -675,10 +675,10 @@ Widget _buildEnhancedModeCard({
                 
                 // 내용
                 Text(
-                  '이 산의 등산로에 대한 기록이 없습니다.\n일반 모드로 먼저 등산해 보세요.',
+                  '선택하신 등산로의 기록이 없어요\n일반 모드로 먼저 등산해 보세요',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 15,
+                    fontSize: 11,
                     color: Colors.grey[700],
                     height: 1.5,
                   ),
