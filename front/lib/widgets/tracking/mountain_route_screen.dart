@@ -925,7 +925,7 @@ Widget _buildRouteContent() {
                                     Text(
                                       _selectedMountain!.name,
                                       style: TextStyle(
-                                        fontSize: 18,
+                                        fontSize: 16,
                                         fontWeight: FontWeight.bold,
                                         color: Colors.black87,
                                       ),
@@ -1246,7 +1246,7 @@ Widget _buildRouteContent() {
                       child: Text(
                         '등산로 선택하기',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 15,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
