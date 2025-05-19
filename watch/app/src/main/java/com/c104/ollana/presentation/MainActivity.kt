@@ -155,46 +155,46 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
                                showSaveDialog.value = true // 종료 시 확인 다이얼로그 표시
                            }
                        )
-                   }else DefaultHomeScreen()
-//                       TestScreen(
-//                       receivedMessage = message.value,
-//                       onFastTestClick = {
-//                           val fakeEvent = MessageEventFake(
-//                               "/watch_connectivity",
-//                               """{
-//                                    "path":"/PROGRESS",
-//                                     "data":"{\"type\":\"FAST\",\"difference\":300}"}""".trimIndent()
-//                           )
-//                           handleIncomingMessage(String(fakeEvent.data))
-//                           isHome.value = true
-//                       },
-//                       onSlowTestClick = {
-//                           val fakeEvent = MessageEventFake(
-//                               "/watch_connectivity",
-//                               """{"path":"/PROGRESS",
-//                                    "data":"{\"type\":\"SLOW\",\"difference\":300}"}""".trimIndent()
-//                           )
-//                           handleIncomingMessage(String(fakeEvent.data))
-//                           isHome.value = true
-//                       },
-//                       onReachClick = {
-//                           val fakeEvent = MessageEventFake(
-//                               "/watch_connectivity",
-//                               """{"path":"/REACHED","data":""}"""
-//                           )
-//                           handleIncomingMessage(String(fakeEvent.data))
-//                           isHome.value = true
-//                       },
-//                       onBadgeClick = {
-//                           val fakeEvent = MessageEventFake(
-//                               "/watch_connectivity",
-//                               """{"path":"/BADGE",
-//                                   "data": "{\"url\":\"https://example.com\"}"}""".trimIndent()
-//                           )
-//                           handleIncomingMessage(String(fakeEvent.data))
-//                           isHome.value = true
-//                       }
-//                   )
+                   }else //DefaultHomeScreen()
+                       TestScreen(
+                       receivedMessage = message.value,
+                       onFastTestClick = {
+                           val fakeEvent = MessageEventFake(
+                               "/watch_connectivity",
+                               """{
+                                    "path":"/PROGRESS",
+                                     "data":"{\"type\":\"FAST\",\"difference\":300}"}""".trimIndent()
+                          )
+                           handleIncomingMessage(String(fakeEvent.data))
+                           isHome.value = true
+                       },
+                       onSlowTestClick = {
+                          val fakeEvent = MessageEventFake(
+                               "/watch_connectivity",
+                              """{"path":"/PROGRESS",
+                                    "data":"{\"type\":\"SLOW\",\"difference\":300}"}""".trimIndent()
+                           )
+                           handleIncomingMessage(String(fakeEvent.data))
+                           isHome.value = true
+                       },
+                       onReachClick = {
+                           val fakeEvent = MessageEventFake(
+                               "/watch_connectivity",
+                               """{"path":"/REACHED","data":""}"""
+                           )
+                           handleIncomingMessage(String(fakeEvent.data))
+                           isHome.value = true
+                       },
+                       onBadgeClick = {
+                           val fakeEvent = MessageEventFake(
+                               "/watch_connectivity",
+                               """{"path":"/ETA_DISTANCE",
+                                  "data":"{\"eta\":\"12:43\",\"distance\":1200}"}""".trimIndent()
+                           )
+                          handleIncomingMessage(String(fakeEvent.data))
+                           isHome.value = true
+                       }
+                   )
                }
                 // 실제 트래킹 홈 화면 or 테스트 화면 선택
 //                FloatingActionButton(

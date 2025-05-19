@@ -26,7 +26,7 @@ fun DefaultHomeScreen(){
             AsyncImage(
                 model = R.drawable.mount    , // drawable에 gif 넣기
                 contentDescription = "Ollana Logo",
-                modifier = Modifier.size(96.dp)
+                modifier = Modifier.size(150.dp)
             )
 
         }

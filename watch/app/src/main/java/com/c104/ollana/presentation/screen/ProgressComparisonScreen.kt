@@ -35,14 +35,14 @@ fun ProgressComparisonScreen(progressMessage : String){
         ){
             if(isFast){
                 Image(
-                    painter= painterResource(id=R.drawable.rabbit),
+                    painter= painterResource(id=R.drawable.rabbit2),
                     contentDescription = "토끼",
                     modifier = Modifier.size(100.dp),
                     contentScale = ContentScale.Fit
                 )
             }else if(isSlow){
                 Image(
-                    painter = painterResource(id = R.drawable.turtle), // 🐢 이미지
+                    painter = painterResource(id = R.drawable.turtle2), // 🐢 이미지
                     contentDescription = "거북이",
                     modifier = Modifier.size(100.dp),
                     contentScale = ContentScale.Fit

@@ -51,7 +51,7 @@ fun HomeScreen(
                 when {
                     isFast -> {
                         Image(
-                            painter = painterResource(id = R.drawable.rabbit),
+                            painter = painterResource(id = R.drawable.rabbit2),
                             contentDescription = "빠름",
                             modifier = Modifier.size(100.dp),
                             contentScale = ContentScale.Fit
@@ -60,7 +60,7 @@ fun HomeScreen(
 
                     isSlow -> {
                         Image(
-                            painter = painterResource(id = R.drawable.turtle),
+                            painter = painterResource(id = R.drawable.turtle2),
                             contentDescription = "느림",
                             modifier = Modifier.size(100.dp),
                             contentScale = ContentScale.Fit
