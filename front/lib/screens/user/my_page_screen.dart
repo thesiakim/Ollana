@@ -585,17 +585,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       ),
                       
                       const SizedBox(height: 24),
-                      
-                      // 버전 정보
-                      Center(
-                        child: Text(
-                          'App Version 1.0.0',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade500,
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                 ),

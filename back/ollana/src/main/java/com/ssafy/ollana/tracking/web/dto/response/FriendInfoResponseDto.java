@@ -14,6 +14,7 @@ public class FriendInfoResponseDto {
     private Integer userId;
     private String nickname;
     private Boolean isPossible;
+    private String profileImg;
 
     @JsonProperty("isPossible")
     public boolean isPossible() {
