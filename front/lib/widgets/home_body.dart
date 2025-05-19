@@ -385,7 +385,7 @@ Future<void> _initializeData() async {
                       ),
                       const SizedBox(height: 16),
                       _buildRecommendationCard(
-                        title: '나만의 맞춤 추천',
+                        title: '나만의 코스 추천',
                         description: '취향에 맞는 완벽한 산을 찾아보세요',
                         image: 'lib/assets/images/ai_recommend.png',
                         backgroundColor: const Color(0xFF64B792),
@@ -538,7 +538,7 @@ Future<void> _initializeData() async {
                   ],
                 ),
                 
-                // 등산지수 메시지
+                // 등산지수 메시지 부분 수정
                 if (_climbingIndex > 0) ...[
                   const SizedBox(height: 16),
                   Container(
@@ -551,6 +551,8 @@ Future<void> _initializeData() async {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
+                      // Row의 크기를 내용물에 맞게 최소화
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
                           _climbingIndex < 50
@@ -558,17 +560,23 @@ Future<void> _initializeData() async {
                               : _climbingIndex < 80
                                   ? Icons.cloud_queue_rounded
                                   : Icons.wb_sunny_rounded,
-                          size: 20,
-                          color: _climateMessageColor,
+                          size: 18, // 아이콘 크기 약간 축소
+                          color: _climbingIndex < 50
+                              ? Colors.black 
+                              : _climbingIndex < 80
+                                  ? Colors.amber 
+                                  : Colors.amber,
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 6), // 간격 줄임
+                        // 글자 크기를 줄여서 한 줄에 표시되도록 함
                         Text(
                           _climateMessage,
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 12, // 글자 크기 축소 (14 -> 12)
                             fontWeight: FontWeight.w500,
                             color: _climateMessageColor,
                           ),
+                          softWrap: false, // 한 줄로만 표시
                         ),
                       ],
                     ),
