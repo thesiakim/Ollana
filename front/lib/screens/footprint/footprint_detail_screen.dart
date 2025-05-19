@@ -596,20 +596,64 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                                             ],
                                           ),
                                         )
-                                      : Column(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            Text(
-                                              "그래프를 확인하려면 기록이 2개 이상 필요해요",
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w500,
-                                                color: Colors.grey[600],
+                                      : Center(
+                                          child: Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              Container(
+                                                padding: EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.grey[50],
+                                                ),
+                                                child: Column(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Icon(
+                                                      Icons.show_chart,
+                                                      size: 36,
+                                                      color: Color(0xFF52A486),
+                                                    ),
+                                                    SizedBox(height: 12),
+                                                    Text(
+                                                      "그래프를 확인하려면",
+                                                      style: TextStyle(
+                                                        fontSize: 14,
+                                                        fontWeight: FontWeight.w500,
+                                                        color: Colors.grey[800],
+                                                      ),
+                                                    ),
+                                                    SizedBox(height: 4),
+                                                    Text(
+                                                      "기록이 2개 이상 필요해요!",
+                                                      style: TextStyle(
+                                                        fontSize: 14,
+                                                        fontWeight: FontWeight.w500,
+                                                        color: Colors.grey[800],
+                                                      ),
+                                                    ),
+                                                    SizedBox(height: 8),
+                                                    Container(
+                                                      padding: EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+                                                      decoration: BoxDecoration(
+                                                        color: Color(0xFFEDF7F2),
+                                                        borderRadius: BorderRadius.circular(12),
+                                                      ),
+                                                      child: Text(
+                                                        "꾸준히 등산해서 기록을 비교해 보세요",
+                                                        style: TextStyle(
+                                                          fontSize: 12,
+                                                          fontWeight: FontWeight.w500, 
+                                                          color: Color(0xFF52A486),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
                                               ),
-                                            ),
-                                          ],
+                                            ],
+                                          ),
                                         )
-                                    )
+                                      )
                                   : LineChart(
                                       LineChartData(
                                   minX: 0,
