@@ -170,9 +170,7 @@ class _MyFootprintScreenState extends State<MyFootprintScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    footprints.isEmpty
-                                        ? '아직 등산하신 적이 없어요\n등산을 하고 산 뱃지를 모아보세요!'
-                                        : '총 등산 거리',
+                                    '총 등산 거리',  // 항상 '총 등산 거리'를 표시
                                     style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.normal,
@@ -180,29 +178,32 @@ class _MyFootprintScreenState extends State<MyFootprintScreen> {
                                     ),
                                   ),
                                   const SizedBox(height: 4),
-                                  if (footprints.isNotEmpty)
-                                    Row(
-                                      children: [
-                                        Text(
-                                          totalDistance >= 1000
-                                              ? (totalDistance / 1000).toStringAsFixed(1) // km 단위로 변환하고 소수점 첫째 자리까지 표시
-                                              : totalDistance.toStringAsFixed(0), // m 단위는 정수로 표시
-                                          style: const TextStyle(
-                                            fontSize: 24,
-                                            fontWeight: FontWeight.bold,
-                                            color: Color(0xFF52A486),
-                                          ),
+                                  Row(  // 항상 Row를 표시
+                                    children: [
+                                      Text(
+                                        footprints.isEmpty 
+                                            ? '0'  // 비어있으면 '0'
+                                            : (totalDistance >= 1000
+                                                ? (totalDistance / 1000).toStringAsFixed(1)
+                                                : totalDistance.toStringAsFixed(0)),
+                                        style: const TextStyle(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF52A486),
                                         ),
-                                        Text(
-                                          totalDistance >= 1000 ? ' km' : ' m', // 단위 변경
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                            color: Color(0xFF52A486),
-                                          ),
+                                      ),
+                                      Text(
+                                        footprints.isEmpty
+                                            ? ' m'  // 비어있으면 무조건 'm'
+                                            : (totalDistance >= 1000 ? ' km' : ' m'),
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF52A486),
                                         ),
-                                      ],
-                                    ),
+                                      ),
+                                    ],
+                                  ),
                                 ],
                               ),
                             ],
