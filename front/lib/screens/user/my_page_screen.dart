@@ -70,7 +70,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 controller: passwordController,
                 obscureText: true,
                 decoration: InputDecoration(
-                  labelText: '비밀번호',
+                  //labelText: '비밀번호',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -97,7 +97,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
             ElevatedButton(
               onPressed: () => Navigator.of(ctx).pop(true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red.shade400,
+                backgroundColor: Color(0xFF52A486),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -555,28 +555,28 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                 Container(
                                   padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
-                                    color: Colors.red.shade50,
+                                    color: const Color(0xFF52A486).withOpacity(0.1), // 빨간색에서 초록색으로 변경
                                     borderRadius: BorderRadius.circular(8),
                                   ),
-                                  child: Icon(
+                                  child: const Icon(
                                     Icons.exit_to_app, 
-                                    color: Colors.red.shade400,
-                                    size: 20, // 기존 이모지 크기와 유사하게 조정
+                                    color: Color(0xFF52A486), // 빨간색에서 초록색으로 변경
+                                    size: 20,
                                   ),
                                 ),
                                 const SizedBox(width: 12),
-                                Text(
+                                const Text(
                                   '회원 탈퇴하기',
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
-                                    color: Colors.red.shade400,
+                                    color: Color(0xFF333333), // 빨간색에서 검은색으로 변경
                                   ),
                                 ),
                                 const Spacer(),
-                                Icon(
+                                const Icon(
                                   Icons.chevron_right,
-                                  color: Colors.red.shade200,
+                                  color: Colors.grey, // 빨간색에서 회색으로 변경
                                 ),
                               ],
                             ),
