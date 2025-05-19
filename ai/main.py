@@ -1,6 +1,7 @@
 import json
 import pickle
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta, timezone
 
 import sys
 import numpy as np
@@ -98,15 +99,43 @@ app = FastAPI(lifespan=lifespan)
 # 등산지수 API
 @app.post("/weather")
 async def weather():
-    OPEN_WEATHER_LINK = "https://api.openweathermap.org/data/2.5/weather?lat=37.5665&lon=126.9780&units=metric&appid=052b29e73d62b1df3cac886dbc3641a0"
-    DUST_LINK = "https://api.openweathermap.org/data/2.5/air_pollution?lat=37.5665&lon=126.9780&appid=052b29e73d62b1df3cac886dbc3641a0"
+    lat, lon = 37.5665, 126.9780
+    API_KEY = "052b29e73d62b1df3cac886dbc3641a0"
 
-    weather_data = requests.get(OPEN_WEATHER_LINK).json()
-    dust_data = requests.get(DUST_LINK).json()
+    WEATHER_URL = f"https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&units=metric&appid={API_KEY}"
+    DUST_URL = f"https://api.openweathermap.org/data/2.5/air_pollution?lat={lat}&lon={lon}&appid={API_KEY}"
 
-    score = method.cal_score(weather_data, dust_data)
+    weather_data = requests.get(WEATHER_URL).json()
+    dust_data = requests.get(DUST_URL).json()
 
-    return JSONResponse({"score": score})
+    pm10 = dust_data["list"][0]["components"]["pm10"]
+    pm25 = dust_data["list"][0]["components"]["pm2_5"]
+
+    now_kst = datetime.now(timezone.utc) + timedelta(hours=9)
+    today_str = now_kst.date().isoformat()
+
+    results = []
+
+    for item in weather_data["list"]:
+        # UTC → KST 변환
+        dt_kst = datetime.fromisoformat(item["dt_txt"]) + timedelta(hours=9)
+        if dt_kst.date().isoformat() != today_str:
+            continue
+
+        temp = item["main"]["feels_like"]
+        wind = item["wind"]["speed"]
+        humidity = item["main"]["humidity"]
+        cloud = item["clouds"]["all"]
+
+        score, desc = method.interpret_weather(temp, wind, humidity, cloud, pm10, pm25)
+
+        results.append({
+            "time": dt_kst.strftime("%Y-%m-%d %H:%M"),
+            "score": score,
+            **desc
+        })
+
+    return JSONResponse(content={"today_weather": results})
 
 # 유저 설문 제출 API
 @app.post("/submit_survey/{user_id}")
@@ -294,13 +323,13 @@ async def data_collection(data: Dict[str, Any]):
         # ▶ 강도 레벨 및 메시지 생성
         if final_score < 49:
             level = "저강도"
-            message = "천천히 풍경을 보며 산행을 즐기고 계시는군요. 템포를 좀 더 올려도 괜찮습니다!"
+            message = "천천히 풍경을 보며 산행을 즐기고 계시는군요."
         elif final_score < 79:
             level = "중강도"
-            message = "좋은 페이스로 산행 중입니다. 무리하지말고 페이스를 유지하도록 조절하세요.!"
+            message = "좋은 페이스로 산행 중입니다."
         else:
             level = "고강도"
-            message = "고강도 산행을 하고 계십니다! 무리하지 않도록 중간중간 휴식을 챙기세요."
+            message = "고강도 산행을 하고 계십니다!"
 
         logger.info(f"✅ 예측 강도: {predicted_score}, 최종 점수: {final_score}, 레벨: {level}")
 
