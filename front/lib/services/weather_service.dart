@@ -62,9 +62,12 @@ class WeatherService {
       );
 
       if (resp.statusCode == 200) {
-        final data = json.decode(resp.body);
+        // 응답 바이트를 utf8로 디코딩 처리
+        final decodedResponse = utf8.decode(resp.bodyBytes);
+        final data = json.decode(decodedResponse);
         final weatherList = data['today_weather'] as List<dynamic>;
-        debugPrint('등산지수 조회 : $weatherList');
+        
+        debugPrint('등산지수 조회 (디코딩 처리): $weatherList');
         
         // 날씨 데이터 파싱
         List<WeatherData> weatherDataList = weatherList
@@ -74,8 +77,8 @@ class WeatherService {
         // 현재 시간 이후의 데이터만 필터링
         weatherDataList = _filterFutureData(weatherDataList);
         
-        // 데이터 캐싱
-        await prefs.setString(CACHE_KEY_DATA, json.encode(weatherList));
+        // 디코딩된 데이터 캐싱
+        await prefs.setString(CACHE_KEY_DATA, decodedResponse);
         await prefs.setString(CACHE_KEY_DATE, today);
         
         return weatherDataList;
@@ -96,6 +99,7 @@ class WeatherService {
 
   // 캐시 삭제 함수
   static Future<void> clearCache() async {
+    debugPrint('캐시 삭제');
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(CACHE_KEY_DATA);
     await prefs.remove(CACHE_KEY_DATE);
@@ -127,8 +131,6 @@ class WeatherService {
         debugPrint('  시간: ${data.getFormattedTime()}');
         debugPrint('  등산지수: ${data.score}');
         debugPrint('  세부정보: ${data.details}');
-        // 필요에 따라 다른 속성도 추가 출력
-        // 예: debugPrint('  다른 속성: ${data.someOtherProperty}');
       }
     } else {
       debugPrint('캐시된 데이터가 없습니다.');

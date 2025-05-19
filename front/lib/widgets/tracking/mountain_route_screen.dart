@@ -288,109 +288,152 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
     }
   }
 
-  // 검색 결과 오버레이 표시
-  void _showSearchResults() {
-    _removeOverlay(); // 기존 오버레이 제거
+  // 검색 결과 오버레이 디자인 개선
+void _showSearchResults() {
+  _removeOverlay(); // 기존 오버레이 제거
 
-    // 검색창의 RenderBox를 찾아 크기와 위치 정보 가져오기
-    final RenderBox? renderBox =
-        _searchFocusNode.context?.findRenderObject() as RenderBox?;
-    if (renderBox == null) return;
+  // 검색창의 RenderBox를 찾아 크기와 위치 정보 가져오기
+  final RenderBox? renderBox =
+      _searchFocusNode.context?.findRenderObject() as RenderBox?;
+  if (renderBox == null) return;
 
-    final size = renderBox.size;
-    final position = renderBox.localToGlobal(Offset.zero);
+  final size = renderBox.size;
+  final position = renderBox.localToGlobal(Offset.zero);
 
-    _overlayEntry = OverlayEntry(
-      builder: (context) => Stack(
-        children: [
-          // 오버레이 외부 영역에 대한 GestureDetector (오버레이 닫기용)
-          Positioned.fill(
-            child: GestureDetector(
-              onTap: () {
-                _searchFocusNode.unfocus();
-                _removeOverlay();
-              },
-              // 완전 투명한 배경
-              child: Container(color: Colors.transparent),
-            ),
+  _overlayEntry = OverlayEntry(
+    builder: (context) => Stack(
+      children: [
+        // 오버레이 외부 영역 (닫기용 백그라운드)
+        Positioned.fill(
+          child: GestureDetector(
+            onTap: () {
+              _searchFocusNode.unfocus();
+              _removeOverlay();
+            },
+            // 반투명한 어두운 배경
+            child: Container(color: Colors.black.withOpacity(0.2)),
           ),
-          // 실제 검색 결과 오버레이
-          Positioned(
-            top: position.dy + size.height + 10,
-            left: 12.0,
-            right: 12.0,
-            child: Material(
-              elevation: 4.0,
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                constraints: BoxConstraints(
-                  maxHeight: MediaQuery.of(context).size.height * 0.4,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withAlpha(10),
-                      spreadRadius: 1,
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: _filteredMountains.isEmpty
-                    ? Container(
-                        padding: const EdgeInsets.all(16),
-                        child: const Text('검색 결과가 없습니다.'),
-                      )
-                    : ListView.separated(
-                        shrinkWrap: true,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        itemCount: _filteredMountains.length,
-                        separatorBuilder: (context, index) =>
-                            const Divider(height: 1),
-                        itemBuilder: (context, index) {
-                          final mountain = _filteredMountains[index];
-                          return ListTile(
-                            title: Text(
-                              mountain.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
-                            subtitle: Text(
-                              mountain.location,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
-                            ),
-                            trailing: Text(
-                              '${mountain.height}m',
-                              style: TextStyle(
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                            ),
-                            dense: true,
-                            onTap: () {
-                              _selectMountain(mountain);
-                            },
-                          );
-                        },
-                      ),
+        ),
+        // 검색 결과 카드 - 검색창 아래에 위치하도록 조정
+        Positioned(
+          top: position.dy + size.height + 16, // 위치를 더 아래로 조정
+          left: 20.0,
+          right: 20.0,
+          child: Material(
+            elevation: 10.0,
+            borderRadius: BorderRadius.circular(16),
+            shadowColor: Colors.black.withOpacity(0.1),
+            child: Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.5,
               ),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: _filteredMountains.isEmpty
+                  ? Container(
+                      padding: const EdgeInsets.all(24),
+                      alignment: Alignment.center,
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.search_off_rounded,
+                            size: 32,
+                            color: Colors.grey[400],
+                          ),
+                          SizedBox(height: 12),
+                          Text(
+                            '검색 결과가 없습니다',
+                            style: TextStyle(
+                              fontSize: 15,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.separated(
+                      shrinkWrap: true,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      itemCount: _filteredMountains.length,
+                      separatorBuilder: (context, index) => Divider(
+                        height: 1,
+                        thickness: 1,
+                        color: Colors.grey[100],
+                        indent: 16,
+                        endIndent: 16,
+                      ),
+                      itemBuilder: (context, index) {
+                        final mountain = _filteredMountains[index];
+                        return InkWell(
+                          onTap: () {
+                            _selectMountain(mountain);
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16.0, 
+                              vertical: 12.0
+                            ),
+                            child: Row(
+                              children: [
+                                // 산 이름 아이콘 제거 - 아이콘 및 관련 SizedBox 제거
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        mountain.name,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                      SizedBox(height: 4),
+                                      Text(
+                                        mountain.location,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 10, 
+                                    vertical: 6
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Color(0xFF52A486).withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    '${mountain.height}m',
+                                    style: TextStyle(
+                                      color: Color(0xFF52A486),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
             ),
           ),
-        ],
-      ),
-    );
+        ),
+      ],
+    ),
+  );
 
-    Overlay.of(context).insert(_overlayEntry!);
-  }
+  Overlay.of(context).insert(_overlayEntry!);
+}
 
   // 오버레이 제거
   void _removeOverlay() {
@@ -585,240 +628,694 @@ class _MountainRouteScreenState extends State<MountainRouteScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    // 지도를 다시 생성해야 하는 경우 키를 변경
-    if (_shouldRebuildMap) {
-      _shouldRebuildMap = false;
-    }
+@override
+Widget build(BuildContext context) {
+  // 지도를 다시 생성해야 하는 경우 키를 변경
+  if (_shouldRebuildMap) {
+    _shouldRebuildMap = false;
+  }
 
-    return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(kToolbarHeight),
-        child: Container(
-          margin: EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-          child: AppBar(
-            title: Row(
+  return Scaffold(
+    backgroundColor: Color(0xFFF9FBF9), // 연한 연두색 배경
+    appBar: PreferredSize(
+      preferredSize: Size.fromHeight(kToolbarHeight + 12),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 12,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20.0, 16.0, 20.0, 12.0),
+            child: Row(
               children: [
                 Expanded(
                   child: CompositedTransformTarget(
                     link: _layerLink,
-                    child: TextField(
-                      controller: _searchController,
-                      focusNode: _searchFocusNode,
-                      decoration: InputDecoration(
-                        hintText: '산 이름 검색...',
-                        hintStyle: TextStyle(
-                          color: Colors.white.withAlpha(70),
-                          fontSize: 15,
+                    child: Container(
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[50],
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(
+                          color: Color(0xFFE0E0E0), 
+                          width: 1
                         ),
-                        border: InputBorder.none,
-                        prefixIcon: Padding(
-                          padding: EdgeInsets.zero,
-                          child: Icon(
-                            Icons.search,
-                            color: Colors.white.withAlpha(70),
-                            size: 20,
+                      ),
+                      child: TextField(
+                        controller: _searchController,
+                        focusNode: _searchFocusNode,
+                        textAlignVertical: TextAlignVertical.center,  // 추가: 수직 정렬 중앙으로
+                        decoration: InputDecoration(
+                          hintText: '산 이름을 검색해보세요',
+                          hintStyle: TextStyle(
+                            color: Colors.grey[400],
+                            fontSize: 14,  // 힌트 텍스트 크기 증가
+                            fontWeight: FontWeight.w400,
+                          ),
+                          border: InputBorder.none,
+                          isDense: true,  // 추가: 더 조밀한 레이아웃 (선택 사항)
+                          prefixIcon: Padding(  // 아이콘 패딩 조정
+                            padding: EdgeInsets.symmetric(horizontal: 12),
+                            child: Icon(
+                              Icons.search_rounded,
+                              color: Color(0xFF52A486),
+                              size: 20,
+                            ),
+                          ),
+                          prefixIconConstraints: BoxConstraints(  // 아이콘 제약 조건 추가
+                            minWidth: 40,
+                            minHeight: 40,
+                          ),
+                          suffixIcon: _searchController.text.isNotEmpty
+                              ? GestureDetector(
+                                  onTap: () {
+                                    _searchController.clear();
+                                    setState(() {
+                                      _filteredMountains = [];
+                                    });
+                                  },
+                                  child: Icon(
+                                    Icons.close_rounded,
+                                    color: Colors.grey[400],
+                                    size: 18,
+                                  ),
+                                )
+                              : null,
+                          contentPadding: EdgeInsets.symmetric(
+                            vertical: 12,  // 수직 패딩 증가
+                            horizontal: 16
                           ),
                         ),
-                        prefixIconConstraints: BoxConstraints(
-                          minWidth: 30,
-                          minHeight: 30,
+                        style: TextStyle(
+                          color: Colors.black87,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          height: 1.0,  // 추가: 텍스트 높이를 기본값인 1.0으로 설정
                         ),
-                        isDense: true,
-                        contentPadding: EdgeInsets.symmetric(vertical: 15),
+                        textInputAction: TextInputAction.search,
+                        onTap: () {
+                          setState(() {
+                            _isSearching = true;
+                          });
+                        },
                       ),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textInputAction: TextInputAction.search,
-                      onTap: () {
-                        setState(() {
-                          _isSearching = true;
-                        });
-                      },
                     ),
                   ),
                 ),
               ],
             ),
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.all(
-                Radius.circular(100),
-              ),
-            ),
-            elevation: 0,
-            titleSpacing: 10,
-            toolbarHeight: kToolbarHeight - 8,
           ),
         ),
       ),
-      body: _isLoading || (_selectedMountain == null && !_isSearching)
-          ? const Center(child: CircularProgressIndicator())
-          : _isSearching && _selectedMountain == null
-              ? const Center(child: Text('검색 결과가 없습니다.'))
-              : _buildRouteContent(),
-    );
-  }
+    ),
+    body: _isLoading || (_selectedMountain == null && !_isSearching)
+        ? _buildLoadingIndicator()
+        : _isSearching && _selectedMountain == null
+            ? _buildEmptySearchResult()
+            : _buildRouteContent(),
+  );
+}
 
-  // 등산로 목록 및 시각화 화면
-  Widget _buildRouteContent() {
-    return _isLoadingRoutes
-        ? const Center(child: CircularProgressIndicator())
-        : Column(
-            children: [
-              // 경로 시각화
-              Container(
-                height: 180,
-                width: double.infinity,
-                margin: const EdgeInsets.symmetric(horizontal: 16.0),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withAlpha(10),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: _routes.isEmpty
-                    ? const Center(child: Text('등산로 정보가 없습니다.'))
-                    : ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: RouteMapWidget(
-                          // 산이 변경될 때만 키를 변경 (경로 변경 시에는 변경 안함)
-                          key: _mapKey,
-                          mountain: _selectedMountain,
-                          routes: _routes,
-                          selectedRouteIndex: _selectedRouteIndex,
-                        ),
-                      ),
+// 로딩 인디케이터 디자인 개선
+Widget _buildLoadingIndicator() {
+  return Center(
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Color(0xFF52A486).withOpacity(0.15),
+                blurRadius: 20,
+                spreadRadius: 5,
               ),
+            ],
+          ),
+          child: Center(
+            child: SizedBox(
+              width: 40,
+              height: 40,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF52A486)),
+              ),
+            ),
+          ),
+        ),
+        SizedBox(height: 24),
+        Text(
+          '등산로 정보를 불러오는 중...',
+          style: TextStyle(
+            color: Color(0xFF52A486),
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+          ),
+        ),
+        SizedBox(height: 8),
+        Text(
+          '잠시만 기다려주세요',
+          style: TextStyle(
+            color: Colors.grey[600],
+            fontSize: 14,
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
-              // 등산로 목록
-              Expanded(
-                child: _isLoadingRoutes
-                    ? const Center(child: CircularProgressIndicator())
-                    : _routes.isEmpty
-                        ? const Center(child: Text('등산로 정보가 없습니다.'))
-                        : ListView(
-                            children: _routes.map((route) {
-                              final index = _routes.indexOf(route);
-                              final isSelected = index == _selectedRouteIndex;
-                              return Card(
-                                margin: const EdgeInsets.symmetric(
-                                  horizontal: 16.0,
-                                  vertical: 8.0,
-                                ),
-                                elevation: isSelected ? 4 : 1,
-                                shape: RoundedRectangleBorder(
+// 검색 결과가 없을 때 위젯
+Widget _buildEmptySearchResult() {
+  return Center(
+    child: Container(
+      padding: EdgeInsets.all(24),
+      width: double.infinity,
+      margin: EdgeInsets.symmetric(horizontal: 40),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 15,
+            spreadRadius: 0,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Color(0xFF52A486).withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.search_off_rounded,
+              size: 32,
+              color: Color(0xFF52A486),
+            ),
+          ),
+          SizedBox(height: 16),
+          Text(
+            '검색 결과가 없습니다',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            '다른 산 이름으로 검색해보세요',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              height: 1.4,
+              color: Colors.grey[600],
+            ),
+          ),
+          SizedBox(height: 20),
+          Container(
+            width: double.infinity,
+            height: 46,
+            child: ElevatedButton(
+              onPressed: () {
+                _searchFocusNode.requestFocus();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFF52A486),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(23),
+                ),
+              ),
+              child: Text(
+                '다시 검색하기',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+Widget _buildRouteContent() {
+  return _isLoadingRoutes
+      ? Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF52A486)),
+          ),
+        )
+      : SingleChildScrollView( // 전체를 SingleChildScrollView로 감싸기
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 20), // 하단 여백 추가
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 산 정보 및 경로 시각화
+                Container(
+                  padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 산 정보 헤더
+                      if (_selectedMountain != null)
+                        Container(
+                          margin: EdgeInsets.only(bottom: 12),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Color(0xFF52A486).withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(12),
-                                  side: BorderSide(
-                                    color: isSelected
-                                        ? AppColors.primary
-                                        : Colors.transparent,
-                                    width: 2,
+                                ),
+                                child: Icon(
+                                  Icons.terrain_rounded,
+                                  color: Color(0xFF52A486),
+                                  size: 18,
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _selectedMountain!.name,
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                    SizedBox(height: 2),
+                                    Text(
+                                      '${_selectedMountain!.location} • ${_selectedMountain!.height}m',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 12, 
+                                  vertical: 6
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Color(0xFF52A486).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  '${_routes.length}개 코스',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF52A486),
                                   ),
                                 ),
-                                child: InkWell(
-                                  onTap: () {
-                                    setState(() => _selectedRouteIndex = index);
-                                    // 경로 선택 시 지도 업데이트
-                                    _updateMapWithSelectedRoute(index);
-                                  },
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 16.0, vertical: 6.0),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                route.name,
-                                                style: const TextStyle(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      
+                      // 지도 컨테이너
+                      Container(
+                        height: 200,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withAlpha(20),
+                              blurRadius: 15,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: _routes.isEmpty
+                            ? Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.map_outlined,
+                                      size: 36,
+                                      color: Colors.grey[400],
+                                    ),
+                                    SizedBox(height: 12),
+                                    Text(
+                                      '등산로 정보가 없어요',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: Stack(
+                                  children: [
+                                    Positioned.fill(
+                                      child: RouteMapWidget(
+                                        key: _mapKey,
+                                        mountain: _selectedMountain,
+                                        routes: _routes,
+                                        selectedRouteIndex: _selectedRouteIndex,
+                                      ),
+                                    ),
+                                    Positioned(
+                                      top: 12,
+                                      left: 12,
+                                      child: Container(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: 12, 
+                                          vertical: 6
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(16),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withOpacity(0.1),
+                                              blurRadius: 8,
+                                              offset: Offset(0, 2),
                                             ),
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                horizontal: 12,
-                                                vertical: 6,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: _getRouteColor(
-                                                        route.difficulty)
-                                                    .withAlpha(20),
-                                                borderRadius:
-                                                    BorderRadius.circular(20),
-                                              ),
-                                              child: Text(
-                                                '난이도: ${route.difficulty}',
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: _getRouteColor(
-                                                      route.difficulty),
-                                                ),
+                                          ],
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.navigation_rounded,
+                                              size: 14,
+                                              color: Color(0xFF52A486),
+                                            ),
+                                            SizedBox(width: 4),
+                                            Text(
+                                              '등산로 지도',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.black87,
                                               ),
                                             ),
                                           ],
                                         ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          '거리: ${(route.distance / 1000).toStringAsFixed(1)}km • 예상 소요시간: ${route.estimatedTime >= 60 ? "${route.estimatedTime ~/ 60}시간 ${route.estimatedTime % 60}분" : "${route.estimatedTime}분"}',
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey,
-                                          ),
-                                        ),
-                                      ],
+                                      ),
                                     ),
+                                  ],
+                                ),
+                              ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // 등산로 선택 타이틀
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Color(0xFF52A486).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.directions_walk_rounded,
+                          color: Color(0xFF52A486),
+                          size: 16,
+                        ),
+                      ),
+                      SizedBox(width: 10),
+                      Text(
+                        '등산로 목록',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // 등산로 목록
+              _routes.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(40.0),
+                        child: Column(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Color(0xFF52A486).withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.hiking_rounded,
+                                size: 32,
+                                color: Color(0xFF52A486).withOpacity(0.5),
+                              ),
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              '등산로 정보가 없습니다',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20),
+                      child: Column(
+                        children: _routes.map((route) {
+                          final index = _routes.indexOf(route);
+                          final isSelected = index == _selectedRouteIndex;
+                          
+                          return Container(
+                            margin: EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: isSelected 
+                                      ? Color(0xFF52A486).withOpacity(0.2)  // 선택됐을 때는 앱 메인 색상으로
+                                      : Colors.black.withOpacity(0.05),
+                                  blurRadius: 10,
+                                  spreadRadius: isSelected ? 1 : 0,
+                                  offset: Offset(0, 3),
+                                ),
+                              ],
+                              border: Border.all(
+                                color: isSelected 
+                                    ? Color(0xFF52A486)  // 선택됐을 때 테두리 색상도 앱 메인 색상으로
+                                    : Colors.transparent,
+                                width: 2,
+                              ),
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              borderRadius: BorderRadius.circular(16),
+                              child: InkWell(
+                                onTap: () {
+                                  setState(() => _selectedRouteIndex = index);
+                                  _updateMapWithSelectedRoute(index);
+                                },
+                                borderRadius: BorderRadius.circular(16),
+                                splashColor: Color(0xFF52A486).withOpacity(0.1),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          // 등산로 이름 왼쪽 아이콘 제거
+                                          Expanded(
+                                            child: Text(
+                                              route.name,
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.black87,
+                                              ),
+                                            ),
+                                          ),
+                                          Container(
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 6,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              // 난이도 뱃지 색상을 앱 메인 색상으로 변경
+                                              color: Color(0xFF52A486).withOpacity(0.1),
+                                              borderRadius: BorderRadius.circular(16),
+                                            ),
+                                            child: Text(
+                                              '난이도: ${route.difficulty}',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                                // 난이도 텍스트 색상도 앱 메인 색상으로 변경
+                                                color: Color(0xFF52A486),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      SizedBox(height: 12),
+                                      Row(
+                                        children: [
+                                          _buildRouteInfoItem(
+                                            Icons.straighten_rounded,
+                                            '거리',
+                                            '${(route.distance / 1000).toStringAsFixed(1)}km',
+                                          ),
+                                          SizedBox(width: 16),
+                                          _buildRouteInfoItem(
+                                            Icons.schedule_rounded,
+                                            '소요시간',
+                                            route.estimatedTime >= 60 
+                                                ? "${route.estimatedTime ~/ 60}시간 ${route.estimatedTime % 60}분" 
+                                                : "${route.estimatedTime}분",
+                                          ),
+                                        ],
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              );
-                            }).toList(),
-                          ),
-              ),
-
-              // 선택 버튼
-              if (_selectedRouteIndex >= 0)
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: ElevatedButton(
-                    onPressed: _proceedToModeSelect,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      minimumSize: const Size.fromHeight(50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                          );
+                        }).toList(),
                       ),
                     ),
-                    child: const Text(
-                      '등산로 선택하기',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+
+                // 선택 버튼 - 이제 스크롤 내부에 위치
+                if (_selectedRouteIndex >= 0)
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: ElevatedButton(
+                      onPressed: _proceedToModeSelect,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFF52A486),
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        minimumSize: Size(double.infinity, 50), // 높이 지정
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        '등산로 선택하기',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
-                ),
-            ],
-          );
+              ],
+            ),
+          ),
+        );
+}
+
+
+// 난이도에 따른 아이콘 반환
+IconData _getDifficultyIcon(String difficulty) {
+  switch (difficulty) {
+    case '상':
+      return Icons.trending_up_rounded;
+    case '중':
+      return Icons.trending_flat_rounded;
+    case '하':
+      return Icons.trending_down_rounded;
+    default:
+      return Icons.hiking_rounded;
   }
+}
+
+// 등산로 정보 아이템 위젯
+Widget _buildRouteInfoItem(IconData icon, String label, String value) {
+  return Expanded(
+    child: Row(
+      children: [
+        Container(
+          padding: EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            icon,
+            color: Colors.grey[700],
+            size: 16,
+          ),
+        ),
+        SizedBox(width: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
+            ),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
 
   // 선택한 산과 등산로 정보를 AppState에 저장하고 다음 단계로 진행
   void _proceedToModeSelect() {

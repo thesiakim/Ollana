@@ -932,7 +932,7 @@ void _showTooltip(BuildContext context) {
                           const SizedBox(height: 16),
                           _buildRecommendationCard(
                             title: '나만의 코스 추천',
-                            description: '취향에 맞는 완벽한 산을 찾아보세요',
+                            description: '취향에 맞는 산을 찾아보세요',
                             image: 'lib/assets/images/ai_recommend.png',
                             backgroundColor: const Color(0xFF64B792),
                             onTap: _navigateToAiRecommendation,
@@ -1077,7 +1077,7 @@ void _showTooltip(BuildContext context) {
                     Text(
                       '어떤 산행을 계획하고 계신가요?',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 13,
                         color: const Color(0xFF666666),
                         height: 1.3,
                       ),
@@ -1181,7 +1181,7 @@ void _showTooltip(BuildContext context) {
         Text(
           title,
           style: const TextStyle(
-            fontSize: 18,
+            fontSize: 14,
             fontWeight: FontWeight.bold,
             color: Color(0xFF333333),
           ),
@@ -1225,7 +1225,7 @@ void _showTooltip(BuildContext context) {
             '로그인을 하고 당신만을 위한\n산 추천을 받아보세요',
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 13,
               fontWeight: FontWeight.bold,
               height: 1.5,
               color: Color(0xFF333333),
@@ -1330,7 +1330,7 @@ void _showTooltip(BuildContext context) {
                               child: const Text(
                                 'AI 추천',
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 10,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
                                 ),
@@ -1340,7 +1340,7 @@ void _showTooltip(BuildContext context) {
                             Text(
                               title,
                               style: const TextStyle(
-                                fontSize: 20,
+                                fontSize: 14,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
                               ),
@@ -1350,7 +1350,7 @@ void _showTooltip(BuildContext context) {
                               child: Text(
                                 description,
                                 style: TextStyle(
-                                  fontSize: 12, // 글자 크기를 14에서 12로 줄임
+                                  fontSize: 10, // 글자 크기를 14에서 12로 줄임
                                   color: Colors.white.withOpacity(0.9),
                                   height: 1.3, // 줄 간격도 약간 줄임
                                 ),
@@ -1470,7 +1470,7 @@ void _showTooltip(BuildContext context) {
                       Text(
                         title,
                         style: const TextStyle(
-                          fontSize: 16,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
@@ -1481,7 +1481,7 @@ void _showTooltip(BuildContext context) {
                           const Text(
                             '자세히 보기',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 10,
                               color: Colors.white,
                             ),
                           ),
