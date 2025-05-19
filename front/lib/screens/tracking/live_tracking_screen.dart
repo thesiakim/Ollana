@@ -382,7 +382,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
   // 페이스메이커 level 관련 변수 추가
   String? _previousPacemakerLevel;
-  bool _hasNotifiedWatchForPacemaker = false;
+  final bool _hasNotifiedWatchForPacemaker = false;
   String? _pacemakerMessage;
   String? _pacemakerLevel;
 
@@ -1063,7 +1063,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
           } else {
             // 비정상적으로 긴 거리인 경우
             debugPrint(
-                '이동 거리 이상 감지: ${segmentDistanceMeters.toStringAsFixed(1)}m / ${maxDeltaForUpdateMeters.toStringAsFixed(1)}m (${timeSinceLastCalcSeconds}초)');
+                '이동 거리 이상 감지: ${segmentDistanceMeters.toStringAsFixed(1)}m / ${maxDeltaForUpdateMeters.toStringAsFixed(1)}m ($timeSinceLastCalcSeconds초)');
           }
 
           // 새 기준점으로 현재 위치 설정 및 시간 업데이트
@@ -1712,7 +1712,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
         // 디버깅용 로그
         debugPrint(
-            '상대 기록 분석: 현재 시간 ${currentElapsedTime}초, 진행 거리 ${_pastDistanceAtCurrentTime.toStringAsFixed(2)}m');
+            '상대 기록 분석: 현재 시간 $currentElapsedTime초, 진행 거리 ${_pastDistanceAtCurrentTime.toStringAsFixed(2)}m');
         debugPrint(
             '상대 심박수 정보: 최대 ${_competitorData['maxHeartRate']}, 평균 ${_competitorData['avgHeartRate']?.toStringAsFixed(1)}');
       }
@@ -1724,9 +1724,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       _isAheadOfRecord = _distanceDifference > 0;
 
       // 항상 _competitorData 업데이트
-      if (_competitorData != null) {
-        _competitorData['isAhead'] = !_isAheadOfRecord; // 내가 앞서면 경쟁자는 뒤처짐
-      }
+      _competitorData['isAhead'] = !_isAheadOfRecord; // 내가 앞서면 경쟁자는 뒤처짐
 
       debugPrint(
           '기록 비교: 현재=${_currentTotalDistance.toStringAsFixed(2)}km, 이전=${_pastDistanceAtCurrentTime.toStringAsFixed(2)}km, 차이=${_distanceDifference.toStringAsFixed(2)}km');
@@ -2498,7 +2496,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       final String? opponentRecordDate = appState.opponentRecordDate;
       final int? opponentRecordTime = appState.opponentRecordTime;
       final int? opponentMaxHeartRate = appState.opponentMaxHeartRate;
-      final double? opponentAvgHeartRate = appState.opponentAvgHeartRate;
+      final int? opponentAvgHeartRate = appState.opponentAvgHeartRate;
 
       // 디버그 로그 추가
       debugPrint('[finishTracking] AppState에서 가져온 친구 기록 데이터:');
@@ -2506,6 +2504,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       debugPrint('  - time: $opponentRecordTime');
       debugPrint('  - maxHeartRate: $opponentMaxHeartRate');
       debugPrint('  - avgHeartRate: $opponentAvgHeartRate');
+
+      debugPrint('  - elapsedMinutes: $_elapsedMinutes');
 
       // 종료 API 호출
       final Map<String, dynamic> response = await modeService.endTracking(
@@ -2517,7 +2517,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
         isSave: shouldSave, // 사용자 선택에 따라 저장 여부 설정
         finalLatitude: _currentLat,
         finalLongitude: _currentLng,
-        finalTime: _elapsedSeconds,
+        finalTime: _elapsedMinutes,
         finalDistance: _currentTotalDistance.toInt(), // km -> m 변환
         records: _trackingRecords,
         token: token,
@@ -2543,7 +2543,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
         }
 
         // shouldSave가 true일 때만 결과 화면 표시
-        final int finalElapsedSeconds = _elapsedSeconds;
+        final int finalElapsedMinutes = _elapsedMinutes;
         final double finalDistanceMeters = _currentTotalDistance;
         // 이전 기록(AppState에 이미 설정된 값) 캡처
         final String? prevRecordDate = appState.previousRecordDate;
@@ -2559,7 +2559,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
               opponentRecordTime: opponentRecordTime,
               opponentMaxHeartRate: opponentMaxHeartRate,
               opponentAvgHeartRate: opponentAvgHeartRate,
-              currentElapsedSeconds: finalElapsedSeconds,
+              currentElapsedMinutes: finalElapsedMinutes,
               currentDistanceMeters: finalDistanceMeters,
               previousRecordDate: prevRecordDate,
               previousRecordTimeSeconds: prevRecordTimeSeconds,
@@ -3314,12 +3314,12 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     // 처음 기록하는 경우 lastRecordTime 초기화
     _lastRecordTime ??= now;
 
-    // 30초마다 records에 데이터 추가
+    // 10초마다 records에 데이터 추가
     final secondsSinceLastRecord = now.difference(_lastRecordTime!).inSeconds;
     if (secondsSinceLastRecord >= _recordIntervalSeconds) {
       // 추가할 기록 생성
       final record = {
-        'time': _elapsedSeconds,
+        'time': _elapsedMinutes,
         'distance': _currentTotalDistance.toInt(), // 이미 m 단위로 저장
         'latitude': _currentLat,
         'longitude': _currentLng,
@@ -3578,22 +3578,6 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
         if (_previousPacemakerLevel != level) {
           debugPrint('페이스메이커 level 변경: $_previousPacemakerLevel -> $level');
 
-          // level별 맞춤 메시지
-          String pacemakerMessage;
-          switch (level) {
-            case '저강도':
-              pacemakerMessage = '운동 강도가 낮아요. 조금 더 힘내볼까요?';
-              break;
-            case '중강도':
-              pacemakerMessage = '적절한 강도로 등산 중입니다!';
-              break;
-            case '고강도':
-              pacemakerMessage = '운동 강도가 높아요! 무리하지 않게 조심하세요.';
-              break;
-            default:
-              pacemakerMessage = message; // 서버에서 온 기본 메시지
-          }
-
           // 페이스메이커 level이 변경되었는지 확인
           if (_previousPacemakerLevel != level) {
             debugPrint('페이스메이커 level 변경: $_previousPacemakerLevel -> $level');
@@ -3604,7 +3588,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
                 await _watch.sendMessage({
                   "path": "/PACEMAKER_ALERT",
                   "level": level,
-                  "message": pacemakerMessage
+                  "message": message
                 });
                 debugPrint('페이스메이커 level 변경 알람 전송 완료');
               } catch (e) {
@@ -3619,7 +3603,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
           // 바텀시트에 메시지 표시
           setState(() {
-            _pacemakerMessage = pacemakerMessage;
+            _pacemakerMessage = message;
             _pacemakerLevel = level;
           });
 
@@ -3628,17 +3612,10 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
             _watch.sendMessage({
               "path": "/PACEMAKER",
               "level": level,
-              "message": pacemakerMessage
+              "message": message
             });
             debugPrint('페이스메이커 메시지 전송됨');
           }
-        }
-
-        // 워치 메시지 전송 (워치가 연결된 경우)
-        if (_isWatchPaired) {
-          _watch.sendMessage(
-              {"path": "/PACEMAKER", "level": level, "message": message});
-          debugPrint('페이스메이커 상태 전송됨');
         }
       } else {
         debugPrint('Error: ${response.statusCode}');

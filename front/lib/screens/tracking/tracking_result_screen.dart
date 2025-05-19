@@ -10,8 +10,8 @@ class TrackingResultScreen extends StatefulWidget {
   final String? opponentRecordDate;
   final int? opponentRecordTime;
   final int? opponentMaxHeartRate;
-  final double? opponentAvgHeartRate;
-  final int? currentElapsedSeconds;
+  final int? opponentAvgHeartRate;
+  final int? currentElapsedMinutes;
   final double? currentDistanceMeters;
   final String? previousRecordDate;
   final int? previousRecordTimeSeconds;
@@ -26,7 +26,7 @@ class TrackingResultScreen extends StatefulWidget {
     this.opponentRecordTime,
     this.opponentMaxHeartRate,
     this.opponentAvgHeartRate,
-    this.currentElapsedSeconds,
+    this.currentElapsedMinutes,
     this.currentDistanceMeters,
     this.previousRecordDate,
     this.previousRecordTimeSeconds,
@@ -71,14 +71,14 @@ class _TrackingResultScreenState extends State<TrackingResultScreen> {
   }
 
   // 분을 시간 문자열로 변환 (예: 90 -> "1시간 30분")
-  String _formatSeconds(int minutes) {
+  String _formatMinutes(int minutes) {
     final int hours = minutes ~/ 60;
     final int remainingMinutes = minutes % 60;
 
     if (hours > 0) {
-      return '${hours}시간 ${remainingMinutes}분';
+      return '$hours시간 $remainingMinutes분';
     } else {
-      return '${remainingMinutes}분';
+      return '$remainingMinutes분';
     }
   }
 
@@ -177,7 +177,7 @@ class _TrackingResultScreenState extends State<TrackingResultScreen> {
     debugPrint('[tracking_result_screen] resultData: ${widget.resultData}');
 
     // 현재 기록
-    final int currTime = widget.currentElapsedSeconds ?? 0;
+    final int currTime = widget.currentElapsedMinutes ?? 0;
     final double currDist = widget.currentDistanceMeters ?? 0.0;
     final String currDistText = currDist < 1000
         ? '${currDist.toInt()}분'
@@ -192,7 +192,7 @@ class _TrackingResultScreenState extends State<TrackingResultScreen> {
     // 이전 기록
     final String prevDate = widget.previousRecordDate ?? '—';
     final int prevTime = widget.previousRecordTimeSeconds ?? 0;
-    final String prevTimeText = _formatSeconds(prevTime);
+    final String prevTimeText = _formatMinutes(prevTime);
     final int prevMaxHr = widget.previousMaxHeartRate ?? 0;
     final int prevAvgHrDouble = widget.previousAvgHeartRate ?? 0;
     final String prevAvgHrText = '${prevAvgHrDouble.round()} bpm';
@@ -275,7 +275,7 @@ class _TrackingResultScreenState extends State<TrackingResultScreen> {
                                     style: TextStyle(
                                         fontSize: 12, color: Colors.grey[700])),
                                 SizedBox(height: 8),
-                                Text(_formatSeconds(appState.elapsedMinutes),
+                                Text(_formatMinutes(appState.elapsedMinutes),
                                     style: TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold)),
@@ -386,7 +386,7 @@ class _TrackingResultScreenState extends State<TrackingResultScreen> {
                     ],
                   ),
 
-                  SizedBox(height: 24),
+                  SizedBox(height: 16),
 
                   // 뱃지 이미지 표시
                   if (badgeUrl.isNotEmpty)
@@ -422,7 +422,7 @@ class _TrackingResultScreenState extends State<TrackingResultScreen> {
                   else
                     Icon(Icons.emoji_events, size: 80, color: Colors.amber),
 
-                  SizedBox(height: 16),
+                  SizedBox(height: 9),
 
                   // 결과 정보 카드
                   Card(
@@ -487,7 +487,7 @@ class _TrackingResultScreenState extends State<TrackingResultScreen> {
     // 위젯으로 전달된 친구 기록 데이터 디버그 출력
     debugPrint('[tracking_result_screen] _buildVsFriendResult:');
     debugPrint('  - friendDate: ${widget.opponentRecordDate}');
-    debugPrint('  - friendTimeSeconds: ${widget.opponentRecordTime}');
+    debugPrint('  - friendTimeMinutes: ${widget.opponentRecordTime}');
     debugPrint('  - friendMaxHeartRate: ${widget.opponentMaxHeartRate}');
     debugPrint('  - friendAvgHeartRate: ${widget.opponentAvgHeartRate}');
 
@@ -496,7 +496,7 @@ class _TrackingResultScreenState extends State<TrackingResultScreen> {
 
     // 친구 기록 정보 - 위젯에서 가져오기
     final String friendDate = _formatDate(widget.opponentRecordDate) ?? '기본값';
-    final int friendTimeSeconds = widget.opponentRecordTime ?? 0;
+    final int friendTimeMinutes = widget.opponentRecordTime ?? 0;
     final int friendMaxHeartRate =
         widget.opponentMaxHeartRate ?? widget.resultData['maxHeartRate'] ?? 0;
     final double friendAvgHeartRate = widget.opponentAvgHeartRate ??
@@ -504,7 +504,7 @@ class _TrackingResultScreenState extends State<TrackingResultScreen> {
         0.0;
 
     // 현재 기록 정보
-    final int currTimeSeconds = widget.currentElapsedSeconds ?? 0;
+    final int currTimeSeconds = widget.currentElapsedMinutes ?? 0;
     final now = DateTime.now();
     final String currentDate =
         '${now.year.toString().substring(2)}.${now.month.toString().padLeft(2, '0')}.${now.day.toString().padLeft(2, '0')}';
@@ -585,7 +585,7 @@ class _TrackingResultScreenState extends State<TrackingResultScreen> {
                                     style: TextStyle(
                                         fontSize: 12, color: Colors.grey[700])),
                                 SizedBox(height: 8),
-                                Text(_formatSeconds(currTimeSeconds),
+                                Text(_formatMinutes(currTimeSeconds),
                                     style: TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold)),
@@ -617,7 +617,7 @@ class _TrackingResultScreenState extends State<TrackingResultScreen> {
                                   ],
                                 ),
                                 Text(
-                                    '${widget.resultData['averageHeartRate'] ?? 0} bpm',
+                                    '${widget.resultData['averageHeartRate'].toInt() ?? 0} bpm',
                                     style: TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.bold)),
@@ -654,7 +654,7 @@ class _TrackingResultScreenState extends State<TrackingResultScreen> {
                                     style: TextStyle(
                                         fontSize: 12, color: Colors.grey[700])),
                                 SizedBox(height: 8),
-                                Text(_formatSeconds(friendTimeSeconds),
+                                Text(_formatMinutes(friendTimeMinutes),
                                     style: TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold)),
@@ -696,7 +696,7 @@ class _TrackingResultScreenState extends State<TrackingResultScreen> {
                     ],
                   ),
 
-                  SizedBox(height: 24),
+                  SizedBox(height: 16),
 
                   // 뱃지 이미지 표시
                   if (badgeUrl.isNotEmpty)
@@ -732,7 +732,7 @@ class _TrackingResultScreenState extends State<TrackingResultScreen> {
                   else
                     Icon(Icons.emoji_events, size: 80, color: Colors.amber),
 
-                  SizedBox(height: 16),
+                  SizedBox(height: 9),
 
                   // 결과 정보 카드
                   Card(
@@ -796,8 +796,8 @@ class _TrackingResultScreenState extends State<TrackingResultScreen> {
         '${now.year.toString().substring(2)}.${now.month.toString().padLeft(2, '0')}.${now.day.toString().padLeft(2, '0')}';
 
     // 등산 데이터를 live_tracking_screen에서 전달된 값으로 사용
-    final int timeSeconds = appState.elapsedSeconds;
-    final String timeFormatted = _formatSeconds(timeSeconds);
+    final int timeMinutes = appState.elapsedMinutes;
+    final String timeFormatted = _formatMinutes(timeMinutes);
 
     // 심박수 데이터는 서버 응답에서 가져옴
     final int maxHeartRate = (widget.resultData['maxHeartRate'] is double)
@@ -808,11 +808,13 @@ class _TrackingResultScreenState extends State<TrackingResultScreen> {
         : widget.resultData['averageHeartRate'] ?? 0;
 
     // 이동 거리는 AppState에서 가져옴 (m를 km로 변환)
-    final double distance = appState.distance / 1000;
-    final String distanceFormatted = '${distance.toStringAsFixed(1)}km';
+    final double distance = appState.distance;
+    final String distanceFormatted = distance < 1.0
+        ? '${(distance * 1000).toInt()}m'
+        : '${distance.toStringAsFixed(1)}km';
 
     debugPrint(
-        '등산 결과 데이터 - 시간: $timeSeconds초, 거리: $distance km, 최고심박수: $maxHeartRate, 평균심박수: $avgHeartRate');
+        '등산 결과 데이터 - 시간: $timeMinutes, 거리: $distance km, 최고심박수: $maxHeartRate, 평균심박수: $avgHeartRate');
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -961,62 +963,6 @@ class _TrackingResultScreenState extends State<TrackingResultScreen> {
                       },
                     )
                   : _buildBadgeFallback(),
-            ),
-          ),
-
-          // 결과에 대한 코멘트 버튼
-          Container(
-            width: double.infinity,
-            margin: EdgeInsets.only(bottom: 12),
-            child: ElevatedButton(
-              onPressed: () {
-                // 코멘트 표시 로직 추가
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('수고하셨습니다! 오늘도 성공적인 등산이었습니다.')),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.grey[200],
-                foregroundColor: Colors.black,
-                padding: EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.only(
-                    topRight: Radius.circular(20),
-                    bottomRight: Radius.circular(20),
-                  ),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[600],
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text(
-                      '총평',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 12),
-                  Text(
-                    '결과에 대한 코멘트',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Spacer(),
-                  Icon(
-                    Icons.arrow_forward,
-                    color: Colors.red,
-                  ),
-                ],
-              ),
             ),
           ),
         ],

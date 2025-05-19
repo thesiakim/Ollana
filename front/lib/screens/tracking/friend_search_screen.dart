@@ -416,14 +416,9 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                                             _selectedRecordId,
                                       );
 
-                                      // 시간을 분에서 초로 변환
-                                      final timeInSeconds =
-                                          ((selectedRecord['time'] as num) * 60)
-                                              .toInt();
-
                                       appState.setOpponentRecordData(
                                         date: selectedRecord['date'],
-                                        time: timeInSeconds,
+                                        time: selectedRecord['time'],
                                         maxHeartRate:
                                             selectedRecord['maxHeartRate'],
                                         avgHeartRate:
