@@ -32,13 +32,13 @@ class _FirstStatusInfoState extends State<FirstStatusInfo> {
   Future<List<WeatherData>> _loadWeatherData() async {
     final token = Provider.of<AppState>(context, listen: false).accessToken;
     final weatherDataList = await WeatherService.fetchWeatherData(token);
-    
+
     if (weatherDataList.isNotEmpty) {
       // AppState에 등산지수 업데이트
       final appState = Provider.of<AppState>(context, listen: false);
       appState.updateClimbingIndex(weatherDataList[0].score.round());
     }
-    
+
     return weatherDataList;
   }
 
@@ -67,7 +67,7 @@ class _FirstStatusInfoState extends State<FirstStatusInfo> {
             ),
           );
         }
-        
+
         if (snap.hasError || !snap.hasData || snap.data!.isEmpty) {
           return Center(
             child: Column(
@@ -83,7 +83,7 @@ class _FirstStatusInfoState extends State<FirstStatusInfo> {
                 Text(
                   '등산 지수를 불러오지 못했습니다',
                   style: TextStyle(
-                    color: Colors.red[400], 
+                    color: Colors.red[400],
                     fontSize: 11,
                   ),
                   textAlign: TextAlign.center,
@@ -110,7 +110,7 @@ class _FirstStatusInfoState extends State<FirstStatusInfo> {
         final selectedData = weatherDataList[_selectedIndex];
         final score = selectedData.score.round();
         final normalizedScore = score / 100.0;
-        
+
         final Color scoreColor = score < 50
             ? const Color(0xFFE53935)
             : score < 80
@@ -129,13 +129,13 @@ class _FirstStatusInfoState extends State<FirstStatusInfo> {
                 itemBuilder: (context, index) {
                   final isSelected = index == _selectedIndex;
                   final formattedTime = weatherDataList[index].getFormattedTime();
-                  
+
                   return GestureDetector(
                     onTap: () {
                       setState(() {
                         _selectedIndex = index;
                       });
-                      
+
                       // AppState에 선택된 등산지수 업데이트
                       final appState = Provider.of<AppState>(context, listen: false);
                       appState.updateClimbingIndex(weatherDataList[index].score.round());
@@ -144,7 +144,7 @@ class _FirstStatusInfoState extends State<FirstStatusInfo> {
                       margin: const EdgeInsets.only(right: 8),
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
-                        color: isSelected 
+                        color: isSelected
                           ? const Color(0xFF64B792)
                           : Colors.grey[200],
                         borderRadius: BorderRadius.circular(16),
@@ -154,7 +154,7 @@ class _FirstStatusInfoState extends State<FirstStatusInfo> {
                         formattedTime,
                         style: TextStyle(
                           fontSize: 12,
-                          fontWeight: isSelected 
+                          fontWeight: isSelected
                             ? FontWeight.bold
                             : FontWeight.normal,
                           color: isSelected
@@ -167,9 +167,9 @@ class _FirstStatusInfoState extends State<FirstStatusInfo> {
                 },
               ),
             ),
-            
+
             const SizedBox(height: 20),
-            
+
             // 등산지수 표시 부분
             Center(
               child: SizedBox(
@@ -194,7 +194,7 @@ class _FirstStatusInfoState extends State<FirstStatusInfo> {
                         ],
                       ),
                     ),
-                    
+
                     SizedBox(
                       width: 110,
                       height: 110,
@@ -213,7 +213,7 @@ class _FirstStatusInfoState extends State<FirstStatusInfo> {
                         },
                       ),
                     ),
-                    
+
                     Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       mainAxisSize: MainAxisSize.min,
@@ -240,7 +240,7 @@ class _FirstStatusInfoState extends State<FirstStatusInfo> {
                 ),
               ),
             ),
-            
+
             // 날씨 세부정보 표시 (선택 사항)
             const SizedBox(height: 15),
             _buildWeatherDetails(selectedData),
@@ -249,19 +249,19 @@ class _FirstStatusInfoState extends State<FirstStatusInfo> {
       },
     );
   }
-  
+
   // 날씨 세부정보 표시 위젯
   Widget _buildWeatherDetails(WeatherData data) {
     // 주요 날씨 정보 선택 (4개만 표시)
     final keysToShow = ['체감온도', '풍속', '습도', '미세먼지'];
     final Map<String, String> filteredDetails = {};
-    
+
     for (final key in keysToShow) {
       if (data.details.containsKey(key)) {
         filteredDetails[key] = data.details[key]!;
       }
     }
-    
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(12),
@@ -281,7 +281,7 @@ class _FirstStatusInfoState extends State<FirstStatusInfo> {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: filteredDetails.entries.map((entry) {
           final IconData icon = _getIconForWeatherDetail(entry.key);
-          
+
           return Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -314,7 +314,7 @@ class _FirstStatusInfoState extends State<FirstStatusInfo> {
       ),
     );
   }
-  
+
   // 날씨 세부정보 항목에 맞는 아이콘 반환
   IconData _getIconForWeatherDetail(String key) {
     switch (key) {
@@ -334,7 +334,7 @@ class _FirstStatusInfoState extends State<FirstStatusInfo> {
         return Icons.info_outline;
     }
   }
-  
+
   // 세부정보 값 포맷팅
   String _formatDetailValue(String value) {
     // 괄호 안의 텍스트 제거 (예: "18.9℃ (보통)" -> "18.9℃")
@@ -414,7 +414,7 @@ class _SecondStatusInfoState extends State<SecondStatusInfo> {
                 Text(
                   '성장 정보를 불러올 수 없습니다',
                   style: TextStyle(
-                    color: Colors.red[400], 
+                    color: Colors.red[400],
                     fontSize: 12,
                   ),
                   textAlign: TextAlign.center,
@@ -425,7 +425,7 @@ class _SecondStatusInfoState extends State<SecondStatusInfo> {
         }
 
         final growth = snap.data;
-        
+
         // 케이스 3: 등산 기록이 없는 경우 (growth가 null)
         if (growth == null) {
           return Center(
@@ -471,18 +471,18 @@ class _SecondStatusInfoState extends State<SecondStatusInfo> {
     final date = growth['date'] as String;
     final recent = growth['recentTime'] as int;
     final past = hasPast ? growth['pastTime'] as int : 0;
-    
+
     // 시간 차이 계산 (hasPast인 경우만)
     final bool hasTimeDiff = hasPast && (recent != past);
     final int timeDiff = hasTimeDiff ? (past - recent).abs() : 0;
     final bool isImproved = hasTimeDiff && (recent < past);
-    
-    // 날짜와 시간 텍스트 스타일 
+
+    // 날짜와 시간 텍스트 스타일
     final textStyle = TextStyle(
       fontSize: 13,
       color: Colors.grey[800],
     );
-    
+
     return SizedBox(
       height: 130,
       child: Center(
@@ -520,15 +520,15 @@ class _SecondStatusInfoState extends State<SecondStatusInfo> {
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 6),
-                
-                // 날짜 
+
+                // 날짜
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     const Icon(
-                      Icons.calendar_today_outlined, 
+                      Icons.calendar_today_outlined,
                       size: 16,
                       color: Colors.grey,
                     ),
@@ -539,62 +539,62 @@ class _SecondStatusInfoState extends State<SecondStatusInfo> {
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 6),
-                
-                // 시간 정보 
+
+                // 시간 정보
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     const Icon(
-                      Icons.access_time_outlined, 
+                      Icons.access_time_outlined,
                       size: 16,
                       color: Colors.grey,
                     ),
                     const SizedBox(width: 6),
-                    
-                    // 케이스에 따른 시간 표시 
+
+                    // 케이스에 따른 시간 표시
                     if (hasPast) ...[
                       // pastTime이 있는 경우
                       Text(
                         '$past분',
-                        style: textStyle, 
+                        style: textStyle,
                       ),
                       const SizedBox(width: 4),
-                      
+
                       // 화살표
                       Icon(
                         Icons.arrow_forward,
                         size: 14,
-                        color: Colors.grey[400], 
+                        color: Colors.grey[400],
                       ),
                       const SizedBox(width: 4),
-                      
+
                       // 현재 시간
                       Text(
                         '$recent분',
-                        style: textStyle, 
+                        style: textStyle,
                       ),
                     ] else ...[
                       // pastTime이 null인 경우 (현재 시간만 표시)
                       Text(
                         '$recent분',
-                        style: textStyle, 
+                        style: textStyle,
                       ),
                     ],
                   ],
                 ),
 
-                // 첫 등산 메시지 또는 시간 차이 표시 
+                // 첫 등산 메시지 또는 시간 차이 표시
                 if (hasPast && hasTimeDiff) ...[
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      const SizedBox(width: 22), 
+                      const SizedBox(width: 22),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: isImproved 
+                          color: isImproved
                               ? const Color(0xFFE8F5E9) // 연한 초록 배경
                               : const Color(0xFFFFEBEE), // 연한 빨강 배경
                           borderRadius: BorderRadius.circular(4),
@@ -604,8 +604,8 @@ class _SecondStatusInfoState extends State<SecondStatusInfo> {
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w500,
-                            color: isImproved 
-                                ? const Color(0xFF4CAF50) 
+                            color: isImproved
+                                ? const Color(0xFF4CAF50)
                                 : const Color(0xFFE57373),
                           ),
                         ),
@@ -617,7 +617,7 @@ class _SecondStatusInfoState extends State<SecondStatusInfo> {
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      const SizedBox(width: 22), 
+                      const SizedBox(width: 22),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(

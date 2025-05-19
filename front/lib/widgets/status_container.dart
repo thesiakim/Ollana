@@ -145,23 +145,23 @@ class _StatusContainerState extends State<StatusContainer> {
                   ),
                   const SizedBox(height: 12),
                   
-                  // 등급명 + 경험치 값 (중간)
+                  // 등급명 + 경험치 값 (중간) - 수정된 부분
                   Row(
+                    mainAxisSize: MainAxisSize.min, // 최소 공간만 사용하도록 변경
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       // 등급명 컨테이너
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 8, 
+                          horizontal: 6, // 패딩 축소
                           vertical: 3
                         ),
                         decoration: BoxDecoration(
-                          // 그라데이션을 단일 색상으로 변경
-                          color: const Color(0xFF52A486), // 요청하신 색상으로 변경
+                          color: const Color(0xFF52A486),
                           borderRadius: BorderRadius.circular(10),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF52A486).withOpacity(0.25), // 그림자 색상도 일치시킴
+                              color: const Color(0xFF52A486).withOpacity(0.25),
                               blurRadius: 4,
                               spreadRadius: 0,
                               offset: const Offset(0, 2),
@@ -171,17 +171,17 @@ class _StatusContainerState extends State<StatusContainer> {
                         child: Text(
                           koreanGrade,
                           style: const TextStyle(
-                            fontSize: 11,
+                            fontSize: 10, // 폰트 크기 축소
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      // 경험치 컨테이너 - 디자인 개선
+                      const SizedBox(width: 4), // 간격 축소
+                      // 경험치 컨테이너
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
+                          horizontal: 6, // 패딩 축소
                           vertical: 3
                         ),
                         decoration: BoxDecoration(
@@ -199,7 +199,7 @@ class _StatusContainerState extends State<StatusContainer> {
                         child: Text(
                           '${_exp}xp',
                           style: const TextStyle(
-                            fontSize: 11,
+                            fontSize: 10, // 폰트 크기 축소
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF555555),
                           ),
@@ -219,6 +219,7 @@ class _StatusContainerState extends State<StatusContainer> {
               ),
             ),
           ),
+
 
           // 오른쪽: PageView + 인디케이터
           Expanded(
