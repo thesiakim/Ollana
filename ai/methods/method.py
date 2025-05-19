@@ -12,57 +12,64 @@ mountain_img = pd.read_csv(os.path.join(DATA_DIR, "mountain_img_202505151642.csv
 
 ###########################################################################################################
 #1. 등산지수를 보여주는 알고리즘
-def cal_score(weather_data, dust_data):
-    temp = weather_data["main"]["feels_like"]
-    wind = weather_data["wind"]["speed"]
-    humidity = weather_data["main"]["humidity"]
-    cloud = weather_data["clouds"]["all"]
-    pm10 = dust_data["list"][0]["components"]["pm10"]
-    pm25 = dust_data["list"][0]["components"]["pm2_5"]
-    
-    # 체감온도 계산
+def interpret_weather(temp, wind, humidity, cloud, pm10, pm25):
+    # 체감온도
     if 12 < temp < 22:
         temp_score = 100
+        temp_desc = "보통"
     else:
         temp_score = max(0, 100 - abs(temp - 17) * 5)
-        
-    # 풍속 점수 계산
+        temp_desc = "낮음" if temp < 12 else "높음"
+
+    # 풍속
     if wind <= 3:
         wind_score = 100
+        wind_desc = "좋음"
     elif wind >= 6:
         wind_score = 50
+        wind_desc = "나쁨"
     else:
         wind_score = 100 - (wind - 3) * 15
-    
-    # 습도 점수
+        wind_desc = "보통"
+
+    # 습도
     if 40 <= humidity <= 60:
         hum_score = 100
+        hum_desc = "좋음"
     else:
         hum_score = max(0, 100 - abs(humidity - 50) * 2)
-        
-    # 구름 점수
+        hum_desc = "나쁨"
+
+    # 구름
     if 20 <= cloud <= 50:
         cloud_score = 100
+        cloud_desc = "적절"
     else:
         cloud_score = max(40, 100 - abs(cloud - 35) * 3)
+        cloud_desc = "많음" if cloud > 50 else "적음"
 
-    # 미세먼지 PM10 점수
+    # PM10
     if pm10 <= 30:
         pm10_score = 100
+        pm10_desc = "좋음"
     elif pm10 <= 80:
         pm10_score = 60
+        pm10_desc = "보통"
     else:
         pm10_score = 30
+        pm10_desc = "나쁨"
 
-    # 초미세먼지 PM2.5 점수
+    # PM2.5
     if pm25 <= 15:
         pm25_score = 100
+        pm25_desc = "좋음"
     elif pm25 <= 35:
         pm25_score = 70
+        pm25_desc = "보통"
     else:
         pm25_score = 40
-    
-    # 가중 평균
+        pm25_desc = "나쁨"
+
     total_score = (
         temp_score * 0.25 +
         wind_score * 0.15 +
@@ -71,8 +78,15 @@ def cal_score(weather_data, dust_data):
         pm10_score * 0.2 +
         pm25_score * 0.15
     )
-    
-    return round(total_score, 1)
+
+    return round(total_score, 1), {
+        "체감온도": f"{temp:.1f}℃ ({temp_desc})",
+        "풍속": f"{wind:.1f}m/s ({wind_desc})",
+        "습도": f"{humidity}% ({hum_desc})",
+        "구름": f"{cloud}% ({cloud_desc})",
+        "미세먼지": f"{pm10}μg/m³ ({pm10_desc})",
+        "초미세먼지": f"{pm25}μg/m³ ({pm25_desc})"
+    }
 
 ###########################################################################################################
 #2. 유저 맞춤 산을 추천해주는 알고리즘
