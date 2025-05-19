@@ -1,12 +1,16 @@
-// status_info_pages.dart - 스타일 통일 및 아이콘 변경
+// first_status_info.dart 수정
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/intl.dart';
 import '../../models/app_state.dart';
+import '../../models/weather_data.dart';
+import '../../services/weather_service.dart';
 
-/// 첫 번째 페이지: 등산지수 조회 (기존 코드 유지)
+/// 첫 번째 페이지: 등산지수 조회 (수정된 코드)
 class FirstStatusInfo extends StatefulWidget {
   const FirstStatusInfo({super.key});
   @override
@@ -14,49 +18,42 @@ class FirstStatusInfo extends StatefulWidget {
 }
 
 class _FirstStatusInfoState extends State<FirstStatusInfo> {
-  // 기존 코드는 그대로 유지...
-  late Future<int> _climbingIndexFuture;
+  late Future<List<WeatherData>> _weatherDataFuture;
+  int _selectedIndex = 0; // 선택된 날씨 데이터 인덱스
 
   @override
   void initState() {
     super.initState();
-    _climbingIndexFuture = fetchClimbingIndex();
+    _weatherDataFuture = _loadWeatherData();
+    WeatherService.checkCachedData();
   }
 
-  Future<int> fetchClimbingIndex() async {
-    final baseUrl = dotenv.env['AI_BASE_URL']!;
-    final url = Uri.parse('$baseUrl/weather');
+  // 날씨 데이터 로드 및 AppState 업데이트
+  Future<List<WeatherData>> _loadWeatherData() async {
     final token = Provider.of<AppState>(context, listen: false).accessToken;
-    final appState = Provider.of<AppState>(context, listen: false);
-
-    final resp = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-        'authorization': 'Bearer $token',
-      },
-    );
-
-    if (resp.statusCode == 200) {
-      final data = json.decode(resp.body);
-      final raw = data['score'];
-      if (raw is num) {
-        final score = raw.toInt();
-        
-        // AppState에 등산지수 업데이트
-        appState.updateClimbingIndex(score);
-        
-        return score;
-      }
-      throw Exception('score 필드가 숫자가 아닙니다.');
+    final weatherDataList = await WeatherService.fetchWeatherData(token);
+    
+    if (weatherDataList.isNotEmpty) {
+      // AppState에 등산지수 업데이트
+      final appState = Provider.of<AppState>(context, listen: false);
+      appState.updateClimbingIndex(weatherDataList[0].score.round());
     }
-    throw Exception('등산지수 조회 실패 (HTTP ${resp.statusCode})');
+    
+    return weatherDataList;
+  }
+
+  // 데이터 새로고침
+  Future<void> _refreshData() async {
+    setState(() {
+      _selectedIndex = 0;
+      _weatherDataFuture = _loadWeatherData();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<int>(
-      future: _climbingIndexFuture,
+    return FutureBuilder<List<WeatherData>>(
+      future: _weatherDataFuture,
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
           return const Center(
@@ -71,7 +68,7 @@ class _FirstStatusInfoState extends State<FirstStatusInfo> {
           );
         }
         
-        if (snap.hasError) {
+        if (snap.hasError || !snap.hasData || snap.data!.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -84,19 +81,34 @@ class _FirstStatusInfoState extends State<FirstStatusInfo> {
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  '정보를 불러오지 못했습니다',
+                  '등산 지수를 불러오지 못했습니다',
                   style: TextStyle(
                     color: Colors.red[400], 
                     fontSize: 11,
                   ),
                   textAlign: TextAlign.center,
                 ),
+                const SizedBox(height: 10),
+                ElevatedButton(
+                  onPressed: _refreshData,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF64B792),
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(100, 30),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                  ),
+                  child: const Text('새로고침'),
+                ),
               ],
             ),
           );
         }
 
-        final score = snap.data!;
+        final weatherDataList = snap.data!;
+        final selectedData = weatherDataList[_selectedIndex];
+        final score = selectedData.score.round();
         final normalizedScore = score / 100.0;
         
         final Color scoreColor = score < 50
@@ -105,79 +117,232 @@ class _FirstStatusInfoState extends State<FirstStatusInfo> {
                 ? const Color(0xFFFF8F00)
                 : const Color(0xFF52A486);
 
-        return Center(
-          child: SizedBox(
-            width: 110,
-            height: 110,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  width: 85,
-                  height: 85,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
-                        blurRadius: 10,
-                        spreadRadius: 1,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                SizedBox(
-                  width: 110,
-                  height: 110,
-                  child: TweenAnimationBuilder<double>(
-                    tween: Tween<double>(begin: 0.0, end: normalizedScore),
-                    duration: const Duration(milliseconds: 1500),
-                    curve: Curves.easeOutCubic,
-                    builder: (context, value, child) {
-                      return CircularProgressIndicator(
-                        value: value,
-                        strokeWidth: 8.5,
-                        backgroundColor: Colors.grey[200],
-                        valueColor: AlwaysStoppedAnimation<Color>(scoreColor),
-                        strokeCap: StrokeCap.round,
-                      );
+        return Column(
+          children: [
+            // 시간 탭 선택 부분
+            SizedBox(
+              height: 40,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: weatherDataList.length,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemBuilder: (context, index) {
+                  final isSelected = index == _selectedIndex;
+                  final formattedTime = weatherDataList[index].getFormattedTime();
+                  
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedIndex = index;
+                      });
+                      
+                      // AppState에 선택된 등산지수 업데이트
+                      final appState = Provider.of<AppState>(context, listen: false);
+                      appState.updateClimbingIndex(weatherDataList[index].score.round());
                     },
-                  ),
-                ),
-                
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '$score',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w800,
-                        color: scoreColor,
+                    child: Container(
+                      margin: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: isSelected 
+                          ? const Color(0xFF64B792)
+                          : Colors.grey[200],
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        formattedTime,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: isSelected 
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                          color: isSelected
+                            ? Colors.white
+                            : Colors.grey[700],
+                        ),
                       ),
                     ),
-                    Text(
-                      '등산지수',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey[700],
-                        fontWeight: FontWeight.w500,
+                  );
+                },
+              ),
+            ),
+            
+            const SizedBox(height: 20),
+            
+            // 등산지수 표시 부분
+            Center(
+              child: SizedBox(
+                width: 110,
+                height: 110,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Container(
+                      width: 85,
+                      height: 85,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.08),
+                            blurRadius: 10,
+                            spreadRadius: 1,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
+                    ),
+                    
+                    SizedBox(
+                      width: 110,
+                      height: 110,
+                      child: TweenAnimationBuilder<double>(
+                        tween: Tween<double>(begin: 0.0, end: normalizedScore),
+                        duration: const Duration(milliseconds: 1500),
+                        curve: Curves.easeOutCubic,
+                        builder: (context, value, child) {
+                          return CircularProgressIndicator(
+                            value: value,
+                            strokeWidth: 8.5,
+                            backgroundColor: Colors.grey[200],
+                            valueColor: AlwaysStoppedAnimation<Color>(scoreColor),
+                            strokeCap: StrokeCap.round,
+                          );
+                        },
+                      ),
+                    ),
+                    
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '$score',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                            color: scoreColor,
+                          ),
+                        ),
+                        Text(
+                          '등산지수',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey[700],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
-          ),
+            
+            // 날씨 세부정보 표시 (선택 사항)
+            const SizedBox(height: 15),
+            _buildWeatherDetails(selectedData),
+          ],
         );
       },
     );
   }
+  
+  // 날씨 세부정보 표시 위젯
+  Widget _buildWeatherDetails(WeatherData data) {
+    // 주요 날씨 정보 선택 (4개만 표시)
+    final keysToShow = ['체감온도', '풍속', '습도', '미세먼지'];
+    final Map<String, String> filteredDetails = {};
+    
+    for (final key in keysToShow) {
+      if (data.details.containsKey(key)) {
+        filteredDetails[key] = data.details[key]!;
+      }
+    }
+    
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 5,
+            spreadRadius: 0,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: filteredDetails.entries.map((entry) {
+          final IconData icon = _getIconForWeatherDetail(entry.key);
+          
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: const Color(0xFF64B792),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                entry.key,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.grey[700],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                _formatDetailValue(entry.value),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF333333),
+                ),
+              ),
+            ],
+          );
+        }).toList(),
+      ),
+    );
+  }
+  
+  // 날씨 세부정보 항목에 맞는 아이콘 반환
+  IconData _getIconForWeatherDetail(String key) {
+    switch (key) {
+      case '체감온도':
+        return Icons.thermostat_outlined;
+      case '풍속':
+        return Icons.air_outlined;
+      case '습도':
+        return Icons.water_drop_outlined;
+      case '구름':
+        return Icons.cloud_outlined;
+      case '미세먼지':
+        return Icons.air_outlined;
+      case '초미세먼지':
+        return Icons.air_outlined;
+      default:
+        return Icons.info_outline;
+    }
+  }
+  
+  // 세부정보 값 포맷팅
+  String _formatDetailValue(String value) {
+    // 괄호 안의 텍스트 제거 (예: "18.9℃ (보통)" -> "18.9℃")
+    final regex = RegExp(r'\s*\([^)]*\)');
+    return value.replaceAll(regex, '');
+  }
 }
+
 
 /// 두 번째 페이지: 등산 기록 (스타일 통일 및 아이콘 변경)
 class SecondStatusInfo extends StatefulWidget {
