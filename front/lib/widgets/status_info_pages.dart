@@ -40,6 +40,7 @@ class _FirstStatusInfoState extends State<FirstStatusInfo> {
     if (resp.statusCode == 200) {
       final data = json.decode(resp.body);
       final raw = data['score'];
+      debugPrint('등산지수 조회 : $data');
       if (raw is num) {
         final score = raw.toInt();
         
