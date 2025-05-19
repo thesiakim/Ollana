@@ -184,16 +184,18 @@ class _MyFootprintScreenState extends State<MyFootprintScreen> {
                                     Row(
                                       children: [
                                         Text(
-                                          totalDistance.toStringAsFixed(0),
+                                          totalDistance >= 1000
+                                              ? (totalDistance / 1000).toStringAsFixed(1) // km 단위로 변환하고 소수점 첫째 자리까지 표시
+                                              : totalDistance.toStringAsFixed(0), // m 단위는 정수로 표시
                                           style: const TextStyle(
                                             fontSize: 24,
                                             fontWeight: FontWeight.bold,
                                             color: Color(0xFF52A486),
                                           ),
                                         ),
-                                        const Text(
-                                          'm',
-                                          style: TextStyle(
+                                        Text(
+                                          totalDistance >= 1000 ? ' km' : ' m', // 단위 변경
+                                          style: const TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.bold,
                                             color: Color(0xFF52A486),
