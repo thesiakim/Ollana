@@ -242,6 +242,10 @@ class _ModeSelectScreenState extends State<ModeSelectScreen> {
                               final time = record['time'];
 
                               final isSelected = _selectedRecordId == recordId;
+                              appState.setPreviousRecordData(
+                                date: date,
+                                time: time,
+                              );
 
                               return InkWell(
                                 onTap: () {
@@ -457,9 +461,9 @@ class _ModeSelectScreenState extends State<ModeSelectScreen> {
     final int mins = (minutes % 60).toInt();
 
     if (hrs > 0) {
-      return '${hrs}h ${mins}m';
+      return '${hrs}시간 ${mins}분';
     } else {
-      return '${mins}m';
+      return '${mins}분';
     }
   }
 
