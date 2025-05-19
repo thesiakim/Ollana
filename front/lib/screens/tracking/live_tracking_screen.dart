@@ -373,7 +373,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   // 등산 기록 데이터 저장을 위한 변수들
   final List<Map<String, dynamic>> _trackingRecords = [];
   DateTime? _lastRecordTime;
-  final int _recordIntervalSeconds = 1200; // 20분마다 records에 기록 추가
+  final int _recordIntervalSeconds = 10; // 20분마다 records에 기록 추가
   Timer? _recordTimer;
   final bool _isSavingEnabled = true; // 기록 저장 여부 (기본값: true)
 
@@ -3293,7 +3293,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
   // 등산 기록 저장 시작
   void _startTrackingRecords() {
-    _recordTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+    _recordTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
       if (!mounted) {
         // mounted 체크 추가
         timer.cancel();

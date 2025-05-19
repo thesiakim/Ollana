@@ -244,6 +244,7 @@ class ModeService {
 
       debugPrint(
           '등산 종료 요청 데이터: mountainId=$mountainId, pathId=$pathId, mode=$mode');
+      debugPrint('등산 종료 요청 데이터: $body');
 
       final response = await _client.post(
         uri,
