@@ -447,7 +447,8 @@ Widget build(BuildContext context) {
         );
       }
       
-      if (snap.hasError || !snap.hasData || snap.data!.isEmpty) {
+      // 에러 발생 시 메시지 표시
+      if (snap.hasError) {
         return Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -482,6 +483,95 @@ Widget build(BuildContext context) {
                 child: const Text('새로고침', style: TextStyle(fontSize: 10)),
               ),
             ],
+          ),
+        );
+      }
+      
+      // 데이터가 없는 경우 (API 호출 실패 또는 21시~자정 사이) 메시지 표시
+      if (!snap.hasData || snap.data!.isEmpty) {
+        // 현재 시간이 21시~자정 사이인지 확인
+        final now = DateTime.now();
+        final currentHour = now.hour;
+        final isNightTime = currentHour >= 21 && currentHour <= 23;
+        
+        return SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // 심플한 헤더 유지
+                Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDCEFE2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.table_chart_outlined,
+                        size: 12,
+                        color: const Color(0xFF52A486),
+                      ),
+                      const SizedBox(width: 4),
+                      const Text(
+                        '등산지수 시간표',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF52A486),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // 시간대에 따른 메시지 표시
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 20),
+                  child: Column(
+                    children: [
+                      Icon(
+                        isNightTime ? Icons.nightlight_round : Icons.error_outline,
+                        color: isNightTime ? const Color(0xFF78909C) : Colors.amber,
+                        size: 36,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        isNightTime 
+                            ? '아직 시간표가 나올 시간이 아니에요' 
+                            : '등산지수 정보를 불러오지 못했습니다',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: isNightTime ? const Color(0xFF78909C) : Colors.amber[700],
+                          fontWeight: FontWeight.w500,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      if (!isNightTime) ...[
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: _refreshData,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF64B792),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text('새로고침'),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       }
@@ -526,7 +616,7 @@ Widget build(BuildContext context) {
                 ),
               ),
               
-              // 매우 심플한 그리드 - 테두리와 배경색 변화 없음
+              // 지나간 시간에 취소선 추가
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 2),
                 child: GridView.builder(
@@ -536,8 +626,8 @@ Widget build(BuildContext context) {
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 3,
                     childAspectRatio: 2.5,
-                    crossAxisSpacing: 4, // 간격은 약간 유지
-                    mainAxisSpacing: 4, // 간격은 약간 유지
+                    crossAxisSpacing: 4,
+                    mainAxisSpacing: 4,
                   ),
                   itemCount: weatherDataList.length,
                   itemBuilder: (context, index) {
@@ -546,25 +636,58 @@ Widget build(BuildContext context) {
                     final minute = data.time.substring(14, 16);
                     final formattedTime = '$hour:$minute';
                     
+                    // 현재 시간 가져오기
+                    final now = DateTime.now();
+                    
+                    // 날씨 데이터의 시간만 추출하여 간단하게 비교
+                    int weatherHour = 0;
+                    int weatherMinute = 0;
+                    
+                    try {
+                      weatherHour = int.parse(hour);
+                      weatherMinute = int.parse(minute);
+                    } catch (e) {
+                      print("시간 파싱 오류: $e");
+                    }
+                    
+                    // 날짜는 무시하고 시간만 비교
+                    final currentHour = now.hour;
+                    final currentMinute = now.minute;
+                    
+                    // 단순하게 시간만 비교 (같은 날짜라고 가정)
+                    final isPastTime = (weatherHour < currentHour) || 
+                                      (weatherHour == currentHour && weatherMinute < currentMinute);
+                    
                     return InkWell(
                       onTap: () => _showWeatherModal(context, data),
                       borderRadius: BorderRadius.circular(6),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF5F9F7), // 매우 연한 민트 배경 (모든 셀)
+                          color: isPastTime 
+                              ? const Color(0xFFF5F5F5) // 지나간 시간은 회색 배경
+                              : const Color(0xFFF5F9F7), // 미래 시간은 연한 민트 배경
                           borderRadius: BorderRadius.circular(6),
                           border: Border.all(
-                            color: const Color(0xFFE0EDE7),
+                            color: isPastTime 
+                                ? const Color(0xFFE0E0E0) // 지나간 시간은 회색 테두리
+                                : const Color(0xFFE0EDE7), // 미래 시간은 연한 민트 테두리
                             width: 0.5,
                           ),
                         ),
                         child: Center(
                           child: Text(
                             formattedTime,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w400,
-                              color: Color(0xFF407A6B),
+                              color: isPastTime 
+                                  ? const Color(0xFF9E9E9E) // 지나간 시간은 회색 텍스트
+                                  : const Color(0xFF407A6B), // 미래 시간은 민트 텍스트
+                              decoration: isPastTime 
+                                  ? TextDecoration.lineThrough // 지나간 시간에 취소선 추가
+                                  : TextDecoration.none,
+                              decorationColor: const Color(0xFF9E9E9E), // 취소선 색상
+                              decorationThickness: 1.5, // 취소선 두께
                             ),
                           ),
                         ),
