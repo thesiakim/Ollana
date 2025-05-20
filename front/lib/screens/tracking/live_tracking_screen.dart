@@ -2542,6 +2542,22 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
           return;
         }
 
+        if (_isWatchPaired) {
+          if (shouldSave) {
+            _watch.sendMessage({
+              "path": "/STOP_TRACKING_CONFIRM",
+              "badge" : response['data']['badge'],
+              "averageHeartRate": response['data']['averageHeartRate'],
+              "maxHeartRate": response['data']['maxHeartRate'],
+              "timeDiff": response['data']['timeDiff'],
+            });
+          } else {
+            _watch.sendMessage({
+              "path": "/STOP_TRACKING_CANCEL",
+            });
+          }
+        }
+
         // shouldSave가 true일 때만 결과 화면 표시
         final int finalElapsedMinutes = _elapsedMinutes;
         final double finalDistanceMeters = _currentTotalDistance;
