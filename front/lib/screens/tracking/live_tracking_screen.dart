@@ -1479,7 +1479,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
         builder: (BuildContext context, ScrollController scrollController) {
           return Container(
             decoration: BoxDecoration(
-              color: Colors.grey[100], // 더 연한 회색으로 변경
+              color: Color(0xFFEAF7F2), 
               borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
               boxShadow: [
                 BoxShadow(
@@ -2432,50 +2432,127 @@ Widget _buildBasicInfoSection() {
   }
 
   // 목적지 도착 다이얼로그
-  void _showDestinationReachedDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        title: const Text(
-          '등산 완료',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: const Text(
-          '목적지에 도착했습니다. 등산을 종료하시겠습니까?',
-          style: TextStyle(fontSize: 16),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              // 취소해도 isDestinationReached는 true로 유지
-            },
-            child: const Text('취소'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              // 기록 저장 여부를 묻는 다이얼로그 표시
-              _showSaveOptionDialog(context);
-            },
-            child: const Text(
-              '종료',
+void _showDestinationReachedDialog() {
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (ctx) => Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+      ),
+      insetPadding: EdgeInsets.symmetric(horizontal: 24),
+      child: Container(
+        padding: EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 상단 아이콘 영역
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  height: 80,
+                  width: 80,
+                  decoration: BoxDecoration(
+                    color: Color(0xFFE8F5EC),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                Icon(
+                  Icons.location_on,
+                  size: 40,
+                  color: Color(0xFF52A486),
+                ),
+              ],
+            ),
+            SizedBox(height: 20),
+            
+            // 타이틀
+            Text(
+              '목적지 도착',
               style: TextStyle(
-                color: Colors.red,
+                fontSize: 24,
                 fontWeight: FontWeight.bold,
+                color: Color(0xFF333333),
               ),
             ),
-          ),
-        ],
+            SizedBox(height: 16),
+            
+            // 안내 텍스트
+            Container(
+              margin: EdgeInsets.symmetric(horizontal: 12),
+              child: Text(
+                '목적지에 성공적으로 도착했어요!\n등산을 종료하시겠어요?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Color(0xFF666666),
+                  height: 1.4,
+                ),
+              ),
+            ),
+            SizedBox(height: 24),
+            
+            // 버튼 영역
+            Row(
+              children: [
+                // 계속 등산 버튼
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: Colors.grey[200],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: Text(
+                      '계속 등산',
+                      style: TextStyle(
+                        color: Color(0xFF666666),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 12),
+                // 종료 버튼
+                Expanded(
+                  child: TextButton(
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      // 기록 저장 여부를 묻는 다이얼로그 표시
+                      _showSaveOptionDialog(context);
+                    },
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: Color(0xFF52A486),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 2,
+                      shadowColor: Color(0xFF52A486).withOpacity(0.5),
+                    ),
+                    child: Text(
+                      '등산 종료',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   // 워치에 알림 전송 (워치가 연결된 경우에만)
   void _notifyWatch(String status) {
@@ -3045,17 +3122,9 @@ Widget _buildEndTrackingButton() {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          '기록을 저장하면',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF52A486),
-                          ),
-                        ),
                         SizedBox(height: 4),
                         Text(
-                          '경험치를 얻고 기록를 비교할 수 있어요',
+                          '저장하면 경험치를 얻고\n나중에 기록도 비교할 수 있어요',
                           style: TextStyle(
                             fontSize: 12,
                             color: Color(0xFF666666),
@@ -3136,11 +3205,10 @@ Widget _buildEndTrackingButton() {
 }
 
   void _showEndTrackingDialog(BuildContext context, bool shouldSave, {bool isEarlyExit = false}) {
-  // 색상 정의
-  final Color primaryColor = Color(0xFF52A486);
-  final Color warningColor = isEarlyExit ? Colors.red : Colors.orange;
-  final Color lightWarningColor = isEarlyExit ? Color(0xFFFBEBEB) : Color(0xFFFFF5E6);
-  final Color borderWarningColor = isEarlyExit ? Color(0xFFFFCCCC) : Color(0xFFFFE0B2);
+  // 색상 정의 - 색상을 빨간색 계열로 변경
+  final Color dangerColor = Color(0xFFE53935); // 빨간색으로 변경
+  final Color lightDangerColor = Color(0xFFFBEBEB); // 연한 빨간색 배경
+  final Color borderDangerColor = Color(0xFFFFCCCC); // 빨간색 테두리
   
   showDialog(
     context: context,
@@ -3154,7 +3222,7 @@ Widget _buildEndTrackingButton() {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // 상단 아이콘 영역
+            // 상단 아이콘 영역 - 빨간색으로 변경
             Stack(
               alignment: Alignment.center,
               children: [
@@ -3162,14 +3230,14 @@ Widget _buildEndTrackingButton() {
                   height: 80,
                   width: 80,
                   decoration: BoxDecoration(
-                    color: isEarlyExit ? Color(0xFFFEE8E8) : Color(0xFFFFF3E0),
+                    color: Color(0xFFFEE8E8), // 연한 빨간색 배경
                     shape: BoxShape.circle,
                   ),
                 ),
                 Icon(
                   isEarlyExit ? Icons.warning_rounded : Icons.help_outline_rounded,
                   size: 40,
-                  color: warningColor,
+                  color: dangerColor, // 빨간색 아이콘
                 ),
               ],
             ),
@@ -3223,7 +3291,7 @@ Widget _buildEndTrackingButton() {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: shouldSave ? primaryColor.withOpacity(0.2) : Colors.grey.withOpacity(0.2),
+                          color: shouldSave ? Color(0xFF52A486).withOpacity(0.2) : Colors.grey.withOpacity(0.2),
                           blurRadius: 3,
                           offset: Offset(0, 1),
                         ),
@@ -3231,7 +3299,7 @@ Widget _buildEndTrackingButton() {
                     ),
                     child: Icon(
                       shouldSave ? Icons.save : Icons.do_not_disturb_alt,
-                      color: shouldSave ? primaryColor : Colors.grey[600],
+                      color: shouldSave ? Color(0xFF52A486) : Colors.grey[600],
                       size: 18,
                     ),
                   ),
@@ -3242,7 +3310,7 @@ Widget _buildEndTrackingButton() {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
-                        color: shouldSave ? primaryColor : Colors.grey[700],
+                        color: shouldSave ? Color(0xFF52A486) : Colors.grey[700],
                       ),
                     ),
                   ),
@@ -3250,16 +3318,16 @@ Widget _buildEndTrackingButton() {
               ),
             ),
             
-            // 목적지 미도달 시 경고 컨테이너
+            // 목적지 미도달 시 경고 컨테이너 - 빨간색 계열로 변경
             if (isEarlyExit || (!shouldSave && !isEarlyExit))
               Container(
                 margin: EdgeInsets.only(top: 8, bottom: 12),
                 padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                 decoration: BoxDecoration(
-                  color: lightWarningColor,
+                  color: lightDangerColor, // 연한 빨간색 배경
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: borderWarningColor,
+                    color: borderDangerColor, // 빨간색 테두리
                     width: 1,
                   ),
                 ),
@@ -3274,7 +3342,7 @@ Widget _buildEndTrackingButton() {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: warningColor.withOpacity(0.2),
+                            color: dangerColor.withOpacity(0.2), // 빨간색 그림자
                             blurRadius: 3,
                             offset: Offset(0, 1),
                           ),
@@ -3282,7 +3350,7 @@ Widget _buildEndTrackingButton() {
                       ),
                       child: Icon(
                         Icons.error_outline,
-                        color: warningColor,
+                        color: dangerColor, // 빨간색 아이콘
                         size: 16,
                       ),
                     ),
@@ -3297,17 +3365,17 @@ Widget _buildEndTrackingButton() {
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold,
-                                color: warningColor,
+                                color: dangerColor, // 빨간색 텍스트
                               ),
                             ),
                           SizedBox(height: 4),
                           Text(
                             isEarlyExit
-                                ? '기록이 저장되지 않고 경험치도 얻을 수 없어요'
-                                : '기록이 저장되지 않고 경험치도 주어지지 않습니다',
+                                ? '경험치도 얻을 수 없어요'
+                                : '경험치도 얻을 수 없어요',
                             style: TextStyle(
-                              fontSize: 13,
-                              color: isEarlyExit ? Colors.red[700] : Colors.orange[800],
+                              fontSize: 12,
+                              color: Colors.red[700], // 진한 빨간색 텍스트
                             ),
                           ),
                         ],
@@ -3344,7 +3412,7 @@ Widget _buildEndTrackingButton() {
                   ),
                 ),
                 SizedBox(width: 12),
-                // 종료 버튼
+                // 종료 버튼 - 빨간색으로 변경
                 Expanded(
                   child: TextButton(
                     onPressed: () {
@@ -3353,12 +3421,12 @@ Widget _buildEndTrackingButton() {
                     },
                     style: TextButton.styleFrom(
                       padding: EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: primaryColor,
+                      backgroundColor: dangerColor, // 빨간색 배경
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
                       elevation: 2,
-                      shadowColor: primaryColor.withOpacity(0.5),
+                      shadowColor: dangerColor.withOpacity(0.5), // 빨간색 그림자
                     ),
                     child: Text(
                       '종료',
