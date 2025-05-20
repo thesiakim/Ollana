@@ -196,10 +196,10 @@ public class TrackingController {
         // Path 저장
         Path path = Path.builder()
                 .mountain(mountain)
-                .pathName("주차장 등산로")
-                .pathLength(250.0)
+                .pathName("주차장 등산로2")
+                .pathLength(260.0)
                 .level(Level.L)
-                .pathTime("5")
+                .pathTime("7")
                 .route(route)
                 .centerPoint(centerPoint)
                 .build();
