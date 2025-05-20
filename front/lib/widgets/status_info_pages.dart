@@ -50,7 +50,7 @@ class _FirstStatusInfoState extends State<FirstStatusInfo> {
     });
   }
 
-// 모달창으로 날씨 정보 표시 (최종 요구사항 반영 - 그래프 및 헤더 수정)
+  // 모달창으로 날씨 정보 표시 (확인 버튼 제거 및 상단 닫기 버튼 추가)
 void _showWeatherModal(BuildContext context, WeatherData data) {
   final score = data.score.round();
   final scoreColor = score < 50
@@ -81,62 +81,86 @@ void _showWeatherModal(BuildContext context, WeatherData data) {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 모달 헤더 및 닫기 버튼 추가
+          Stack(
+            children: [
+              // 정보 배지 스타일
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(25),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.calendar_today,
+                          size: 16,
+                          color: Color(0xFF52A486),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          data.getFormattedTime(),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF333333),
+                          ),
+                        ),
+                        Container(
+                          height: 16,
+                          width: 1,
+                          margin: const EdgeInsets.symmetric(horizontal: 12),
+                          color: Colors.grey[300],
+                        ),
+                        const Text(
+                          "등산지수",
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF666666),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              
+              // 오른쪽 위 닫기 버튼 추가
+              Positioned(
+                top: 0,
+                right: 0,
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.close,
+                      size: 20,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
 
-          // 모달 헤더
-          // 정보 배지 스타일
-Row(
-  mainAxisAlignment: MainAxisAlignment.center,
-  children: [
-    Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(25),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.calendar_today,
-            size: 16,
-            color: Color(0xFF52A486),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            data.getFormattedTime(),
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF333333),
-            ),
-          ),
-          Container(
-            height: 16,
-            width: 1,
-            margin: const EdgeInsets.symmetric(horizontal: 12),
-            color: Colors.grey[300],
-          ),
-          const Text(
-            "등산지수",
-            style: TextStyle(
-              fontSize: 14,
-              color: Color(0xFF666666),
-            ),
-          ),
-        ],
-      ),
-    ),
-  ],
-),
-
-const SizedBox(height: 5),
+          const SizedBox(height: 5),
           
           const Divider(
             height: 30,
@@ -306,30 +330,8 @@ const SizedBox(height: 5),
             ),
           ),
           
+          // 하단 여백 추가 (확인 버튼 제거)
           const SizedBox(height: 16),
-          
-          // 하단 버튼
-          Center(
-            child: ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF64B792),
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 40,
-                  vertical: 12,
-                ),
-              ),
-              child: const Text(
-                '확인',
-                style: TextStyle(fontSize: 15),
-              ),
-            ),
-          ),
         ],
       ),
     ),

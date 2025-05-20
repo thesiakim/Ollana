@@ -131,7 +131,7 @@ class _MountainMapScreenState extends State<MountainMapScreen> with SingleTicker
               ),
             ],
           ),
-          backgroundColor: isError ? Colors.red.shade800 : Colors.green.shade700,
+          backgroundColor: isError ? Colors.red.shade800 : Color(0xFF52A486),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           margin: const EdgeInsets.all(12),
@@ -1386,14 +1386,6 @@ Widget _buildFilterChip({
             ),
           ),
           const SizedBox(height: 24),
-          Text(
-            '산 정보를 불러오는 중입니다',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              color: Colors.grey[700],
-            ),
-          ),
         ],
       ),
     );
@@ -1416,21 +1408,13 @@ Widget _buildFilterChip({
         centerTitle: true,
         iconTheme: const IconThemeData(color: Color(0xFF52A486)),
         actions: [
-          // 데이터 새로고침 버튼
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Color(0xFF52A486)),
-            tooltip: '산 정보 새로고침',
-            onPressed: _isLoading ? null : _refreshMountainData,
-          ),
-          // 필터 버튼 (사용자 경험 향상을 위한 제안)
-          IconButton(
-            icon: const Icon(Icons.filter_list, color: Color(0xFF52A486)),
-            tooltip: '난이도 필터',
-            onPressed: () {
-              // 추후 필터링 기능 구현 가능
-              _showSnackBar('난이도 필터링 기능은 준비 중입니다');
-            },
-          ),
+          // 데이터 새로고침 버튼 - 지도 뷰일 때만 표시
+          if (_isMapView)
+            IconButton(
+              icon: const Icon(Icons.refresh, color: Color(0xFF52A486)),
+              tooltip: '산 정보 새로고침',
+              onPressed: _isLoading ? null : _refreshMountainData,
+            ),
         ],
       ),
       // 기존 body 내용은 그대로 유지

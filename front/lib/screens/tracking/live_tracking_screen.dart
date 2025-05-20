@@ -1584,10 +1584,9 @@ Widget _buildBasicInfoSection() {
     movedDistanceText = '${(_currentTotalDistance / 1000).toStringAsFixed(2)}km';
   }
 
-  // 앱 테마 컬러 - 현재 등반 상태 뱃지와 동일한 색상으로 통일
-  const Color badgeColor = Color(0xFF52A486);  // 현재 등반 상태 뱃지의 아이콘 색상
-  const Color textColor = Color.fromARGB(255, 58, 133, 106);  // 현재 등반 상태 뱃지의 텍스트 색상
-  const Color lightBadgeColor = Color.fromARGB(255, 190, 233, 203);  // 현재 등반 상태 뱃지의 배경색
+  const Color badgeColor = Color(0xFF52A486);  
+  const Color textColor = Color.fromARGB(255, 58, 133, 106);  
+  const Color lightBadgeColor = Color.fromARGB(255, 190, 233, 203);  
   
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1598,7 +1597,7 @@ Widget _buildBasicInfoSection() {
           margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: const Color.fromARGB(255, 192, 225, 202),
+            color: textColor.withOpacity(0.15), 
             borderRadius: BorderRadius.circular(20),
           ),
           child: Row(
@@ -2665,7 +2664,7 @@ void _showDestinationReachedDialog() {
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color.fromARGB(255, 192, 225, 202), // '현재 등반 상태'와 동일한 배경색
+              color: textColor.withOpacity(0.15), // '현재 등반 상태'와 동일한 배경색
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
@@ -2792,7 +2791,7 @@ void _showDestinationReachedDialog() {
                               ),
                               const SizedBox(width: 8),
                               const Text(
-                                '상대 남은 거리',
+                                '상대의 남은 거리',
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
@@ -2842,7 +2841,7 @@ void _showDestinationReachedDialog() {
                                 ),
                                 const SizedBox(width: 8),
                                 const Text(
-                                  '상대 남은 시간',
+                                  '상대의 남은 시간',
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w500,

@@ -228,7 +228,7 @@ Widget _buildVsMeResult(String mountainName) {
                 ),
                 SizedBox(width: 12),
                 Text(
-                  '나의 등산 기록 비교',
+                  '나의 기록 비교',
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.bold,
@@ -402,124 +402,124 @@ Widget _buildVsMeResult(String mountainName) {
           ),
 
           // 뱃지 표시 - "획득 뱃지" 제거하고 더 큰 뱃지로 수정
-Container(
-  width: double.infinity,
-  margin: EdgeInsets.only(bottom: 24),
-  child: Padding(
-    padding: const EdgeInsets.all(24.0),
-    child: Column(
-      children: [
-        // 여백 추가하여 전체적으로 아래로 내림
-        SizedBox(height: 30),
-        
-        // 뱃지 이미지 (뱃지 외곽선에서 바로 후광이 나오는 효과)
-        Center(
-          child: Container(
-            width: 160, // 크기 증가
-            height: 160, // 크기 증가
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                // 후광 효과 레이어
-                Container(
-                  width: 200, // 크기 증가
-                  height: 200, // 크기 증가
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      // 바깥쪽 후광 (넓게 퍼지는 빛) - 더 은은하고 밝은 노란색
-                      BoxShadow(
-                        color: Colors.amber[100]!.withOpacity(0.9),
-                        blurRadius: 50,
-                        spreadRadius: 20,
+          Container(
+            width: double.infinity,
+            margin: EdgeInsets.only(bottom: 24),
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                children: [
+                  // 여백 추가하여 전체적으로 아래로 내림
+                  SizedBox(height: 30),
+                  
+                  // 뱃지 이미지 (뱃지 외곽선에서 바로 후광이 나오는 효과)
+                  Center(
+                    child: Container(
+                      width: 160, // 크기 증가
+                      height: 160, // 크기 증가
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // 후광 효과 레이어
+                          Container(
+                            width: 200, // 크기 증가
+                            height: 200, // 크기 증가
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                // 바깥쪽 후광 (넓게 퍼지는 빛) - 더 은은하고 밝은 노란색
+                                BoxShadow(
+                                  color: Colors.amber[100]!.withOpacity(0.9),
+                                  blurRadius: 50,
+                                  spreadRadius: 20,
+                                ),
+                                // 중간 후광 (선명한 빛) - 더 은은하고 밝은 노란색
+                                BoxShadow(
+                                  color: Colors.amber[200]!.withOpacity(0.8),
+                                  blurRadius: 30,
+                                  spreadRadius: 12,
+                                ),
+                                // 안쪽 후광 (강한 빛) - 더 은은하고 밝은 노란색
+                                BoxShadow(
+                                  color: Colors.amber[300]!.withOpacity(0.7),
+                                  blurRadius: 20,
+                                  spreadRadius: 6,
+                                ),
+                              ],
+                            ),
+                          ),
+                          
+                          // 뱃지 이미지
+                          Container(
+                            width: 160, // 크기 증가
+                            height: 160, // 크기 증가
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.amber[200]!, // 더 은은한 노란색
+                                width: 2,
+                              ),
+                            ),
+                            child: ClipOval(
+                              child: badgeUrl.isNotEmpty
+                                ? Image.network(
+                                    badgeUrl,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) => 
+                                      Container(
+                                        color: Colors.amber[50], // 더 은은한 배경색
+                                        child: Icon(
+                                          Icons.emoji_events_rounded, 
+                                          size: 80, // 크기 증가
+                                          color: Colors.amber[500], // 더 은은한 노란색
+                                        ),
+                                      ),
+                                  )
+                                : Container(
+                                    color: Colors.amber[50], // 더 은은한 배경색
+                                    child: Icon(
+                                      Icons.emoji_events_rounded, 
+                                      size: 80, // 크기 증가
+                                      color: Colors.amber[500], // 더 은은한 노란색
+                                    ),
+                                  ),
+                            ),
+                          ),
+                        ],
                       ),
-                      // 중간 후광 (선명한 빛) - 더 은은하고 밝은 노란색
-                      BoxShadow(
-                        color: Colors.amber[200]!.withOpacity(0.8),
-                        blurRadius: 30,
-                        spreadRadius: 12,
+                    ),
+                  ),
+                  
+                  // 뱃지 아래에 텍스트와 아이콘 추가
+                  SizedBox(height: 50),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // 축하하는 아이콘
+                      Icon(
+                        Icons.celebration_rounded, // 축하 아이콘
+                        color: Colors.amber[400],
+                        size: 22,
                       ),
-                      // 안쪽 후광 (강한 빛) - 더 은은하고 밝은 노란색
-                      BoxShadow(
-                        color: Colors.amber[300]!.withOpacity(0.7),
-                        blurRadius: 20,
-                        spreadRadius: 6,
+                      SizedBox(width: 8),
+                      Text(
+                        "뱃지를 획득했어요!",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF333333), // 짙은 회색
+                          letterSpacing: 0.5,
+                        ),
                       ),
                     ],
                   ),
-                ),
-                
-                // 뱃지 이미지
-                Container(
-                  width: 160, // 크기 증가
-                  height: 160, // 크기 증가
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.amber[200]!, // 더 은은한 노란색
-                      width: 2,
-                    ),
-                  ),
-                  child: ClipOval(
-                    child: badgeUrl.isNotEmpty
-                      ? Image.network(
-                          badgeUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => 
-                            Container(
-                              color: Colors.amber[50], // 더 은은한 배경색
-                              child: Icon(
-                                Icons.emoji_events_rounded, 
-                                size: 80, // 크기 증가
-                                color: Colors.amber[500], // 더 은은한 노란색
-                              ),
-                            ),
-                        )
-                      : Container(
-                          color: Colors.amber[50], // 더 은은한 배경색
-                          child: Icon(
-                            Icons.emoji_events_rounded, 
-                            size: 80, // 크기 증가
-                            color: Colors.amber[500], // 더 은은한 노란색
-                          ),
-                        ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        
-        // 뱃지 아래에 텍스트와 아이콘 추가
-        SizedBox(height: 50),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // 축하하는 아이콘
-            Icon(
-              Icons.celebration_rounded, // 축하 아이콘
-              color: Colors.amber[400],
-              size: 22,
-            ),
-            SizedBox(width: 8),
-            Text(
-              "뱃지를 획득했어요!",
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF333333), // 짙은 회색
-                letterSpacing: 0.5,
+                  
+                  // 추가 여백
+                  SizedBox(height: 20),
+                ],
               ),
             ),
-          ],
-        ),
-        
-        // 추가 여백
-        SizedBox(height: 20),
-      ],
-    ),
-  ),
-)
+          )
         ],
       ),
     ),
@@ -792,7 +792,7 @@ Widget _buildVsFriendResult(String mountainName) {
                 ),
                 SizedBox(width: 12),
                 Text(
-                  '친구와의 등산 기록 비교',
+                  '친구와의 기록 비교',
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.bold,
@@ -1318,7 +1318,7 @@ Widget _buildGeneralResult(String mountainName) {
                 ),
                 SizedBox(width: 12),
                 Text(
-                  '나의 등산 정보',
+                  '나의 기록',
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.bold,
@@ -1365,8 +1365,8 @@ Widget _buildGeneralResult(String mountainName) {
               ],
             ),
           ),
-          
-          // 등산 정보 카드 - 통합형 간결한 디자인
+
+          // 등산 정보 카드 - 통합형 간결한 디자인 (한 줄에 2개씩 항목 배치 + 긴 구분선 추가)
           Container(
             margin: EdgeInsets.only(bottom: 24),
             decoration: BoxDecoration(
@@ -1382,53 +1382,97 @@ Widget _buildGeneralResult(String mountainName) {
             ),
             child: Column(
               children: [
-                // 거리 정보
-                _buildCompactInfoItem(
-                  title: '총 산행 거리',
-                  icon: Icons.straighten,
-                  iconColor: primaryColor,
-                  value: distanceFormatted,
-                  valueColor: valueColor,
-                  iconBgColor: primaryColor.withOpacity(0.1),
-                  showDivider: true,
+                // 첫 번째 줄: 거리와 시간
+                Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: IntrinsicHeight(
+                    child: Row(
+                      children: [
+                        // 거리 정보
+                        Expanded(
+                          child: _buildCompactInfoItemHalf(
+                            title: '총 산행 거리',
+                            icon: Icons.straighten,
+                            iconColor: primaryColor,
+                            value: distanceFormatted,
+                            valueColor: Color(0xFF444444), // 값 텍스트를 회색 계열로 변경
+                            iconBgColor: primaryColor.withOpacity(0.1),
+                          ),
+                        ),
+                        
+                        // 중앙 수직 구분선
+                        VerticalDivider(
+                          width: 32,
+                          thickness: 1,
+                          color: Colors.grey[200],
+                        ),
+                        
+                        // 시간 정보
+                        Expanded(
+                          child: _buildCompactInfoItemHalf(
+                            title: '총 등산 시간',
+                            icon: Icons.timer_outlined,
+                            iconColor: primaryColor,
+                            value: timeFormatted,
+                            valueColor: Color(0xFF444444), // 값 텍스트를 회색 계열로 변경
+                            iconBgColor: primaryColor.withOpacity(0.1),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
                 
-                // 시간 정보
-                _buildCompactInfoItem(
-                  title: '총 등산 시간',
-                  icon: Icons.timer_outlined,
-                  iconColor: primaryColor,
-                  value: timeFormatted,
-                  valueColor: valueColor,
-                  iconBgColor: primaryColor.withOpacity(0.1),
-                  showDivider: true,
+                // 수평 구분선
+                Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: Colors.grey[100],
                 ),
                 
-                // 최고 심박수
-                _buildCompactInfoItem(
-                  title: '최고 심박수',
-                  icon: Icons.monitor_heart_rounded,
-                  iconColor: primaryColor,
-                  value: '$maxHeartRate bpm',
-                  valueColor: valueColor,
-                  iconBgColor: primaryColor.withOpacity(0.1),
-                  showDivider: true,
-                ),
-                
-                // 평균 심박수
-                _buildCompactInfoItem(
-                  title: '평균 심박수',
-                  icon: Icons.favorite_border_rounded,
-                  iconColor: primaryColor,
-                  value: '$avgHeartRate bpm',
-                  valueColor: valueColor,
-                  iconBgColor: primaryColor.withOpacity(0.1),
-                  showDivider: false,
+                // 두 번째 줄: 최고 심박수와 평균 심박수
+                Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: IntrinsicHeight(
+                    child: Row(
+                      children: [
+                        // 최고 심박수
+                        Expanded(
+                          child: _buildCompactInfoItemHalf(
+                            title: '최고 심박수',
+                            icon: Icons.monitor_heart_rounded,
+                            iconColor: primaryColor,
+                            value: '$maxHeartRate bpm',
+                            valueColor: Color(0xFF444444), // 값 텍스트를 회색 계열로 변경
+                            iconBgColor: primaryColor.withOpacity(0.1),
+                          ),
+                        ),
+                        
+                        // 중앙 수직 구분선
+                        VerticalDivider(
+                          width: 32,
+                          thickness: 1,
+                          color: Colors.grey[200],
+                        ),
+                        
+                        // 평균 심박수
+                        Expanded(
+                          child: _buildCompactInfoItemHalf(
+                            title: '평균 심박수',
+                            icon: Icons.favorite_border_rounded,
+                            iconColor: primaryColor,
+                            value: '$avgHeartRate bpm',
+                            valueColor: Color(0xFF444444), // 값 텍스트를 회색 계열로 변경
+                            iconBgColor: primaryColor.withOpacity(0.1),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
-          
           // 뱃지 표시 - VsMe/VsFriend와 동일한 디자인
           Container(
             width: double.infinity,
@@ -1554,6 +1598,67 @@ Widget _buildGeneralResult(String mountainName) {
   );
 }
 
+// 일반 등산 모드용 2열 배치를 위한 반쪽 크기 정보 아이템 위젯
+Widget _buildCompactInfoItemHalf({
+  required String title,
+  required IconData icon,
+  required Color iconColor,
+  required String value,
+  required Color valueColor,
+  required Color iconBgColor,
+}) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      // 아이콘과 타이틀 행
+      Row(
+        children: [
+          // 아이콘 영역
+          Container(
+            padding: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: iconBgColor,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              icon,
+              size: 18,
+              color: iconColor,
+            ),
+          ),
+          SizedBox(width: 10),
+          
+          // 타이틀
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 13,
+                color: Color(0xFF666666),
+                fontWeight: FontWeight.w500,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+      
+      // 값 영역 (아이콘 아래에 정렬)
+      Padding(
+        padding: const EdgeInsets.only(top: 8.0, left: 4.0),
+        child: Text(
+          value,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: valueColor,
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
 // 일반 등산 모드용 간결한 정보 아이템 위젯
 Widget _buildCompactInfoItem({
   required String title,
@@ -1657,7 +1762,6 @@ Widget _buildConfirmButton() {
       style: ElevatedButton.styleFrom(
         backgroundColor: Color(0xFF52A486),
         minimumSize: Size(double.infinity, 56),
-        elevation: 3,
         shadowColor: Color(0xFF52A486).withOpacity(0.5),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),

@@ -350,14 +350,6 @@ Widget _buildEnhancedModeCard({
                       valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF52A486)),
                     ),
                   ),
-                  SizedBox(height: 16),
-                  Text(
-                    '기록을 불러오는 중...',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[700],
-                    ),
-                  ),
                 ],
               ),
             ),

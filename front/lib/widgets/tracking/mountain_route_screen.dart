@@ -743,52 +743,17 @@ Widget build(BuildContext context) {
   );
 }
 
-// 로딩 인디케이터 디자인 개선
 Widget _buildLoadingIndicator() {
   return Center(
     child: Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Container(
-          width: 80,
-          height: 80,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: Color(0xFF52A486).withOpacity(0.15),
-                blurRadius: 20,
-                spreadRadius: 5,
-              ),
-            ],
-          ),
-          child: Center(
-            child: SizedBox(
-              width: 40,
-              height: 40,
-              child: CircularProgressIndicator(
-                strokeWidth: 3,
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF52A486)),
-              ),
-            ),
-          ),
-        ),
-        SizedBox(height: 24),
-        Text(
-          '등산로 정보를 불러오는 중',
-          style: TextStyle(
-            color: Color(0xFF52A486),
-            fontWeight: FontWeight.w600,
-            fontSize: 16,
-          ),
-        ),
-        SizedBox(height: 8),
-        Text(
-          '잠시만 기다려주세요',
-          style: TextStyle(
-            color: Colors.grey[600],
-            fontSize: 14,
+        SizedBox(
+          width: 48,
+          height: 48,
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF52A486)),
+            strokeWidth: 4,
           ),
         ),
       ],
