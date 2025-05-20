@@ -2525,6 +2525,22 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
       debugPrint('등산 종료 요청 성공 (기록 저장: $shouldSave)');
       debugPrint('서버 응답 데이터: ${response['data']}');
+    
+      if (_isWatchPaired) {
+        if (shouldSave) {
+          _watch.sendMessage({
+            "path": "/STOP_TRACKING_CONFIRM",
+            "badge" : response['data']['badge'],
+            "averageHeartRate": response['data']['averageHeartRate'],
+            "maxHeartRate": response['data']['maxHeartRate'],
+            "timeDiff": response['data']['timeDiff'],
+          });
+        } else {
+          _watch.sendMessage({
+            "path": "/STOP_TRACKING_CANCEL",
+          });
+        }
+      }
 
       // 종료 처리 (앱 상태 초기화)
       // appState.endTracking(); // isTracking = false, AppState 리스너들에게 알림
@@ -2540,22 +2556,6 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
           appState.endTracking(); // 트래킹 상태 초기화
           appState.changePage(0);
           return;
-        }
-
-        if (_isWatchPaired) {
-          if (shouldSave) {
-            _watch.sendMessage({
-              "path": "/STOP_TRACKING_CONFIRM",
-              "badge" : response['data']['badge'],
-              "averageHeartRate": response['data']['averageHeartRate'],
-              "maxHeartRate": response['data']['maxHeartRate'],
-              "timeDiff": response['data']['timeDiff'],
-            });
-          } else {
-            _watch.sendMessage({
-              "path": "/STOP_TRACKING_CANCEL",
-            });
-          }
         }
 
         // shouldSave가 true일 때만 결과 화면 표시
