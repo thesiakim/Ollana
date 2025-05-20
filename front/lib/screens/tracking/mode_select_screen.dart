@@ -463,6 +463,7 @@ Widget _buildEnhancedModeCard({
                               final recordId = record['recordId'];
                               final date = record['date'];
                               final time = record['time'];
+                              debugPrint('date: $date, time: $time');
 
                               final isSelected = _selectedRecordId == recordId;
 
@@ -473,6 +474,20 @@ Widget _buildEnhancedModeCard({
                                     setState(() {
                                       _selectedRecordId = recordId;
                                     });
+                                    
+                                    // 선택한 기록 정보 디버그 출력
+                                    debugPrint('===== 선택한 과거 기록 정보 =====');
+                                    debugPrint('기록 ID: $recordId');
+                                    debugPrint('날짜: $date');
+                                    debugPrint('시간(분): $time');
+                                    debugPrint('시간(포맷): ${_formatMinutes(time)}');
+                                    debugPrint('=============================');
+
+                                    // 선택한 기록의 정보를 AppState에 저장
+                                    appState.setPreviousRecordData(
+                                      date: date,
+                                      time: time,
+                                    );
                                   },
                                   borderRadius: BorderRadius.circular(12),
                                   child: Container(
@@ -582,6 +597,34 @@ Widget _buildEnhancedModeCard({
                               onPressed: _selectedRecordId != null
                                   ? () {
                                       Navigator.of(context).pop();
+
+                                      // 선택된 최종 기록 정보 출력
+                                      final recordId = _selectedRecordId;
+                                      final selectedRecord =
+                                          recordsList.firstWhere(
+                                        (record) =>
+                                            record['recordId'] == recordId,
+                                        orElse: () => {
+                                          'recordId': 0,
+                                          'date': '알 수 없음',
+                                          'time': 0
+                                        },
+                                      );
+
+                                      debugPrint(
+                                          '===== 시작하는 과거 기록 최종 정보 =====');
+                                      debugPrint(
+                                          '기록 ID: ${selectedRecord['recordId']}');
+                                      debugPrint(
+                                          '날짜: ${selectedRecord['date']}');
+                                      debugPrint(
+                                          '시간(분): ${selectedRecord['time']}');
+                                      debugPrint(
+                                          '시간(포맷): ${_formatMinutes(selectedRecord['time'])}');
+                                      debugPrint('시작하는 모드: 나 vs 나');
+                                      debugPrint(
+                                          '====================================');
+
                                       appState.startTracking(
                                         '나 vs 나',
                                         recordId: _selectedRecordId,
