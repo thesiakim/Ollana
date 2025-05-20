@@ -776,7 +776,7 @@ Widget _buildLoadingIndicator() {
         ),
         SizedBox(height: 24),
         Text(
-          '등산로 정보를 불러오는 중...',
+          '등산로 정보를 불러오는 중',
           style: TextStyle(
             color: Color(0xFF52A486),
             fontWeight: FontWeight.w600,
@@ -1189,7 +1189,7 @@ Widget _buildRouteContent() {
                                               borderRadius: BorderRadius.circular(16),
                                             ),
                                             child: Text(
-                                              '난이도: ${route.difficulty}',
+                                              '난이도 : ${route.difficulty}',
                                               style: TextStyle(
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.bold,
@@ -1244,7 +1244,7 @@ Widget _buildRouteContent() {
                         elevation: 0,
                       ),
                       child: Text(
-                        '등산로 선택하기',
+                        '선택 완료',
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,

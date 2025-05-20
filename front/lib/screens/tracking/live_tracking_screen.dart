@@ -1416,56 +1416,57 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
   // 드래그 가능한 바텀 시트 위젯
   Widget _buildDraggableBottomSheet() {
-    return DraggableScrollableSheet(
-      controller: _sheetController,
-      initialChildSize: 0.25,
-      minChildSize: 0.25,
-      maxChildSize: 0.9,
-      builder: (BuildContext context, ScrollController scrollController) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.grey[300],
-            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black26,
-                blurRadius: 10,
-                spreadRadius: 0,
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              // 바텀 시트 핸들 - 고정 영역
-              _buildBottomSheetHandle(),
-              // 스크롤 가능한 내용 영역
-              Expanded(
-                child: ListView(
-                  controller: scrollController,
-                  padding: EdgeInsets.zero,
-                  children: [
-                    // 정보 패널
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // 기본 정보 (항상 표시)
-                          _buildBasicInfoSection(),
-
-                          // 올려진 상태에서만 보이는 정보
-                          if (_isSheetExpanded) _buildExpandedInfoSection(),
-                        ],
-                      ),
-                    ),
-                  ],
+    return // 드래그 가능한 바텀 시트 위젯
+      DraggableScrollableSheet(
+        controller: _sheetController,
+        initialChildSize: 0.25,
+        minChildSize: 0.25,
+        maxChildSize: 0.9,
+        builder: (BuildContext context, ScrollController scrollController) {
+          return Container(
+            decoration: BoxDecoration(
+              color: Colors.grey[100], // 더 연한 회색으로 변경
+              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 10,
+                  spreadRadius: 0,
                 ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+              ],
+            ),
+            child: Column(
+              children: [
+                // 바텀 시트 핸들 - 고정 영역
+                _buildBottomSheetHandle(),
+                // 스크롤 가능한 내용 영역
+                Expanded(
+                  child: ListView(
+                    controller: scrollController,
+                    padding: EdgeInsets.zero,
+                    children: [
+                      // 정보 패널
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // 기본 정보 (항상 표시)
+                            _buildBasicInfoSection(),
+
+                            // 올려진 상태에서만 보이는 정보
+                            if (_isSheetExpanded) _buildExpandedInfoSection(),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
   }
 
   // 바텀 시트 핸들 위젯
@@ -1508,87 +1509,638 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     );
   }
 
-  // 기본 정보 섹션 위젯
-  Widget _buildBasicInfoSection() {
-    // 거리 변환: 미터를 km로 표시
-    String distanceText = '';
-    if (_remainingDistance < 1.0) {
-      // 1km 미만은 미터로 표시
-      distanceText = '${(_remainingDistance * 1000).toInt()}m';
-    } else {
-      // 1km 이상은 소수점 한 자리까지 km로 표시
-      distanceText = '${_remainingDistance.toStringAsFixed(1)}km';
-    }
+// 기본 정보 섹션 위젯 - 세련되고 깔끔한 디자인
+Widget _buildBasicInfoSection() {
+  // 거리 변환: 미터를 km로 표시
+  String distanceText = '';
+  if (_remainingDistance < 1.0) {
+    // 1km 미만은 미터로 표시
+    distanceText = '${(_remainingDistance * 1000).toInt()}m';
+  } else {
+    // 1km 이상은 소수점 한 자리까지 km로 표시
+    distanceText = '${_remainingDistance.toStringAsFixed(1)}km';
+  }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '남은 거리 : $distanceText',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
+  // 이동 거리 텍스트 포맷팅
+  String movedDistanceText = '';
+  if (_currentTotalDistance < 1000) {
+    movedDistanceText = '${_currentTotalDistance.toInt()}m';
+  } else {
+    movedDistanceText = '${(_currentTotalDistance / 1000).toStringAsFixed(2)}km';
+  }
+
+  // 앱 테마 컬러
+  const Color themeColor = Color(0xFF52A486);
+  const Color lightThemeColor = Color(0xFFE8F5EC);
+  
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      // 현재 등반 상태 뱃지
+      Center(
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: const Color(0xFFDCEFE2),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.insert_chart_outlined,
+                size: 12,
+                color: const Color(0xFF52A486),
+              ),
+              const SizedBox(width: 4),
+              const Text(
+                '현재 등반 상태',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF52A486),
+                ),
+              ),
+            ],
           ),
         ),
-        SizedBox(height: 4),
-        Text(
-          '예상 남은 시간 : $_formattedRemainingTime',
-          style: TextStyle(fontSize: 14),
+      ),
+      
+      // 첫 번째 줄 - 메인 정보 카드
+      Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+              spreadRadius: 0,
+            ),
+          ],
         ),
-        SizedBox(height: 4),
-        Text(
-          '현재 속도 : ${_currentSpeed.toStringAsFixed(1)} km/h',
-          style: TextStyle(fontSize: 14),
+        child: Column(
+          children: [
+            // 남은 거리 & 예상 시간
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  // 남은 거리
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: lightThemeColor,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.directions_walk,
+                                size: 16,
+                                color: themeColor,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Text(
+                              '남은 거리',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF666666),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          distanceText,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF333333),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // 세로 구분선
+                  Container(
+                    height: 40,
+                    width: 1,
+                    color: Colors.grey.withOpacity(0.2),
+                  ),
+                  // 예상 시간
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: lightThemeColor,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.timer_outlined,
+                                  size: 16,
+                                  color: themeColor,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                '예상 시간',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF666666),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _formattedRemainingTime,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF333333),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // 구분선
+            Container(
+              height: 1,
+              color: Colors.grey.withOpacity(0.1),
+            ),
+            // 속도 & 고도
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  // 현재 속도
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: lightThemeColor,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.speed,
+                                size: 16,
+                                color: themeColor,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Text(
+                              '현재 속도',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF666666),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${_currentSpeed.toStringAsFixed(1)} km/h',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF333333),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // 세로 구분선
+                  Container(
+                    height: 40,
+                    width: 1,
+                    color: Colors.grey.withOpacity(0.2),
+                  ),
+                  // 고도
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: lightThemeColor,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.terrain,
+                                  size: 16,
+                                  color: themeColor,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                '현재 고도',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF666666),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '${_currentAltitude.toStringAsFixed(1)}m',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF333333),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-        SizedBox(height: 4),
-        Text(
-          '고도 변화: ${_currentAltitude.toStringAsFixed(1)}m',
-          style: TextStyle(fontSize: 14),
+      ),
+      
+      // 두 번째 줄 카드 - 등산 시간 & 이동 거리
+      Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+              spreadRadius: 0,
+            ),
+          ],
         ),
-        SizedBox(height: 4),
-        Text(
-          '등산 시간: $_formattedTime',
-          style: TextStyle(fontSize: 14),
-        ),
-        SizedBox(height: 4),
-        Text(
-          '이동 거리: ${_currentTotalDistance < 1000 ? '${_currentTotalDistance.toInt()}m' : '${(_currentTotalDistance / 1000).toStringAsFixed(2)}km'}',
-          style: TextStyle(fontSize: 14),
-        ),
-        if (_isWatchPaired)
-          Text(
-            '현재 심박수 : $_currentHeartRate bpm',
-            style: TextStyle(fontSize: 14),
-          )
-        else
-          Text(
-            '현재 심박수 : 워치와 연동해주세요',
-            style: TextStyle(fontSize: 14, color: Colors.grey),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              // 등산 시간
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: lightThemeColor,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.access_time,
+                            size: 16,
+                            color: themeColor,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          '등산 시간',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF666666),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _formattedTime,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF333333),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // 세로 구분선
+              Container(
+                height: 40,
+                width: 1,
+                color: Colors.grey.withOpacity(0.2),
+              ),
+              // 이동 거리
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: lightThemeColor,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.straighten,
+                              size: 16,
+                              color: themeColor,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            '이동 거리',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF666666),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        movedDistanceText,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF333333),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-        if (_pacemakerMessage != null)
-          Padding(
-            padding: EdgeInsets.only(top: 8),
+        ),
+      ),
+      
+      // 심박수 카드
+      Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: _isWatchPaired 
+                ? Colors.red.withOpacity(0.2) 
+                : Colors.grey.withOpacity(0.2),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+              spreadRadius: 0,
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: _isWatchPaired 
+                      ? Colors.red.withOpacity(0.1) 
+                      : Colors.grey.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  _isWatchPaired ? Icons.favorite : Icons.favorite_border,
+                  size: 16,
+                  color: _isWatchPaired ? Colors.red : Colors.grey,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '현재 심박수',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: _isWatchPaired ? const Color(0xFF666666) : Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _isWatchPaired ? '$_currentHeartRate bpm' : '워치와 연동해주세요',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: _isWatchPaired ? Colors.red : Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              if (_isWatchPaired)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.watch_outlined,
+                        size: 14,
+                        color: Colors.red,
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        '연결됨',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.red,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+      
+      // 페이스메이커 메시지 카드
+      if (_pacemakerMessage != null)
+        Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: _pacemakerLevel == '고강도'
+                  ? Colors.red.withOpacity(0.3)
+                  : _pacemakerLevel == '저강도'
+                      ? Colors.blue.withOpacity(0.3)
+                      : themeColor.withOpacity(0.3),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+                spreadRadius: 0,
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                Icon(Icons.directions_run, color: Colors.orange, size: 18),
-                SizedBox(width: 6),
-                Text(
-                  _pacemakerMessage!,
-                  style: TextStyle(
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: _pacemakerLevel == '고강도'
+                        ? Colors.red.withOpacity(0.1)
+                        : _pacemakerLevel == '저강도'
+                            ? Colors.blue.withOpacity(0.1)
+                            : themeColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    _pacemakerLevel == '고강도'
+                        ? Icons.directions_run
+                        : _pacemakerLevel == '저강도'
+                            ? Icons.directions_walk
+                            : Icons.directions_bike,
+                    size: 18,
                     color: _pacemakerLevel == '고강도'
                         ? Colors.red
                         : _pacemakerLevel == '저강도'
                             ? Colors.blue
-                            : Colors.green,
-                    fontWeight: FontWeight.bold,
+                            : themeColor,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _pacemakerLevel == '고강도'
+                            ? '고강도 운동 중'
+                            : _pacemakerLevel == '저강도'
+                                ? '저강도 운동 중'
+                                : '적정 페이스',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF666666),
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      // 저강도 메시지
+                      _pacemakerLevel == '저강도' ?
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '운동 강도가 낮아요',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.blue.shade700,
+                            ),
+                          ),
+                          Text(
+                            '조금 더 힘내볼까요?',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.blue.shade700,
+                            ),
+                          ),
+                        ],
+                      ) :
+                      // 고강도 메시지
+                      _pacemakerLevel == '고강도' ?
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '운동 강도가 높아요!',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.red.shade700,
+                            ),
+                          ),
+                          Text(
+                            '무리하지 않게 조심하세요',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.red.shade700,
+                            ),
+                          ),
+                        ],
+                      ) :
+                      // 중강도 메시지
+                      Text(
+                        _pacemakerMessage!,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: themeColor,
+                        ),
+                      )
+                    ],
                   ),
                 ),
               ],
             ),
           ),
-      ],
-    );
-  }
+        ),
+    ],
+  );
+}
 
   // 이전 기록과 현재 기록 비교
   Future<void> _compareWithPastRecord({bool sendNotification = false}) async {
@@ -1643,8 +2195,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
         // 토스트 메시지 표시
         String toastMessage = _isAheadOfRecord
-            ? "이전 기록보다 ${differenceInMeters}m 앞서고 있습니다!"
-            : "이전 기록보다 ${differenceInMeters}m 뒤처지고 있습니다!";
+            ? "이전 기록보다 ${differenceInMeters}m 앞서고 있어요"
+            : "이전 기록보다 ${differenceInMeters}m 뒤처지고 있어요";
         _showToastMessage(toastMessage, isAhead: _isAheadOfRecord);
 
         // 새로운 형식으로 워치에 메시지 전송
@@ -1798,15 +2350,15 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     try {
       switch (status) {
         case 'ahead':
-          notificationTitle = '앞서고 있습니다';
+          notificationTitle = '앞서고 있어요';
           notificationBody =
-              '이전 기록보다 ${_distanceDifference.abs().toStringAsFixed(2)}km 앞서고 있습니다.';
+              '이전 기록보다 ${_distanceDifference.abs().toStringAsFixed(2)}km 앞서고 있어요';
           debugPrint('[워치 알림 내용] $notificationBody');
           break;
         case 'behind':
-          notificationTitle = '뒤처지고 있습니다';
+          notificationTitle = '뒤처지고 있어요';
           notificationBody =
-              '이전 기록보다 ${_distanceDifference.abs().toStringAsFixed(2)}km 뒤처지고 있습니다.';
+              '이전 기록보다 ${_distanceDifference.abs().toStringAsFixed(2)}km 뒤처지고 있어요';
           debugPrint('[워치 알림 내용] $notificationBody');
           break;
         case 'destination':
@@ -1859,158 +2411,407 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     }
   }
 
-  // 확장된 정보 섹션 위젯
-  Widget _buildExpandedInfoSection() {
-    // 일반 모드 여부 확인 (opponent가 없으면 일반 모드)
-    final bool isGeneralMode = _modeData?.opponent == null;
+// 확장된 정보 섹션 위젯
+Widget _buildExpandedInfoSection() {
+  // 일반 모드 여부 확인 (opponent가 없으면 일반 모드)
+  final bool isGeneralMode = _modeData?.opponent == null;
 
-    // 경쟁자의 남은 시간 포맷팅 (일반 모드가 아닌 경우만)
-    String competitorTimeFormatted = '';
-    if (!isGeneralMode) {
-      final compMinutes = _competitorData['time'] as int;
-      if (compMinutes >= 60) {
-        final hours = compMinutes ~/ 60;
-        final mins = compMinutes % 60;
-        competitorTimeFormatted = '$hours시 $mins분 00초';
-      } else {
-        competitorTimeFormatted = '$compMinutes분 00초';
-      }
+  // 경쟁자의 남은 시간 포맷팅 (일반 모드가 아닌 경우만)
+  String competitorTimeFormatted = '';
+  if (!isGeneralMode) {
+    final compMinutes = _competitorData['time'] as int;
+    if (compMinutes >= 60) {
+      final hours = compMinutes ~/ 60;
+      final mins = compMinutes % 60;
+      competitorTimeFormatted = '$hours시 $mins분 00초';
+    } else {
+      competitorTimeFormatted = '$compMinutes분 00초';
     }
+  }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        SizedBox(height: 20),
+  // 앱 테마 컬러
+  const Color themeColor = Color(0xFF52A486);
+  const Color lightThemeColor = Color(0xFFE8F5EC);
+  const Color purpleColor = Color(0xFF8A64D9);
+  const Color lightPurpleColor = Color(0xFFF0E6FC);
+  
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: <Widget>[
+      SizedBox(height: 20),
 
-        // 비교 모드 정보 (일반 모드가 아닐 때만 표시)
-        if (!isGeneralMode) ...<Widget>[
-          Row(
-            children: <Widget>[
-              Text(
-                '내 정보',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue,
+      // 비교 모드 정보 (일반 모드가 아닐 때만 표시)
+      if (!isGeneralMode) ...<Widget>[
+        // 비교 정보 뱃지
+        Center(
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFDCEFE2),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.compare_arrows,
+                  size: 12,
+                  color: const Color(0xFF52A486),
+                ),
+                const SizedBox(width: 4),
+                const Text(
+                  '비교 정보',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF52A486),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        
+        // 경쟁 모드 헤더 카드
+        Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+                spreadRadius: 0,
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: lightThemeColor,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.compare_arrows,
+                  size: 18,
+                  color: themeColor,
                 ),
               ),
-              SizedBox(width: 10),
-              Text(
-                'vs',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '기록 비교 모드',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF666666),
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      _modeData?.opponent?.nickname ?? '이전 기록',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF333333),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          SizedBox(height: 10),
-          Text(
-            _modeData?.opponent?.nickname ?? '이전 기록',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.purple,
-            ),
+        ),
+      
+        Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+                spreadRadius: 0,
+              ),
+            ],
           ),
-          SizedBox(height: 4),
-          Text(
-            '(과거 기록과 비교 중)',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.green,
-            ),
+          child: Column(
+            children: [
+              // 상대 남은 거리 & 남은 시간
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    // 상대 남은 거리
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: lightThemeColor,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.straighten,
+                                  size: 16,
+                                  color: themeColor,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                '상대 남은 거리',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF666666),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '${_competitorData['distance']}km',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF333333),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // 세로 구분선
+                    Container(
+                      height: 40,
+                      width: 1,
+                      color: Colors.grey.withOpacity(0.2),
+                    ),
+                    // 상대 남은 시간
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: lightThemeColor,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(
+                                    Icons.timer_outlined,
+                                    size: 16,
+                                    color: themeColor,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  '상대 남은 시간',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: Color(0xFF666666),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              competitorTimeFormatted,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF333333),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          SizedBox(height: 10),
-          Text(
-            '남은 거리 : ${_competitorData['distance']}km',
-            style: TextStyle(fontSize: 14),
+        ),
+                
+        // 피드백 메시지 카드
+        if (_distanceDifference != 0) _buildFeedbackMessage(),
+      ]
+      // 일반 모드 정보
+      else ...<Widget>[
+        Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+                spreadRadius: 0,
+              ),
+            ],
           ),
-          SizedBox(height: 4),
-          Text(
-            '예상 남은 시간 : $competitorTimeFormatted',
-            style: TextStyle(fontSize: 14),
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: lightThemeColor,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.hiking,
+                  size: 18,
+                  color: themeColor,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '등산 모드',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF666666),
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      '일반 등산 모드',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: themeColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          SizedBox(height: 4),
-          // Text(
-          //   '최고 심박수 : ${_competitorData['maxHeartRate']} bpm',
-          //   style: TextStyle(fontSize: 14),
-          // ),
-          // SizedBox(height: 4),
-          // Text(
-          //   '평균 심박수 : ${_competitorData['avgHeartRate']} bpm',
-          //   style: TextStyle(fontSize: 14),
-          // ),
-        ]
-        // 일반 모드 정보
-        else ...<Widget>[
-          Text(
-            '일반 등산 모드',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.blue,
-            ),
-          ),
-        ],
-
-        // 피드백 메시지 (일반 모드가 아닐 때만 표시)
-        if (!isGeneralMode) _buildFeedbackMessage(),
-
-        // 등산 종료 버튼
-        _buildEndTrackingButton(),
-
-        // 여분의 공간 추가해서 스크롤이 잘 되도록 함
-        SizedBox(height: 30),
+        ),
       ],
-    );
+
+      // 등산 종료 버튼
+      _buildEndTrackingButton(),
+
+      // 여분의 공간 추가해서 스크롤이 잘 되도록 함
+      SizedBox(height: 30),
+    ],
+  );
+}
+
+// 피드백 메시지 위젯
+Widget _buildFeedbackMessage() {
+  // 이전 기록이 있는 경우만 표시
+  if (_modeData?.opponent == null) {
+    return SizedBox.shrink();
   }
 
-  // 피드백 메시지 위젯
-  Widget _buildFeedbackMessage() {
-    // 이전 기록이 있는 경우만 표시
-    if (_modeData?.opponent == null) {
-      return SizedBox.shrink();
-    }
+  final String message = _isAheadOfRecord
+      ? '이전 기록보다 ${_distanceDifference.abs().toStringAsFixed(2)}km 앞서고 있어요'
+      : '이전 기록보다 ${_distanceDifference.abs().toStringAsFixed(2)}km 뒤처지고 있어요';
 
-    final String message = _isAheadOfRecord
-        ? '${_distanceDifference.abs().toStringAsFixed(2)}km 앞서는 중!'
-        : '${_distanceDifference.abs().toStringAsFixed(2)}km 뒤처지는 중!';
+  final Color messageColor = _isAheadOfRecord ? Colors.green.shade700 : Colors.red.shade700;
+  final Color bgColor = _isAheadOfRecord ? Colors.green.shade50 : Colors.red.shade50;
+  final Color borderColor = _isAheadOfRecord ? Colors.green.shade200 : Colors.red.shade200;
+  final IconData icon = _isAheadOfRecord ? Icons.arrow_upward : Icons.arrow_downward;
 
-    return Container(
-      margin: EdgeInsets.only(top: 12),
-      padding: EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: _isAheadOfRecord ? Colors.green[100] : Colors.red[100],
-        borderRadius: BorderRadius.circular(8),
-      ),
+  return Container(
+    margin: const EdgeInsets.only(bottom: 12),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: borderColor),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.03),
+          blurRadius: 8,
+          offset: const Offset(0, 2),
+          spreadRadius: 0,
+        ),
+      ],
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(16),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            message,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: _isAheadOfRecord ? Colors.green[800] : Colors.red[800],
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              icon,
+              size: 18,
+              color: messageColor,
             ),
           ),
-          SizedBox(width: 4),
-          Icon(
-            _isAheadOfRecord ? Icons.arrow_upward : Icons.arrow_downward,
-            color: _isAheadOfRecord ? Colors.green : Colors.red,
-            size: 16,
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _isAheadOfRecord ? '앞서고 있어요' : '뒤처지고 있어요',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF666666),
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  message,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.normal,
+                    color: messageColor,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   // 등산 종료 버튼 위젯
-  Widget _buildEndTrackingButton() {
-    return Container(
-      margin: EdgeInsets.only(top: 30, left: 50, right: 50),
+Widget _buildEndTrackingButton() {
+  return Center(
+    child: Container(
+      margin: EdgeInsets.only(top: 30, bottom: 20),
       decoration: BoxDecoration(
-        color: Colors.red,
+        color: const Color(0xFF52A486),
         borderRadius: BorderRadius.circular(50),
       ),
       child: TextButton.icon(
@@ -2036,211 +2837,305 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
-  // 등산 기록 저장 여부 확인 다이얼로그
-  void _showSaveOptionDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        insetPadding: EdgeInsets.symmetric(horizontal: 10),
-        child: Container(
-          padding: EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '등산 기록 저장',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+void _showSaveOptionDialog(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (ctx) => Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
+      insetPadding: EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        padding: EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.save_alt_rounded,
+              size: 48,
+              color: Color(0xFF52A486),
+            ),
+            SizedBox(height: 16),
+            Text(
+              '등산 기록 저장',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF333333),
+              ),
+            ),
+            SizedBox(height: 16),
+            Text(
+              '등산 기록을 저장하시겠습니까?',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                color: Color(0xFF666666),
+              ),
+            ),
+            SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                // 저장 안 함 버튼
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(ctx).pop();
+                    // 저장하지 않고 종료 확인 다이얼로그 표시
+                    _showEndTrackingDialog(context, false);
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 3,
+                          offset: Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      '저장 안 함',
+                      style: TextStyle(
+                        color: Color(0xFF666666),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-              SizedBox(height: 20),
-              Text(
-                '등산 기록을 저장하시겠습니까?',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16),
-              ),
-              SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  // 저장 안 함 버튼
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(ctx).pop();
-                      // 저장하지 않고 종료 확인 다이얼로그 표시
-                      _showEndTrackingDialog(context, false);
-                    },
-                    child: Container(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      child: Text(
-                        '저장 안 함',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.bold,
+                // 저장 버튼
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(ctx).pop();
+                    // 저장하고 종료 확인 다이얼로그 표시
+                    _showEndTrackingDialog(context, true);
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Color(0xFF52A486),
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0xFF52A486).withOpacity(0.3),
+                          blurRadius: 4,
+                          offset: Offset(0, 2),
                         ),
+                      ],
+                    ),
+                    child: Text(
+                      '저장',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
                       ),
                     ),
                   ),
-                  // 저장 버튼
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(ctx).pop();
-                      // 저장하고 종료 확인 다이얼로그 표시
-                      _showEndTrackingDialog(context, true);
-                    },
-                    child: Container(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.blue,
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      child: Text(
-                        '저장',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
-  // 등산 종료 확인 다이얼로그
-  void _showEndTrackingDialog(BuildContext context, bool shouldSave,
-      {bool isEarlyExit = false}) {
-    showDialog(
-      context: context,
-      builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        insetPadding: EdgeInsets.symmetric(horizontal: 10),
-        child: Container(
-          padding: EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '등산 종료',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              SizedBox(height: 20),
-              Text(
-                '정말로 등산을 \n종료하시겠습니까?',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16),
-              ),
-              SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    shouldSave ? Icons.save : Icons.do_not_disturb,
-                    color: shouldSave ? Colors.blue : Colors.grey,
-                    size: 18,
-                  ),
-                  SizedBox(width: 5),
-                  Text(
-                    shouldSave ? '등산 기록이 저장됩니다.' : '등산 기록이 저장되지 않습니다.',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: shouldSave ? Colors.blue : Colors.grey,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ],
-              ),
-              // 목적지 미도달 시 추가 경고 문구
-              if (isEarlyExit)
-                Padding(
-                  padding: const EdgeInsets.only(top: 10.0),
-                  child: Text(
-                    '목적지에 도달하지 않고 종료 시에는\n기록이 저장되지 않고 경험치도 주어지지 않습니다.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.red,
-                      fontWeight: FontWeight.bold,
-                    ),
+void _showEndTrackingDialog(BuildContext context, bool shouldSave,
+    {bool isEarlyExit = false}) {
+  showDialog(
+    context: context,
+    builder: (ctx) => Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+      ),
+      insetPadding: EdgeInsets.symmetric(horizontal: 24),
+      child: Container(
+        padding: EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 상단 아이콘 및 타이틀
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  height: 80,
+                  width: 80,
+                  decoration: BoxDecoration(
+                    color: isEarlyExit ? Colors.red[50] : Color(0xFFE8F5EC),
+                    shape: BoxShape.circle,
                   ),
                 ),
-              SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(ctx).pop(),
-                    child: Container(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                Icon(
+                  isEarlyExit ? Icons.hiking_outlined : Icons.hiking,
+                  size: 48,
+                  color: isEarlyExit ? Colors.red[700] : Color(0xFF52A486),
+                ),
+              ],
+            ),
+            SizedBox(height: 20),
+            Text(
+              '등산 종료',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF333333),
+              ),
+            ),
+            SizedBox(height: 16),
+            
+            // 메인 질문 텍스트
+            Text(
+              '정말로 등산을 종료하시겠어요?',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF555555),
+              ),
+            ),
+            SizedBox(height: 24),
+            
+            // 목적지 미도달 경고 메시지
+            if (isEarlyExit)
+              Container(
+                margin: EdgeInsets.only(bottom: 24),
+                padding: EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                decoration: BoxDecoration(
+                  color: Colors.red[50],
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Colors.red[100]!,
+                    width: 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.red.withOpacity(0.1),
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(30),
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.red.withOpacity(0.2),
+                            blurRadius: 6,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
                       ),
-                      child: Text(
-                        '취소',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      child: Icon(
+                        Icons.error_outline,
+                        color: Colors.red[700],
+                        size: 24,
+                      ),
+                    ),
+                    SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '목적지에 도달하지 않았어요!',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.red[700],
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            '지금 종료하면 기록이 저장되지 않고\n경험치도 얻을 수 없어요',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.red[700],
+                              height: 1.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+            // 버튼 영역
+            Row(
+              children: [
+                // 취소 버튼
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: Colors.grey[100],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: Text(
+                      '취소',
+                      style: TextStyle(
+                        color: Color(0xFF666666),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
                       ),
                     ),
                   ),
-                  TextButton(
+                ),
+                SizedBox(width: 12),
+                // 종료 버튼
+                Expanded(
+                  child: TextButton(
                     onPressed: () {
                       Navigator.of(ctx).pop();
-                      // 등산 종료 처리 및 서버 전송
-                      // 중간 종료(isEarlyExit=true)일 경우 결과 화면 표시하지 않음
-                      _finishTracking(shouldSave,
+                      _finishTracking(shouldSave, 
                           showResultScreen: !isEarlyExit);
                     },
-                    child: Container(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(30),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: Color(0xFF52A486),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      child: Text(
-                        '종료',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      elevation: 2,
+                    ),
+                    child: Text(
+                      '종료',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
                       ),
                     ),
                   ),
-                ],
-              ),
-            ],
-          ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   // 등산 종료 처리 및 서버 전송
   Future<void> _finishTracking(bool shouldSave,
@@ -3200,13 +4095,13 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
           String pacemakerMessage;
           switch (level) {
             case '저강도':
-              pacemakerMessage = '운동 강도가 낮아요. 조금 더 힘내볼까요?';
+              pacemakerMessage = '운동 강도가 낮아요\n조금 더 힘내볼까요?';
               break;
             case '중강도':
-              pacemakerMessage = '적절한 강도로 등산 중입니다!';
+              pacemakerMessage = '적절한 강도로 등산 중이에요';
               break;
             case '고강도':
-              pacemakerMessage = '운동 강도가 높아요! 무리하지 않게 조심하세요.';
+              pacemakerMessage = '운동 강도가 높아요!\n무리하지 않게 조심하세요';
               break;
             default:
               pacemakerMessage = message; // 서버에서 온 기본 메시지
