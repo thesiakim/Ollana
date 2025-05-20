@@ -337,11 +337,12 @@ class _RouteSelectScreenState extends State<RouteSelectScreen> {
                                               name: routeData['name'],
                                               difficulty:
                                                   routeData['difficulty'],
-                                              distance: double.tryParse(
-                                                      routeData['distance']
-                                                          .replaceAll(
-                                                              'km', '')) ??
-                                                  0.0,
+                                              distance: (double.tryParse(
+                                                          routeData['distance']
+                                                              .replaceAll(
+                                                                  'km', '')) ??
+                                                      0.0)
+                                                  .toInt(),
                                               estimatedTime: routeData['time']
                                                       .contains('시간')
                                                   ? int.tryParse(

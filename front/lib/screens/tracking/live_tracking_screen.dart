@@ -264,8 +264,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   double _anchorPointLng = 0.0;
   DateTime? _lastDistanceCalcTime;
   bool _isAnchorPointSet = false;
-  double _accumulatedDistanceInMeters = 0.0;
-  double _currentTotalDistance = 0.0; // UI 표시용 총 이동 거리 (m)
+  int _accumulatedDistanceInMeters = 0;
+  int _currentTotalDistance = 0; // UI 표시용 총 이동 거리 (m)
 
   // WatchConnectivity 인스턴스 추가
   final WatchConnectivity _watch = WatchConnectivity();
@@ -338,7 +338,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
   // 이전 기록 비교 관련 변수
   bool _isAheadOfRecord = false;
-  double _distanceDifference = 0.0;
+  int _distanceDifference = 0;
   double _pastDistanceAtCurrentTime = 0.0;
   // double _currentTotalDistance = 0.0; // 이 줄을 삭제하여 중복 선언을 제거합니다.
 
@@ -944,8 +944,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   void _startLocationTracking() {
     // 거리 추적 관련 변수들 초기화
     _isAnchorPointSet = false;
-    _accumulatedDistanceInMeters = 0.0;
-    _currentTotalDistance = 0.0;
+    _accumulatedDistanceInMeters = 0;
+    _currentTotalDistance = 0;
     _lastDistanceCalcTime = null;
     _anchorPointLat = 0.0;
     _anchorPointLng = 0.0;
@@ -1004,7 +1004,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
         }
       } else if (_gpsFilter != null) {
         // 급격한 위치 변화 감지 (완전히 다른 위치로 이동한 경우, 예: 앱 재시작 등)
-        double distance = _calculateDistanceSync({
+        int distance = _calculateDistanceSync({
           'lat1': _lastFilteredLat,
           'lng1': _lastFilteredLng,
           'lat2': newLat,
@@ -1052,8 +1052,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
           _anchorPointLng = filteredLng;
           _lastDistanceCalcTime = now;
           _isAnchorPointSet = true;
-          _accumulatedDistanceInMeters = 0.0; // 새 트래킹 시작 시 누적거리 초기화
-          _currentTotalDistance = 0.0; // UI용 거리도 초기화
+          _accumulatedDistanceInMeters = 0; // 새 트래킹 시작 시 누적거리 초기화
+          _currentTotalDistance = 0; // UI용 거리도 초기화
           debugPrint(
               '이동 거리 계산 기준점 설정: Lat: ${_anchorPointLat.toStringAsFixed(6)}, Lng: ${_anchorPointLng.toStringAsFixed(6)} (정확도: ${currentAccuracy.toStringAsFixed(1)}m)');
         } else {
@@ -1067,7 +1067,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
         if (timeSinceLastCalcSeconds >= 2) {
           // 2초 이상 간격으로 변경
-          final double segmentDistanceMeters = _calculateDistanceSync({
+          final int segmentDistanceMeters = _calculateDistanceSync({
             'lat1': _anchorPointLat,
             'lng1': _anchorPointLng,
             'lat2': filteredLat,
@@ -1126,7 +1126,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       } else if (_lastLocationUpdateTimeForUserPath != null &&
           _userPath.isNotEmpty) {
         final NLatLng prevUserPathPoint = _userPath.last;
-        final double distanceSinceLastUserPathPoint = _calculateDistanceSync({
+        final int distanceSinceLastUserPathPoint = _calculateDistanceSync({
           'lat1': prevUserPathPoint.latitude,
           'lng1': prevUserPathPoint.longitude,
           'lat2': filteredLat,
@@ -2316,7 +2316,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       // 현재 총 이동 거리는 이미 실시간으로 계산되어 _currentTotalDistance에 반영되어 있음
       // 현재 기록과 이전 기록 비교
       final oldAheadState = _isAheadOfRecord;
-      _distanceDifference = _currentTotalDistance - _pastDistanceAtCurrentTime;
+      _distanceDifference =
+          (_currentTotalDistance - _pastDistanceAtCurrentTime).toInt();
       _isAheadOfRecord = _distanceDifference > 0;
 
       // 항상 _competitorData 업데이트
@@ -2341,15 +2342,19 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
         // 사용자가 요청한 새로운 형식의 메시지 전송
         // 차이 값 계산 (미터 단위의 절대값)
-        int differenceInMeters = (_distanceDifference.abs() * 1000).toInt();
+        int differenceInMeters = _distanceDifference.abs();
 
         // 앞서는지 뒤처지는지에 따라 메시지 타입 결정
         String progressType = _isAheadOfRecord ? "FAST" : "SLOW";
 
         // 토스트 메시지 표시
         String toastMessage = _isAheadOfRecord
-            ? "이전 기록보다 ${differenceInMeters}m 앞서고 있습니다!"
-            : "이전 기록보다 ${differenceInMeters}m 뒤처지고 있습니다!";
+            ? (differenceInMeters >= 1000
+                ? "이전 기록보다 ${(differenceInMeters / 1000).toStringAsFixed(2)}km 앞서고 있습니다!"
+                : "이전 기록보다 ${differenceInMeters}m 앞서고 있습니다!")
+            : (differenceInMeters >= 1000
+                ? "이전 기록보다 ${(differenceInMeters / 1000).toStringAsFixed(2)}km 뒤처지고 있습니다!"
+                : "이전 기록보다 ${differenceInMeters}m 뒤처지고 있습니다!");
         _showToastMessage(toastMessage, isAhead: _isAheadOfRecord);
 
         // 새로운 형식으로 워치에 메시지 전송
@@ -2891,8 +2896,12 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     }
 
     final String message = _isAheadOfRecord
-        ? '${_distanceDifference.abs().toStringAsFixed(2)}km 앞서는 중!'
-        : '${_distanceDifference.abs().toStringAsFixed(2)}km 뒤처지는 중!';
+        ? (_distanceDifference.abs() >= 1000
+            ? '${(_distanceDifference.abs() / 1000).toStringAsFixed(2)}km 앞서는 중!'
+            : '${_distanceDifference.abs().toInt()}m 앞서는 중!')
+        : (_distanceDifference.abs() >= 1000
+            ? '${(_distanceDifference.abs() / 1000).toStringAsFixed(2)}km 뒤처지는 중!'
+            : '${_distanceDifference.abs().toInt()}m 뒤처지는 중!');
 
     return Container(
       margin: EdgeInsets.only(top: 12),
@@ -3502,7 +3511,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
         // shouldSave가 true일 때만 결과 화면 표시
         final int finalElapsedMinutes = _elapsedMinutes;
-        final double finalDistanceMeters = _currentTotalDistance;
+        final int finalDistanceMeters = _currentTotalDistance;
         // 이전 기록(AppState에 이미 설정된 값) 캡처
         final String? prevRecordDate = appState.previousRecordDate;
         final int? prevRecordTimeSeconds = appState.previousRecordTime;
@@ -4008,7 +4017,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
         opponentAvgSpeed = opponentDistance / lastRecord.time;
 
         // 남은 거리 계산 (m)
-        double remainingDistance = (totalPathLength * 1000) - opponentDistance;
+        int remainingDistance = (totalPathLength * 1000) - opponentDistance;
         if (remainingDistance < 0) remainingDistance = 0;
 
         // 남은 시간 계산 (초)
@@ -4064,7 +4073,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     try {
       // 1. 현재 위치에서 등산로 상의 가장 가까운 지점 찾기
       final currentPosition = NLatLng(_currentLat, _currentLng);
-      double minDistance = double.infinity;
+      int minDistance = 9223372036854775807; // int 최대값 (2^63-1)
       int closestPointIndex = 0;
 
       for (int i = 0; i < _routeCoordinates.length; i++) {
@@ -4210,7 +4219,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   }
 
   // 거리 계산 함수 (동기 버전)
-  double _calculateDistanceSync(Map<String, double> params) {
+  int _calculateDistanceSync(Map<String, double> params) {
     const double earthRadius = 6371000; // 지구 반경 (미터)
     final double lat1 = params['lat1']!;
     final double lng1 = params['lng1']!;
@@ -4227,7 +4236,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
             math.sin(dLng / 2);
 
     final double c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
-    return earthRadius * c;
+    return (earthRadius * c).round();
   }
 
   // 각도를 라디안으로 변환 (BackgroundTask의 메서드와 동일)
@@ -4659,7 +4668,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
           List.from(appState.routeCoordinates);
       final double prevLat = appState.currentLat;
       final double prevLng = appState.currentLng;
-      final double prevDist = appState.distance;
+      final int prevDist = appState.distance;
       final double prevAltitude = appState.currentAltitude;
       final int prevElapsedSeconds = appState.elapsedSeconds;
       final int prevElapsedMinutes = appState.elapsedMinutes;
@@ -4704,8 +4713,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
         _anchorPointLat = 0.0;
         _anchorPointLng = 0.0;
         _isAnchorPointSet = false;
-        _accumulatedDistanceInMeters = 0.0;
-        _currentTotalDistance = 0.0;
+        _accumulatedDistanceInMeters = 0;
+        _currentTotalDistance = 0;
         _currentAltitude = 0.0;
         _elapsedSeconds = 0;
         _elapsedMinutes = 0;
@@ -4727,8 +4736,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       _anchorPointLat = 0.0;
       _anchorPointLng = 0.0;
       _isAnchorPointSet = false;
-      _accumulatedDistanceInMeters = 0.0;
-      _currentTotalDistance = 0.0;
+      _accumulatedDistanceInMeters = 0;
+      _currentTotalDistance = 0;
       _currentAltitude = 0.0;
       _elapsedSeconds = 0;
       _elapsedMinutes = 0;

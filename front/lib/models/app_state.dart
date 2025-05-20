@@ -55,7 +55,7 @@ class AppState extends ChangeNotifier {
   double _currentAltitude = _defaultAltitude;
   int _elapsedSeconds = 0;
   int _elapsedMinutes = 0;
-  double _distance = 0.0;
+  int _distance = 0;
   int _maxHeartRate = 0;
   int _avgHeartRate = 0;
   bool _isNavigationMode = true;
@@ -110,7 +110,7 @@ class AppState extends ChangeNotifier {
   double get currentAltitude => _currentAltitude;
   int get elapsedSeconds => _elapsedSeconds;
   int get elapsedMinutes => _elapsedMinutes;
-  double get distance => _distance;
+  int get distance => _distance;
   bool get isNavigationMode => _isNavigationMode;
   double get deviceHeading => _deviceHeading;
   ModeData? get modeData => _modeData;
@@ -505,7 +505,7 @@ class AppState extends ChangeNotifier {
     _userPath.clear();
     _elapsedSeconds = 0;
     _elapsedMinutes = 0;
-    _distance = _selectedRoute?.distance ?? 0.0;
+    _distance = _selectedRoute?.distance ?? 0;
     _maxHeartRate = 0;
     _avgHeartRate = 0;
 
@@ -525,7 +525,7 @@ class AppState extends ChangeNotifier {
     double? currentLng,
     double? currentAltitude,
     int? elapsedSeconds,
-    double? distance,
+    int? distance,
     int? maxHeartRate,
     int? avgHeartRate,
     bool? isNavigationMode,
@@ -636,7 +636,6 @@ class AppState extends ChangeNotifier {
     required int time,
     int? maxHeartRate,
     int? avgHeartRate,
-
   }) {
     _opponentRecordDate = date;
     _opponentRecordTime = time;

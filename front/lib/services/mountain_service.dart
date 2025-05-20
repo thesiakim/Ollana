@@ -511,7 +511,8 @@ class MountainService {
                         routeMountainId, // API에서 제공하지 않으면 mountain 객체의 ID 사용
                     name: pathData['pathName'] ?? '',
                     distance:
-                        (pathData['pathLength'] as num?)?.toDouble() ?? 0.0,
+                        ((pathData['pathLength'] as num?)?.toDouble() ?? 0.0)
+                            .toInt(),
                     estimatedTime:
                         int.tryParse(pathData['pathTime'] ?? '0') ?? 0,
                     difficulty: '중', // API에서 난이도가 제공되지 않는 경우 기본값
