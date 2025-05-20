@@ -241,7 +241,7 @@ const SizedBox(height: 5),
                       Text(
                         _getScoreMessage(score),
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 13,
                           fontWeight: FontWeight.bold,
                           color: scoreColor,
                         ),
@@ -489,35 +489,35 @@ Widget build(BuildContext context) {
       final weatherDataList = snap.data!;
       
       // 시간 목록과 제목 표시 (오버플로우 수정)
-      return SingleChildScrollView(
+      return 
+      SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // 귀여운 제목 (오버플로우 방지를 위해 패딩 축소)
+              // 심플한 헤더
               Container(
-                margin: const EdgeInsets.only(bottom: 12),
+                margin: const EdgeInsets.only(bottom: 10),
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
                   color: const Color(0xFFDCEFE2),
-                  borderRadius: BorderRadius.circular(30),
-                  // 그림자 제거하여 오버헤드 감소
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      Icons.access_time_rounded,
-                      size: 12, // 아이콘 크기 축소
+                      Icons.table_chart_outlined,
+                      size: 12,
                       color: const Color(0xFF52A486),
                     ),
-                    const SizedBox(width: 4), // 간격 축소
+                    const SizedBox(width: 4),
                     const Text(
                       '등산지수 시간표',
                       style: TextStyle(
-                        fontSize: 11, // 글자 크기 축소
+                        fontSize: 11,
                         fontWeight: FontWeight.w500,
                         color: Color(0xFF52A486),
                       ),
@@ -526,50 +526,52 @@ Widget build(BuildContext context) {
                 ),
               ),
               
-              // 시간 버튼 - 스크롤 가능한 영역으로 변경
-              GridView.builder(
-                shrinkWrap: true, // 필수: 내부 ScrollView에서는 shrinkWrap 필요
-                physics: const NeverScrollableScrollPhysics(), // 외부 스크롤과 충돌 방지
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3, // 한 줄에 3개로 유지
-                  childAspectRatio: 2.5, // 가로:세로 비율 높게 설정 (더 납작하게)
-                  crossAxisSpacing: 6, // 간격 줄임
-                  mainAxisSpacing: 6, // 간격 줄임
-                ),
-                itemCount: weatherDataList.length,
-                itemBuilder: (context, index) {
-                  final data = weatherDataList[index];
-                  // 시간 포맷 수정 - 21:0 대신 21:00 형식으로 표시되도록
-                  final hour = data.time.substring(11, 13);
-                  final minute = data.time.substring(14, 16);
-                  final formattedTime = '$hour:$minute';
-                  
-                  return InkWell(
-                    onTap: () => _showWeatherModal(context, data),
-                    borderRadius: BorderRadius.circular(8), // 반경 축소
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE8F5EC).withOpacity(0.4),
-                        borderRadius: BorderRadius.circular(8), // 반경 축소
-                        border: Border.all(
-                          color: const Color(0xFFCCE5D7),
-                          width: 0.5, // 테두리 얇게
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          formattedTime,
-                          style: const TextStyle(
-                            fontSize: 12, // 글자 크기 축소
-                            fontWeight: FontWeight.w500, // 두께 낮춤
-                            color: Color.fromARGB(255, 53, 118, 94),
+              // 매우 심플한 그리드 - 테두리와 배경색 변화 없음
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(2),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    childAspectRatio: 2.5,
+                    crossAxisSpacing: 4, // 간격은 약간 유지
+                    mainAxisSpacing: 4, // 간격은 약간 유지
+                  ),
+                  itemCount: weatherDataList.length,
+                  itemBuilder: (context, index) {
+                    final data = weatherDataList[index];
+                    final hour = data.time.substring(11, 13);
+                    final minute = data.time.substring(14, 16);
+                    final formattedTime = '$hour:$minute';
+                    
+                    return InkWell(
+                      onTap: () => _showWeatherModal(context, data),
+                      borderRadius: BorderRadius.circular(6),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5F9F7), // 매우 연한 민트 배경 (모든 셀)
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: const Color(0xFFE0EDE7),
+                            width: 0.5,
                           ),
-                          textAlign: TextAlign.center,
+                        ),
+                        child: Center(
+                          child: Text(
+                            formattedTime,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w400,
+                              color: Color(0xFF407A6B),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ],
           ),
