@@ -423,18 +423,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                           ),
                                         ),
                                       ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Padding(
-                                      padding: const EdgeInsets.only(left: 50),
-                                      child: Text(
-                                        '친구가 대결할 수 있도록 해주세요!',
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          color: Colors.grey.shade600,
-                                        ),
-                                      ),
-                                    ),
+                                    ),                                    
                                   ],
                                 ),
                               ),

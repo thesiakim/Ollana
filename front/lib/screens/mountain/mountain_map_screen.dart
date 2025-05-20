@@ -1169,21 +1169,7 @@ Widget _buildListView() {
               padding: const EdgeInsets.only(left: 12, right: 8),
               child: Icon(Icons.search, color: _primaryColor),
             ),
-            suffixIcon: _isSearching
-                ? Container(
-                    margin: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      shape: BoxShape.circle,
-                    ),
-                    child: IconButton(
-                      icon: Icon(Icons.close, size: 16, color: Colors.grey[700]),
-                      onPressed: _cancelSearch,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                  )
-                : null,
+            // suffixIcon 부분을 제거
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(30),
               borderSide: BorderSide.none,
@@ -1194,7 +1180,7 @@ Widget _buildListView() {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(30),
-              borderSide: BorderSide(color: _primaryColor, width: 1.5),
+              borderSide: BorderSide(color: Color(0xFF52A486), width: 1.5),
             ),
             filled: true,
             fillColor: Colors.grey[100],
@@ -1528,12 +1514,12 @@ Widget _buildFilterChip({
                           Icons.info_outline,
                           color: Color(0xFF52A486),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 5),
                         Expanded(
                           child: Text(
                             '마커를 탭하면 산의 정보를 확인할 수 있어요',
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: 12,
                               color: Colors.grey[800],
                             ),
                           ),

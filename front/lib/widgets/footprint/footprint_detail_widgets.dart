@@ -39,41 +39,53 @@ Widget buildCompareResult(CompareResponse compareData) {
                       child: Text(
                         record.date,
                         style: const TextStyle(
-                          fontSize: 14,
+                          fontSize: 12,
                           color: Colors.white,
                         ),
                       ),
                     ),
                     const SizedBox(height: 16),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        buildMetricCard(
-                          '',
-                          '${record.maxHeartRate}',
-                          'bpm',
-                          Colors.red[100]!,
-                          Colors.red[700]!,
-                          Icons.favorite,
-                        ),
-                        buildMetricCard(
-                          '',
-                          '${record.averageHeartRate.toStringAsFixed(1)}',
-                          'bpm',
-                          Colors.blue[100]!,
-                          Colors.blue[700]!,
-                          Icons.monitor_heart_outlined,
-                        ),
-                        buildMetricCard(
-                          '',
-                          '${record.time}',
-                          '분',
-                          Colors.green[100]!,
-                          Colors.green[700]!,
-                          Icons.timer,
-                        ),
-                      ],
-                    ),
+  mainAxisAlignment: MainAxisAlignment.spaceBetween, // spaceEvenly 대신 spaceBetween 사용
+  children: [
+    Flexible(
+      flex: 1,
+      child: buildMetricCard(
+        '',
+        '${record.maxHeartRate}',
+        'bpm',
+        Colors.red[100]!,
+        Colors.red[700]!,
+        Icons.favorite,
+      ),
+    ),
+    SizedBox(width: 4), // 작은 간격 추가
+    Flexible(
+      flex: 1,
+      child: buildMetricCard(
+        '',
+        '${record.averageHeartRate.toStringAsFixed(1)}',
+        'bpm',
+        Colors.blue[100]!,
+        Colors.blue[700]!,
+        Icons.monitor_heart_outlined,
+      ),
+    ),
+    SizedBox(width: 4), // 작은 간격 추가
+    Flexible(
+      flex: 1,
+      child: buildMetricCard(
+        '',
+        '${record.time}',
+        '분',
+        Colors.green[100]!,
+        Colors.green[700]!,
+        Icons.timer,
+      ),
+    ),
+  ],
+),
+
                   ],
                 ),
               );
@@ -121,7 +133,7 @@ Widget buildCompareResult(CompareResponse compareData) {
                               Text(
                                 formatGrowthStatus(result.growthStatus),
                                 style: const TextStyle(
-                                  fontSize: 18,
+                                  fontSize: 16,
                                   color: Colors.black,
                                 ),
                               ),
@@ -162,27 +174,24 @@ Widget buildMetricCard(String label, String value, String unit, Color bgColor, C
   // 통일된 텍스트 색상
   final Color uniformTextColor = Colors.grey[800]!;
   
-  // 아이콘에 따라 buildComparisonItemCute에서 사용하는 것과 동일한 배경색과 아이콘 색상 결정
+  // 아이콘에 따라 배경색과 아이콘 색상 결정
   Color updatedBgColor;
   Color updatedIconColor;
   
   if (icon == Icons.favorite) {
-    // 최고 심박수
     updatedBgColor = Colors.red[50]!;
     updatedIconColor = Colors.red[600]!;
   } else if (icon == Icons.monitor_heart_outlined) {
-    // 평균 심박수
     updatedBgColor = Colors.blue[50]!;
     updatedIconColor = Colors.blue[600]!;
   } else {
-    // 소요 시간
     updatedBgColor = Colors.green[50]!;
     updatedIconColor = Colors.green[600]!;
   }
   
   return Container(
-    width: 98,
-    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+    // 고정 너비 제거하고 사용 가능한 공간을 최대한 활용
+    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
     decoration: BoxDecoration(
       color: updatedBgColor, 
       borderRadius: BorderRadius.circular(12),
@@ -198,9 +207,9 @@ Widget buildMetricCard(String label, String value, String unit, Color bgColor, C
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, color: updatedIconColor, size: 15), 
-        const SizedBox(width: 6),
-        Flexible(
+        Icon(icon, color: updatedIconColor, size: 14),
+        const SizedBox(width: 4),
+        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -212,34 +221,37 @@ Widget buildMetricCard(String label, String value, String unit, Color bgColor, C
                         ? '평균 심박수'
                         : '소요 시간',
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 9,
                   fontWeight: FontWeight.w500,
                   color: uniformTextColor,
                 ),
-                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
-              RichText(
-                text: TextSpan(
-                  children: [
-                    TextSpan(
-                      text: value,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: uniformTextColor,
+              FittedBox(
+                alignment: Alignment.centerLeft,
+                fit: BoxFit.scaleDown,
+                child: RichText(
+                  text: TextSpan(
+                    children: [
+                      TextSpan(
+                        text: value,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: uniformTextColor,
+                        ),
                       ),
-                    ),
-                    TextSpan(
-                      text: ' $unit',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.normal,
-                        color: uniformTextColor.withOpacity(0.8),
+                      TextSpan(
+                        text: ' $unit',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.normal,
+                          color: uniformTextColor.withOpacity(0.8),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -249,6 +261,7 @@ Widget buildMetricCard(String label, String value, String unit, Color bgColor, C
   );
 }
 
+// buildComparisonItemCute 수정 - 텍스트 크기 조정 및 공간 최적화
 Widget buildComparisonItemCute(String label, int diff, String unit, bool isPositive, IconData icon) {
   final sign = diff > 0 ? '+' : '';
   // Determine colors based on the metric label
@@ -281,7 +294,7 @@ Widget buildComparisonItemCute(String label, int diff, String unit, bool isPosit
     child: Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(8), // 패딩 축소
           decoration: BoxDecoration(
             color: Colors.white,
             shape: BoxShape.circle,
@@ -297,10 +310,10 @@ Widget buildComparisonItemCute(String label, int diff, String unit, bool isPosit
           child: Icon(
             icon,
             color: metricColor,
-            size: 20,
+            size: 18, // 아이콘 크기 축소
           ),
         ),
-        const SizedBox(width: 16),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -308,27 +321,31 @@ Widget buildComparisonItemCute(String label, int diff, String unit, bool isPosit
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 13, // 폰트 크기 축소
                   fontWeight: FontWeight.w600,
                   color: Colors.grey[800],
                 ),
+                maxLines: 1, // 최대 1줄로 제한
+                overflow: TextOverflow.ellipsis, // 넘치는 텍스트는 생략
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2), // 간격 축소
               Text(
                 '이전 기록 대비',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 11, // 폰트 크기 축소
                   color: Colors.grey[600],
                 ),
+                maxLines: 1, // 최대 1줄로 제한
+                overflow: TextOverflow.ellipsis, // 넘치는 텍스트는 생략
               ),
             ],
           ),
         ),
         Container(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10), // 패딩 축소
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
             boxShadow: [
               BoxShadow(
                 color: Colors.grey.withOpacity(0.2),
@@ -344,13 +361,13 @@ Widget buildComparisonItemCute(String label, int diff, String unit, bool isPosit
               Icon(
                 isPositive ? Icons.arrow_downward : Icons.arrow_upward,
                 color: metricColor,
-                size: 16,
+                size: 14, // 아이콘 크기 축소
               ),
               const SizedBox(width: 4),
               Text(
                 '$sign$diff $unit',
                 style: TextStyle(
-                  fontSize: 15,
+                  fontSize: 13, // 폰트 크기 축소
                   fontWeight: FontWeight.bold,
                   color: metricColor,
                 ),

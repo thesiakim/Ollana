@@ -174,7 +174,9 @@ Widget _buildVsMeResult(String mountainName) {
   final String timeDiffText = timeDiff != null
       ? timeDiff < 0
           ? "${timeDiff.abs()}분 단축"
-          : "$timeDiff분 증가"
+          : timeDiff > 0
+              ? "$timeDiff분 증가" 
+              : "변화 없음"  // timeDiff가 0인 경우
       : "";
 
   // 현재/이전 기록
@@ -403,21 +405,13 @@ Widget _buildVsMeResult(String mountainName) {
 Container(
   width: double.infinity,
   margin: EdgeInsets.only(bottom: 24),
-  decoration: BoxDecoration(
-    color: cardColor,
-    borderRadius: BorderRadius.circular(20),
-    boxShadow: [
-      BoxShadow(
-        color: Colors.black.withOpacity(0.03),
-        blurRadius: 12,
-        offset: Offset(0, 4),
-      ),
-    ],
-  ),
   child: Padding(
     padding: const EdgeInsets.all(24.0),
     child: Column(
       children: [
+        // 여백 추가하여 전체적으로 아래로 내림
+        SizedBox(height: 30),
+        
         // 뱃지 이미지 (뱃지 외곽선에서 바로 후광이 나오는 효과)
         Center(
           child: Container(
@@ -496,17 +490,32 @@ Container(
           ),
         ),
         
-        // 뱃지 아래에 텍스트 추가
+        // 뱃지 아래에 텍스트와 아이콘 추가
         SizedBox(height: 50),
-        Text(
-          "뱃지를 획득했어요!",
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Colors.amber[700], // 노란색과 어울리는 색상
-            letterSpacing: 0.5,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // 축하하는 아이콘
+            Icon(
+              Icons.celebration_rounded, // 축하 아이콘
+              color: Colors.amber[400],
+              size: 22,
+            ),
+            SizedBox(width: 8),
+            Text(
+              "뱃지를 획득했어요!",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF333333), // 짙은 회색
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
         ),
+        
+        // 추가 여백
+        SizedBox(height: 20),
       ],
     ),
   ),
@@ -690,7 +699,8 @@ Widget _buildModernComparisonItem({
   );
 }
 
-  // 나 vs 친구 모드 결과 화면 - 오버플로우 수정 버전
+
+// 나 vs 친구 모드 결과 화면 - 수정된 디자인
 Widget _buildVsFriendResult(String mountainName) {
   final appState = Provider.of<AppState>(context, listen: false);
   final modeData = appState.modeData;
@@ -698,7 +708,9 @@ Widget _buildVsFriendResult(String mountainName) {
   final String timeDiffText = timeDiff != null
       ? timeDiff < 0
           ? "${timeDiff.abs()}분 단축"
-          : "$timeDiff분 증가"
+          : timeDiff > 0
+              ? "$timeDiff분 증가" 
+              : "변화 없음"  // timeDiff가 0인 경우
       : "";
 
   // badge URL 가져오기
@@ -745,400 +757,329 @@ Widget _buildVsFriendResult(String mountainName) {
     avgHrComment = '평균 심박수 변화 없음';
   }
 
-  // 색상 상수 정의
-  final Color primaryColor = Color(0xFF52A486);
-  final Color orangeColor = Colors.orange[700]!;
+  // 색상 정의 - VsMe와 동일한 컬러 스킴이지만 위치 변경
+  final Color primaryColor = Color(0xFF53A487);
+  final Color friendColor = Color(0xFF8E9EAB);  // 친구 기록 색상 (청회색) - previousColor와 동일
+  final Color myColor = Color(0xFF3A8A6E);     // 내 기록 색상 (진한 녹색) - currentColor와 동일
+  final Color positiveColor = Color(0xFF53A487);  // 긍정적 변화 (녹색)
+  final Color negativeColor = Color(0xFFE57373);  // 부정적 변화 (빨간색)
+  final Color neutralColor = Color(0xFF9E9E9E);   // 중립적 색상 (회색)
+  final Color cardColor = Colors.white;
+  final Color bgColor = Color(0xFFF8F9FA);
 
-  // SingleChildScrollView를 사용하여 오버플로우 방지
   return SingleChildScrollView(
     child: Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '$mountainName 등반 결과',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          // 헤더 섹션 - VsMe와 동일한 디자인
+          Container(
+            margin: EdgeInsets.only(bottom: 24),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.people_rounded,
+                    size: 18,
+                    color: primaryColor,
+                  ),
+                ),
+                SizedBox(width: 12),
+                Text(
+                  '친구와의 등산 기록 비교',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2D3748),
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ],
+            ),
           ),
-          SizedBox(height: 16),
 
-          // 결과 요약 카드
-          Card(
-            elevation: 4,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  Text(
-                    '나 vs 친구',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          // 날짜 비교 카드 - VsMe와 동일한 디자인 (위치만 변경)
+          Container(
+            margin: EdgeInsets.only(bottom: 24),
+            padding: EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 12,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                // 친구 날짜 (왼쪽)
+                Expanded(
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.event_outlined,
+                        size: 16,
+                        color: friendColor,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        friendDate,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: friendColor,
+                        ),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: 24),
-
-                  Container(
-                    margin: EdgeInsets.symmetric(vertical: 16),
-                    padding: EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 8,
-                          offset: Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        // 비교 헤더
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Container(
-                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: Colors.orange[50],
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: Colors.orange[200]!, width: 1),
-                              ),
-                              child: Text(
-                                '내 기록',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.orange[800],
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ),
-                            Container(
-                              padding: EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.grey[200],
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                Icons.compare_arrows,
-                                color: Colors.grey[700],
-                                size: 20,
-                              ),
-                            ),
-                            Container(
-                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: Colors.green[50],
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: Colors.green[200]!, width: 1),
-                              ),
-                              child: Text(
-                                '친구 기록',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.green[800],
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        
-                        SizedBox(height: 20),
-                        
-                        // 날짜 비교
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              currentDate,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey[700],
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            Text(
-                              '날짜',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[500],
-                              ),
-                            ),
-                            Text(
-                              friendDate,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey[700],
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                        
-                        // 구분선
-                        Padding(
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          child: Divider(color: Colors.grey[200], thickness: 1),
-                        ),
-                        
-                        // 시간 비교
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              _formatMinutes(currTimeSeconds),
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.orange[700],
-                              ),
-                            ),
-                            Column(
-                              children: [
-                                Icon(Icons.timer_outlined, color: Colors.grey[600], size: 18),
-                                SizedBox(height: 4),
-                                Text(
-                                  '소요 시간',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Text(
-                              _formatMinutes(friendTimeMinutes),
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green[700],
-                              ),
-                            ),
-                          ],
-                        ),
-                        
-                        // 구분선
-                        Padding(
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          child: Divider(color: Colors.grey[200], thickness: 1),
-                        ),
-                        
-                        // 최고 심박수 비교
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              '${widget.resultData['maxHeartRate'] ?? 0} bpm',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.red[700],
-                              ),
-                            ),
-                            Column(
-                              children: [
-                                Icon(Icons.favorite, color: Colors.red, size: 18),
-                                SizedBox(height: 4),
-                                Text(
-                                  '최고 심박수',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Text(
-                              '$friendMaxHeartRate bpm',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.red[700],
-                              ),
-                            ),
-                          ],
-                        ),
-                        
-                        // 구분선
-                        Padding(
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          child: Divider(color: Colors.grey[200], thickness: 1),
-                        ),
-                        
-                        // 평균 심박수 비교
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              '${widget.resultData['averageHeartRate'] is double ? (widget.resultData['averageHeartRate'] as double).toInt() : widget.resultData['averageHeartRate'] ?? 0} bpm',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.red[400],
-                              ),
-                            ),
-                            Column(
-                              children: [
-                                Icon(Icons.favorite_border, color: Colors.red[400], size: 18),
-                                SizedBox(height: 4),
-                                Text(
-                                  '평균 심박수',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Text(
-                              '${friendAvgHeartRate.round()} bpm',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.red[400],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                ),
+                
+                // VS 표시 - VsMe와 동일한 디자인
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.grey[300]!,
+                      width: 1,
                     ),
                   ),
-
-                  SizedBox(height: 20),
-
-                  // 성과 비교 표시
-                  Container(
-                    margin: EdgeInsets.symmetric(vertical: 8),
-                    padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: timeDiff != null && timeDiff < 0 
-                          ? Color(0xFFE8F5EC) 
-                          : Color(0xFFFFF3E0),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: timeDiff != null && timeDiff < 0 
-                            ? primaryColor.withOpacity(0.3) 
-                            : orangeColor.withOpacity(0.3),
-                        width: 1,
+                  child: Center(
+                    child: Text(
+                      'VS',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[600],
                       ),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          timeDiff != null && timeDiff < 0 
-                              ? Icons.trending_down 
-                              : Icons.trending_up,
-                          color: timeDiff != null && timeDiff < 0 
-                              ? primaryColor 
-                              : orangeColor,
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          timeDiffText,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: timeDiff != null && timeDiff < 0 
-                                ? primaryColor 
-                                : orangeColor,
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
-                  
-                  SizedBox(height: 20),
+                ),
+                
+                // 내 날짜 (오른쪽)
+                Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Icon(
+                        Icons.event_outlined,
+                        size: 16,
+                        color: myColor,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        currentDate,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: myColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
 
-                  // 뱃지 이미지 표시
-                  if (badgeUrl.isNotEmpty)
-                    Container(
-                      width: 120,
-                      height: 120,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.amber.withOpacity(0.3),
-                            blurRadius: 10,
-                            spreadRadius: 2,
+          // 통합 비교 카드 - VsMe와 유사한 디자인 (위치만 변경)
+          Container(
+            margin: EdgeInsets.only(bottom: 24),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 12,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                // 등산 시간 비교
+                _buildComparisonItem(
+                  title: '총 등산 시간',
+                  icon: Icons.timer_outlined,
+                  iconColor: primaryColor,
+                  friendValue: _formatMinutes(friendTimeMinutes),
+                  myValue: _formatMinutes(currTimeSeconds),
+                  changeText: timeDiffText,
+                  isPositive: timeDiff != null && timeDiff < 0,
+                  friendColor: friendColor,
+                  myColor: myColor,
+                  showDivider: true,
+                  iconBgColor: primaryColor.withOpacity(0.1),
+                ),
+
+                // 최고 심박수 비교
+                _buildComparisonItem(
+                  title: '최고 심박수',
+                  icon: Icons.monitor_heart_rounded,
+                  iconColor: primaryColor,
+                  friendValue: '$friendMaxHeartRate bpm',
+                  myValue: '${widget.resultData['maxHeartRate'] ?? 0} bpm',
+                  changeText: maxHrDiff > 0 
+                    ? '${maxHrDiff} bpm 증가' 
+                    : maxHrDiff < 0 
+                      ? '${maxHrDiff.abs()} bpm 감소' 
+                      : '변화 없음',
+                  isPositive: maxHrDiff < 0,
+                  friendColor: friendColor,
+                  myColor: myColor,
+                  showDivider: true,
+                  iconBgColor: primaryColor.withOpacity(0.1),
+                ),
+
+                // 평균 심박수 비교
+                _buildComparisonItem(
+                  title: '평균 심박수',
+                  icon: Icons.favorite_border_rounded,
+                  iconColor: primaryColor,
+                  friendValue: '${friendAvgHeartRate.round()} bpm',
+                  myValue: '${widget.resultData['averageHeartRate'] is double ? (widget.resultData['averageHeartRate'] as double).toInt() : widget.resultData['averageHeartRate'] ?? 0} bpm',
+                  changeText: avgHrDiff > 0 
+                    ? '${avgHrDiff.toStringAsFixed(1)} bpm 증가' 
+                    : avgHrDiff < 0 
+                      ? '${avgHrDiff.abs().toStringAsFixed(1)} bpm 감소' 
+                      : '변화 없음',
+                  isPositive: avgHrDiff < 0,
+                  friendColor: friendColor,
+                  myColor: myColor,
+                  showDivider: false,
+                  iconBgColor: primaryColor.withOpacity(0.1),
+                ),
+              ],
+            ),
+          ),
+          
+          // 뱃지 표시 - VsMe와 동일한 디자인
+          Container(
+            width: double.infinity,
+            margin: EdgeInsets.only(bottom: 24),
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                children: [
+                  // 여백 추가하여 전체적으로 아래로 내림
+                  SizedBox(height: 30),
+                  
+                  // 뱃지 이미지 (뱃지 외곽선에서 바로 후광이 나오는 효과)
+                  Center(
+                    child: Container(
+                      width: 160,
+                      height: 160,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // 후광 효과 레이어
+                          Container(
+                            width: 200,
+                            height: 200,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                // 바깥쪽 후광 (넓게 퍼지는 빛) - 더 은은하고 밝은 노란색
+                                BoxShadow(
+                                  color: Colors.amber[100]!.withOpacity(0.9),
+                                  blurRadius: 50,
+                                  spreadRadius: 20,
+                                ),
+                                // 중간 후광 (선명한 빛) - 더 은은하고 밝은 노란색
+                                BoxShadow(
+                                  color: Colors.amber[200]!.withOpacity(0.8),
+                                  blurRadius: 30,
+                                  spreadRadius: 12,
+                                ),
+                                // 안쪽 후광 (강한 빛) - 더 은은하고 밝은 노란색
+                                BoxShadow(
+                                  color: Colors.amber[300]!.withOpacity(0.7),
+                                  blurRadius: 20,
+                                  spreadRadius: 6,
+                                ),
+                              ],
+                            ),
+                          ),
+                          
+                          // 뱃지 이미지
+                          Container(
+                            width: 160,
+                            height: 160,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.amber[200]!,
+                                width: 2,
+                              ),
+                            ),
+                            child: ClipOval(
+                              child: badgeUrl.isNotEmpty
+                                ? Image.network(
+                                    badgeUrl,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) => 
+                                      Container(
+                                        color: Colors.amber[50],
+                                        child: Icon(
+                                          Icons.emoji_events_rounded, 
+                                          size: 80,
+                                          color: Colors.amber[500],
+                                        ),
+                                      ),
+                                  )
+                                : Container(
+                                    color: Colors.amber[50],
+                                    child: Icon(
+                                      Icons.emoji_events_rounded, 
+                                      size: 80,
+                                      color: Colors.amber[500],
+                                    ),
+                                  ),
+                            ),
                           ),
                         ],
                       ),
-                      child: ClipOval(
-                        child: Image.network(
-                          badgeUrl,
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) => Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.error_outline,
-                                  size: 40, color: Colors.grey),
-                              SizedBox(height: 8),
-                              Text('이미지를 불러올 수 없습니다',
-                                  style: TextStyle(color: Colors.grey)),
-                            ],
-                          ),
-                        ),
-                      ),
-                    )
-                  else
-                    Container(
-                      width: 120,
-                      height: 120,
-                      decoration: BoxDecoration(
-                        color: Colors.amber.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.emoji_events,
-                        size: 80,
-                        color: Colors.amber,
-                      ),
-                    ),
-
-                  SizedBox(height: 20),
-
-                  // 심박수 차이 카드
-                  Container(
-                    padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.favorite, color: Colors.red, size: 16),
-                            SizedBox(width: 8),
-                            Text(
-                              maxHrComment,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Icon(Icons.favorite_border, color: Colors.red, size: 16),
-                            SizedBox(width: 8),
-                            Text(
-                              avgHrComment,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
                     ),
                   ),
+                  
+                  // 뱃지 아래에 텍스트와 아이콘 추가
+                  SizedBox(height: 50),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // 축하하는 아이콘
+                      Icon(
+                        Icons.celebration_rounded,
+                        color: Colors.amber[400],
+                        size: 22,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        "뱃지를 획득했어요!",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF333333),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                  
+                  // 추가 여백
+                  SizedBox(height: 20),
                 ],
               ),
             ),
@@ -1149,7 +1090,180 @@ Widget _buildVsFriendResult(String mountainName) {
   );
 }
 
-  // 일반 등산 모드 결과 화면 개선
+// 나 vs 친구용 비교 아이템 위젯 (위치만 변경)
+Widget _buildComparisonItem({
+  required String title,
+  required IconData icon,
+  required Color iconColor,
+  required String friendValue,
+  required String myValue,
+  required String changeText,
+  required bool isPositive,
+  required Color friendColor,
+  required Color myColor,
+  required bool showDivider,
+  required Color iconBgColor,
+}) {
+  final Color positiveColor = Color(0xFF53A487);
+  final Color negativeColor = Color(0xFFE57373);
+  final Color neutralColor = Color(0xFF9E9E9E);
+  
+  Color getChangeColor() {
+    if (isPositive) return positiveColor;
+    if (!isPositive && changeText != '변화 없음') return negativeColor;
+    return neutralColor;
+  }
+  
+  final changeColor = getChangeColor();
+  
+  return Column(
+    children: [
+      Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          children: [
+            // 타이틀과 아이콘
+            Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: iconBgColor,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    icon,
+                    size: 18,
+                    color: iconColor,
+                  ),
+                ),
+                SizedBox(width: 12),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF2D3748),
+                  ),
+                ),
+                Spacer(),
+                
+                // 변화량 표시 (우측 정렬)
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: changeColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isPositive 
+                          ? Icons.arrow_downward_rounded 
+                          : changeText != '변화 없음'
+                            ? Icons.arrow_upward_rounded
+                            : Icons.remove_rounded,
+                        size: 14,
+                        color: changeColor,
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        changeText,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: changeColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            
+            SizedBox(height: 20),
+            
+            // 값 비교 - 깔끔한 레이아웃 (위치 변경)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // 친구 값 (왼쪽)
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '친구 기록',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: friendColor.withOpacity(0.7),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        friendValue,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: friendColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // 화살표 아이콘
+                Icon(
+                  Icons.east_rounded,
+                  size: 20,
+                  color: Colors.grey[300],
+                ),
+                
+                // 내 값 (오른쪽)
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '내 기록',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: myColor.withOpacity(0.7),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        myValue,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: myColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      
+      // 구분선 (마지막 항목이 아닐 경우에만)
+      if (showDivider)
+        Divider(
+          color: Colors.grey[100],
+          thickness: 2,
+          height: 1,
+        ),
+    ],
+  );
+}
+
+// 일반 등산 모드 결과 화면 - 색상 일관성 개선 및 간결한 디자인
 Widget _buildGeneralResult(String mountainName) {
   final appState = Provider.of<AppState>(context, listen: false);
   final String badgeUrl = widget.resultData['badge'] ?? '';
@@ -1173,340 +1287,341 @@ Widget _buildGeneralResult(String mountainName) {
       ? '${(distance * 1000).toInt()}m'
       : '${distance.toStringAsFixed(1)}km';
 
-  // 색상 상수 정의
-  final Color primaryColor = Color(0xFF52A486);
-  final Color backgroundColor = Color(0xFFFFFBE6);
+  // 색상 정의 - VsMe/VsFriend와 동일한 컬러 스킴
+  final Color primaryColor = Color(0xFF53A487);
+  final Color textColor = Color(0xFF2D3748);    // 일반 텍스트 색상
+  final Color valueColor = Color(0xFF3A8A6E);   // 값 표시 색상 (진한 녹색)
   final Color cardColor = Colors.white;
   
   return SingleChildScrollView(
     child: Padding(
-      padding: const EdgeInsets.all(20.0),
+      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 상단 타이틀
+          // 헤더 섹션 - VsMe/VsFriend와 동일한 디자인
           Container(
             margin: EdgeInsets.only(bottom: 24),
-            child: Column(
+            child: Row(
               children: [
-                Text(
-                  '$mountainName 등반 결과',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF333333),
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.hiking_rounded,
+                    size: 18,
+                    color: primaryColor,
                   ),
                 ),
-                SizedBox(height: 8),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Color(0xFFEEF7F2),
-                    borderRadius: BorderRadius.circular(20),
+                SizedBox(width: 12),
+                Text(
+                  '나의 등산 정보',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                    letterSpacing: 0.2,
                   ),
-                  child: Text(
-                    currentDate,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: primaryColor,
-                    ),
+                ),
+              ],
+            ),
+          ),
+
+          // 날짜 카드 - VsMe/VsFriend와 유사한 디자인
+          Container(
+            margin: EdgeInsets.only(bottom: 24),
+            padding: EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 12,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.event_outlined,
+                  size: 16,
+                  color: valueColor,
+                ),
+                SizedBox(width: 8),
+                Text(
+                  currentDate,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: valueColor,
                   ),
                 ),
               ],
             ),
           ),
           
-          // 뱃지 표시
+          // 등산 정보 카드 - 통합형 간결한 디자인
           Container(
             margin: EdgeInsets.only(bottom: 24),
-            child: badgeUrl.isNotEmpty
-                ? Container(
-                    width: 180,
-                    height: 180,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.amber.withOpacity(0.3),
-                          blurRadius: 20,
-                          spreadRadius: 5,
-                        ),
-                      ],
-                    ),
-                    child: ClipOval(
-                      child: Image.network(
-                        badgeUrl,
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) => Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.error_outline,
-                                size: 50, color: Colors.grey),
-                            SizedBox(height: 8),
-                            Text('이미지를 불러올 수 없습니다',
-                                style: TextStyle(color: Colors.grey)),
-                          ],
-                        ),
-                      ),
-                    ),
-                  )
-                : Container(
-                    width: 180,
-                    height: 180,
-                    decoration: BoxDecoration(
-                      color: Colors.amber.withOpacity(0.1),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.amber.withOpacity(0.2),
-                          blurRadius: 15,
-                          spreadRadius: 5,
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      Icons.emoji_events,
-                      size: 100,
-                      color: Colors.amber,
-                    ),
-                  ),
-          ),
-          
-          // 등산 결과 정보 카드
-          Container(
-            padding: EdgeInsets.all(24),
             decoration: BoxDecoration(
               color: cardColor,
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 15,
-                  offset: Offset(0, 5),
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 12,
+                  offset: Offset(0, 4),
                 ),
               ],
             ),
             child: Column(
               children: [
                 // 거리 정보
-                Container(
-                  margin: EdgeInsets.only(bottom: 20),
-                  padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: Color(0xFFFAFFF7),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: primaryColor.withOpacity(0.3),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: primaryColor.withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.straighten,
-                          size: 24,
-                          color: primaryColor,
-                        ),
-                      ),
-                      SizedBox(width: 16),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '총 산행 거리',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            distanceFormatted,
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: primaryColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                _buildCompactInfoItem(
+                  title: '총 산행 거리',
+                  icon: Icons.straighten,
+                  iconColor: primaryColor,
+                  value: distanceFormatted,
+                  valueColor: valueColor,
+                  iconBgColor: primaryColor.withOpacity(0.1),
+                  showDivider: true,
                 ),
                 
                 // 시간 정보
-                Container(
-                  margin: EdgeInsets.only(bottom: 20),
-                  padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: Color(0xFFFFF9E6),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: Colors.orange.withOpacity(0.3),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.timer_outlined,
-                          size: 24,
-                          color: Colors.orange[700],
-                        ),
-                      ),
-                      SizedBox(width: 16),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '총 등산 시간',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            timeFormatted,
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.orange[700],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                _buildCompactInfoItem(
+                  title: '총 등산 시간',
+                  icon: Icons.timer_outlined,
+                  iconColor: primaryColor,
+                  value: timeFormatted,
+                  valueColor: valueColor,
+                  iconBgColor: primaryColor.withOpacity(0.1),
+                  showDivider: true,
                 ),
                 
-                // 심박수 정보
-                Container(
-                  padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: Color(0xFFFFF0F0),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: Colors.red.withOpacity(0.3),
-                      width: 1,
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
+                // 최고 심박수
+                _buildCompactInfoItem(
+                  title: '최고 심박수',
+                  icon: Icons.monitor_heart_rounded,
+                  iconColor: primaryColor,
+                  value: '$maxHeartRate bpm',
+                  valueColor: valueColor,
+                  iconBgColor: primaryColor.withOpacity(0.1),
+                  showDivider: true,
+                ),
+                
+                // 평균 심박수
+                _buildCompactInfoItem(
+                  title: '평균 심박수',
+                  icon: Icons.favorite_border_rounded,
+                  iconColor: primaryColor,
+                  value: '$avgHeartRate bpm',
+                  valueColor: valueColor,
+                  iconBgColor: primaryColor.withOpacity(0.1),
+                  showDivider: false,
+                ),
+              ],
+            ),
+          ),
+          
+          // 뱃지 표시 - VsMe/VsFriend와 동일한 디자인
+          Container(
+            width: double.infinity,
+            margin: EdgeInsets.only(bottom: 24),
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                children: [
+                  // 여백 추가하여 전체적으로 아래로 내림
+                  SizedBox(height: 30),
+                  
+                  // 뱃지 이미지 (뱃지 외곽선에서 바로 후광이 나오는 효과)
+                  Center(
+                    child: Container(
+                      width: 160,
+                      height: 160,
+                      child: Stack(
+                        alignment: Alignment.center,
                         children: [
+                          // 후광 효과 레이어
                           Container(
-                            padding: EdgeInsets.all(10),
+                            width: 200,
+                            height: 200,
                             decoration: BoxDecoration(
-                              color: Colors.white,
                               shape: BoxShape.circle,
                               boxShadow: [
+                                // 바깥쪽 후광 (넓게 퍼지는 빛) - 더 은은하고 밝은 노란색
                                 BoxShadow(
-                                  color: Colors.red.withOpacity(0.2),
-                                  blurRadius: 5,
-                                  spreadRadius: 1,
+                                  color: Colors.amber[100]!.withOpacity(0.9),
+                                  blurRadius: 50,
+                                  spreadRadius: 20,
+                                ),
+                                // 중간 후광 (선명한 빛) - 더 은은하고 밝은 노란색
+                                BoxShadow(
+                                  color: Colors.amber[200]!.withOpacity(0.8),
+                                  blurRadius: 30,
+                                  spreadRadius: 12,
+                                ),
+                                // 안쪽 후광 (강한 빛) - 더 은은하고 밝은 노란색
+                                BoxShadow(
+                                  color: Colors.amber[300]!.withOpacity(0.7),
+                                  blurRadius: 20,
+                                  spreadRadius: 6,
                                 ),
                               ],
                             ),
-                            child: Icon(
-                              Icons.favorite,
-                              size: 24,
-                              color: Colors.red,
-                            ),
                           ),
-                          SizedBox(width: 16),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '최고 심박수',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey[600],
-                                ),
+                          
+                          // 뱃지 이미지
+                          Container(
+                            width: 160,
+                            height: 160,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.amber[200]!,
+                                width: 2,
                               ),
-                              SizedBox(height: 4),
-                              Text(
-                                '$maxHeartRate bpm',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.red[700],
-                                ),
-                              ),
-                            ],
+                            ),
+                            child: ClipOval(
+                              child: badgeUrl.isNotEmpty
+                                ? Image.network(
+                                    badgeUrl,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) => 
+                                      Container(
+                                        color: Colors.amber[50],
+                                        child: Icon(
+                                          Icons.emoji_events_rounded, 
+                                          size: 80,
+                                          color: Colors.amber[500],
+                                        ),
+                                      ),
+                                  )
+                                : Container(
+                                    color: Colors.amber[50],
+                                    child: Icon(
+                                      Icons.emoji_events_rounded, 
+                                      size: 80,
+                                      color: Colors.amber[500],
+                                    ),
+                                  ),
+                            ),
                           ),
                         ],
                       ),
-                      SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.red.withOpacity(0.1),
-                                  blurRadius: 5,
-                                  spreadRadius: 1,
-                                ),
-                              ],
-                            ),
-                            child: Icon(
-                              Icons.favorite_border,
-                              size: 24,
-                              color: Colors.red[300],
-                            ),
-                          ),
-                          SizedBox(width: 16),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '평균 심박수',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                '$avgHeartRate bpm',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.red[300],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
+                    ),
+                  ),
+                  
+                  // 뱃지 아래에 텍스트와 아이콘 추가
+                  SizedBox(height: 50),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // 축하하는 아이콘
+                      Icon(
+                        Icons.celebration_rounded,
+                        color: Colors.amber[400],
+                        size: 22,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        "뱃지를 획득했어요!",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF333333),
+                          letterSpacing: 0.5,
+                        ),
                       ),
                     ],
                   ),
-                ),
-              ],
+                  
+                  // 추가 여백
+                  SizedBox(height: 20),
+                ],
+              ),
             ),
           ),
         ],
       ),
     ),
+  );
+}
+
+// 일반 등산 모드용 간결한 정보 아이템 위젯
+Widget _buildCompactInfoItem({
+  required String title,
+  required IconData icon,
+  required Color iconColor,
+  required String value,
+  required Color valueColor,
+  required Color iconBgColor,
+  required bool showDivider,
+}) {
+  return Column(
+    children: [
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
+        child: Row(
+          children: [
+            // 아이콘 영역
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: iconBgColor,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                icon,
+                size: 18,
+                color: iconColor,
+              ),
+            ),
+            SizedBox(width: 16),
+            
+            // 타이틀 및 값 영역
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF666666),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: valueColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      
+      // 구분선 (필요한 경우에만)
+      if (showDivider)
+        Divider(
+          color: Colors.grey[100],
+          thickness: 2,
+          height: 1,
+        ),
+    ],
   );
 }
 

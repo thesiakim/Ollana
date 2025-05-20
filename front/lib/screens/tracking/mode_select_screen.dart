@@ -321,108 +321,113 @@ Widget _buildEnhancedModeCard({
   );
 }
 
-  // 이전 등산 기록 목록 모달 표시 - 디자인 개선
   Future<void> _showTrackingOptionsModal(
-      BuildContext context, AppState appState) async {
-    final modeService = ModeService();
-    _selectedRecordId = null;
+    BuildContext context, AppState appState) async {
+  final modeService = ModeService();
+  _selectedRecordId = null;
 
-    try {
-      // 로딩 표시 - 디자인 개선
-      if (context.mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (BuildContext context) {
-            return Center(
-              child: Container(
-                padding: EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 10,
-                      spreadRadius: 0,
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircularProgressIndicator(
+  try {
+    // 로딩 표시 - 간결한 디자인
+    if (context.mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Container(
+              padding: EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
                       valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF52A486)),
                     ),
-                    SizedBox(height: 16),
-                    Text(
-                      '기록을 불러오는 중...',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[700],
-                      ),
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    '기록을 불러오는 중...',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[700],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            );
-          },
-        );
-      }
-
-      // 이전 등산 기록 목록 가져오기
-      final mountainId = appState.selectedRoute?.mountainId ?? 0;
-      final pathId = appState.selectedRoute?.id ?? 0;
-      final token = appState.accessToken ?? '';
-
-      final recordsList = await modeService.getMyTrackingOptions(
-        mountainId: mountainId.toInt(),
-        pathId: pathId.toInt(),
-        token: token,
+            ),
+          );
+        },
       );
+    }
 
-      // 로딩 다이얼로그 닫기
-      if (!mounted) return;
-      if (context.mounted) Navigator.of(context).pop();
+    // 이전 등산 기록 목록 가져오기
+    final mountainId = appState.selectedRoute?.mountainId ?? 0;
+    final pathId = appState.selectedRoute?.id ?? 0;
+    final token = appState.accessToken ?? '';
 
-      if (recordsList.isEmpty) {
-        // 이전 기록이 없는 경우
-        if (!mounted) return;
-        if (context.mounted) {
-          _showNoRecordsDialog(context);
-        }
-        return;
-      }
+    final recordsList = await modeService.getMyTrackingOptions(
+      mountainId: mountainId.toInt(),
+      pathId: pathId.toInt(),
+      token: token,
+    );
 
-      // 이전 기록이 있는 경우 목록 표시 - 디자인 개선
+    // 로딩 다이얼로그 닫기
+    if (!mounted) return;
+    if (context.mounted) Navigator.of(context).pop();
+
+    if (recordsList.isEmpty) {
+      // 이전 기록이 없는 경우
       if (!mounted) return;
       if (context.mounted) {
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return StatefulBuilder(
-              builder: (context, setState) {
-                return Dialog(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
+        _showNoRecordsDialog(context);
+      }
+      return;
+    }
+
+    // 이전 기록이 있는 경우 목록 표시 - 디자인 개선
+    if (!mounted) return;
+    if (context.mounted) {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return StatefulBuilder(
+            builder: (context, setState) {
+              return Dialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                insetPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                child: Container(
+                  width: double.infinity,
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.8,
                   ),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 헤더 부분
+                      Container(
+                        padding: EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Color(0xFF52A486).withOpacity(0.1),
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(20),
+                            topRight: Radius.circular(20),
+                          ),
+                        ),
+                        child: Row(
                           children: [
                             Container(
-                              padding: EdgeInsets.all(8),
+                              padding: EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: Color(0xFF52A486).withOpacity(0.1),
+                                color: Colors.white,
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(
@@ -432,245 +437,268 @@ Widget _buildEnhancedModeCard({
                               ),
                             ),
                             SizedBox(width: 12),
-                            Text(
-                              '이전 등산 기록',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF333333),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '이전 등산 기록',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF333333),
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    '비교할 기록을 선택해주세요',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.grey[700],
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
-                        SizedBox(height: 16),
-                        Text(
-                          '비교할 기록을 선택해주세요',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        SizedBox(height: 16),
-                        Container(
-                          constraints: BoxConstraints(
-                            maxHeight: MediaQuery.of(context).size.height * 0.4,
-                          ),
-                          child: ListView.builder(
-                            shrinkWrap: true,
-                            itemCount: recordsList.length,
-                            itemBuilder: (context, index) {
-                              final record = recordsList[index];
-                              final recordId = record['recordId'];
-                              final date = record['date'];
-                              final time = record['time'];
-                              debugPrint('date: $date, time: $time');
+                      ),
+                      
+                      // 목록 부분
+                      Flexible(
+                        child: ListView.builder(
+                          shrinkWrap: true,
+                          padding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                          itemCount: recordsList.length,
+                          itemBuilder: (context, index) {
+                            final record = recordsList[index];
+                            final recordId = record['recordId'];
+                            final date = record['date'];
+                            final time = record['time'];
 
-                              final isSelected = _selectedRecordId == recordId;
+                            final isSelected = _selectedRecordId == recordId;
 
-                              return Container(
-                                margin: EdgeInsets.only(bottom: 12),
-                                child: InkWell(
-                                  onTap: () {
-                                    setState(() {
-                                      _selectedRecordId = recordId;
-                                    });
-                                    
-                                    // 선택한 기록 정보 디버그 출력
-                                    debugPrint('===== 선택한 과거 기록 정보 =====');
-                                    debugPrint('기록 ID: $recordId');
-                                    debugPrint('날짜: $date');
-                                    debugPrint('시간(분): $time');
-                                    debugPrint('시간(포맷): ${_formatMinutes(time)}');
-                                    debugPrint('=============================');
+                            return Container(
+                              margin: EdgeInsets.only(bottom: 8),
+                              child: InkWell(
+                                onTap: () {
+                                  setState(() {
+                                    _selectedRecordId = recordId;
+                                  });
+                                  
+                                  // 디버그 출력 및 앱 상태 업데이트 (기존 코드)
+                                  debugPrint('===== 선택한 과거 기록 정보 =====');
+                                  debugPrint('기록 ID: $recordId');
+                                  debugPrint('날짜: $date');
+                                  debugPrint('시간(분): $time');
+                                  debugPrint('시간(포맷): ${_formatMinutes(time)}');
+                                  debugPrint('=============================');
 
-                                    // 선택한 기록의 정보를 AppState에 저장
-                                    appState.setPreviousRecordData(
-                                      date: date,
-                                      time: time,
-                                    );
-                                  },
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Container(
-                                    padding: EdgeInsets.all(16),
-                                    decoration: BoxDecoration(
+                                  appState.setPreviousRecordData(
+                                    date: date,
+                                    time: time,
+                                  );
+                                },
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  padding: EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? Color(0xFF52A486).withOpacity(0.1)
+                                        : Colors.grey[50],
+                                    border: Border.all(
                                       color: isSelected
-                                          ? Color(0xFF52A486).withOpacity(0.1)
-                                          : Colors.grey[50],
-                                      border: Border.all(
-                                        color: isSelected
-                                            ? Color(0xFF52A486)
-                                            : Colors.grey.shade200,
-                                        width: isSelected ? 2 : 1,
+                                          ? Color(0xFF52A486)
+                                          : Colors.grey.shade200,
+                                      width: isSelected ? 2 : 1,
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      // 선택 표시 원
+                                      Container(
+                                        width: 22,
+                                        height: 22,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: isSelected 
+                                              ? Color(0xFF52A486)
+                                              : Colors.transparent,
+                                          border: Border.all(
+                                            color: isSelected 
+                                              ? Color(0xFF52A486)
+                                              : Colors.grey.shade400,
+                                            width: 2,
+                                          ),
+                                        ),
+                                        child: isSelected 
+                                          ? Icon(
+                                              Icons.check,
+                                              color: Colors.white,
+                                              size: 14,
+                                            )
+                                          : null,
                                       ),
+                                      SizedBox(width: 12),
+
+                                      // 날짜와 시간 정보
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              date,
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 14,
+                                                color: isSelected
+                                                  ? Color(0xFF52A486)
+                                                  : Colors.black87,
+                                              ),
+                                            ),
+                                            SizedBox(height: 4),
+                                            Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.access_time_rounded,
+                                                  size: 12,
+                                                  color: Colors.grey[600],
+                                                ),
+                                                SizedBox(width: 4),
+                                                Text(
+                                                  '${_formatMinutes(time)}',
+                                                  style: TextStyle(
+                                                    color: Colors.grey[600],
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      
+                      // 버튼 영역
+                      Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            // 취소 버튼
+                            Expanded(
+                              child: SizedBox(
+                                height: 48,
+                                child: OutlinedButton(
+                                  onPressed: () {
+                                    Navigator.of(context).pop();
+                                  },
+                                  style: OutlinedButton.styleFrom(
+                                    side: BorderSide(color: Colors.grey.shade300),
+                                    shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
-                                    child: Row(
-                                      children: [
-                                        // 선택 여부 표시
-                                        Container(
-                                          width: 24,
-                                          height: 24,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            color: isSelected 
-                                                ? Color(0xFF52A486)
-                                                : Colors.transparent,
-                                            border: Border.all(
-                                              color: isSelected 
-                                                ? Color(0xFF52A486)
-                                                : Colors.grey.shade400,
-                                              width: 2,
-                                            ),
-                                          ),
-                                          child: isSelected 
-                                            ? Icon(
-                                                Icons.check,
-                                                color: Colors.white,
-                                                size: 14,
-                                              )
-                                            : null,
-                                        ),
-                                        SizedBox(width: 16),
-
-                                        // 날짜와 시간 정보
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                date,
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.w600,
-                                                  fontSize: 15,
-                                                  color: Colors.black87,
-                                                ),
-                                              ),
-                                              SizedBox(height: 4),
-                                              Text(
-                                                '소요 시간: ${_formatMinutes(time)}',
-                                                style: TextStyle(
-                                                  color: Colors.grey.shade700,
-                                                  fontSize: 13,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
+                                  ),
+                                  child: Text(
+                                    '취소',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade700,
+                                      fontWeight: FontWeight.w500,
                                     ),
                                   ),
                                 ),
-                              );
-                            },
-                          ),
-                        ),
-                        SizedBox(height: 24),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            // 취소 버튼
-                            OutlinedButton(
-                              onPressed: () {
-                                Navigator.of(context).pop();
-                              },
-                              style: OutlinedButton.styleFrom(
-                                side: BorderSide(color: Colors.grey.shade300),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 24, 
-                                  vertical: 12
-                                ),
-                              ),
-                              child: Text(
-                                '취소',
-                                style: TextStyle(
-                                  color: Colors.grey.shade700,
-                                ),
                               ),
                             ),
-
+                            SizedBox(width: 12),
+                            
                             // 시작하기 버튼
-                            ElevatedButton(
-                              onPressed: _selectedRecordId != null
-                                  ? () {
-                                      Navigator.of(context).pop();
+                            Expanded(
+                              child: SizedBox(
+                                height: 48,
+                                child: ElevatedButton(
+                                  onPressed: _selectedRecordId != null
+                                      ? () {
+                                          Navigator.of(context).pop();
 
-                                      // 선택된 최종 기록 정보 출력
-                                      final recordId = _selectedRecordId;
-                                      final selectedRecord =
-                                          recordsList.firstWhere(
-                                        (record) =>
-                                            record['recordId'] == recordId,
-                                        orElse: () => {
-                                          'recordId': 0,
-                                          'date': '알 수 없음',
-                                          'time': 0
-                                        },
-                                      );
+                                          // 선택된 기록 정보 출력 (기존 코드)
+                                          final recordId = _selectedRecordId;
+                                          final selectedRecord =
+                                              recordsList.firstWhere(
+                                            (record) =>
+                                                record['recordId'] == recordId,
+                                            orElse: () => {
+                                              'recordId': 0,
+                                              'date': '알 수 없음',
+                                              'time': 0
+                                            },
+                                          );
 
-                                      debugPrint(
-                                          '===== 시작하는 과거 기록 최종 정보 =====');
-                                      debugPrint(
-                                          '기록 ID: ${selectedRecord['recordId']}');
-                                      debugPrint(
-                                          '날짜: ${selectedRecord['date']}');
-                                      debugPrint(
-                                          '시간(분): ${selectedRecord['time']}');
-                                      debugPrint(
-                                          '시간(포맷): ${_formatMinutes(selectedRecord['time'])}');
-                                      debugPrint('시작하는 모드: 나 vs 나');
-                                      debugPrint(
-                                          '====================================');
+                                          debugPrint(
+                                              '===== 시작하는 과거 기록 최종 정보 =====');
+                                          debugPrint(
+                                              '기록 ID: ${selectedRecord['recordId']}');
+                                          debugPrint(
+                                              '날짜: ${selectedRecord['date']}');
+                                          debugPrint(
+                                              '시간(분): ${selectedRecord['time']}');
+                                          debugPrint(
+                                              '시간(포맷): ${_formatMinutes(selectedRecord['time'])}');
+                                          debugPrint('시작하는 모드: 나 vs 나');
+                                          debugPrint(
+                                              '====================================');
 
-                                      appState.startTracking(
-                                        '나 vs 나',
-                                        recordId: _selectedRecordId,
-                                      );
-                                    }
-                                  : null,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Color(0xFF52A486),
-                                disabledBackgroundColor: Colors.grey.shade400,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 24, 
-                                  vertical: 12
-                                ),
-                              ),
-                              child: Text(
-                                '시작하기',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
+                                          appState.startTracking(
+                                            '나 vs 나',
+                                            recordId: _selectedRecordId,
+                                          );
+                                        }
+                                      : null,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Color(0xFF52A486),
+                                    disabledBackgroundColor: Colors.grey.shade300,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    '시작하기',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
                           ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                );
-              },
-            );
-          },
-        );
-      }
-    } catch (e) {
-      // 오류 처리
-      debugPrint('등산 기록 목록 조회 오류: $e');
-      if (context.mounted) {
-        Navigator.of(context).pop(); // 로딩 다이얼로그 닫기
-        _showNoRecordsDialog(context);
-      }
+                ),
+              );
+            },
+          );
+        },
+      );
+    }
+  } catch (e) {
+    // 오류 처리
+    debugPrint('등산 기록 목록 조회 오류: $e');
+    if (context.mounted) {
+      Navigator.of(context).pop(); // 로딩 다이얼로그 닫기
+      _showNoRecordsDialog(context);
     }
   }
+}
 
   // 기록이 없는 경우 표시할 다이얼로그 - 디자인 개선
   void _showNoRecordsDialog(BuildContext context) {

@@ -214,7 +214,7 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  '안전한 보호를 위해 6자 이상의 비밀번호를 입력해주세요',
+                  '안전한 보호를 위해\n6자 이상의 비밀번호를 입력해주세요',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,
