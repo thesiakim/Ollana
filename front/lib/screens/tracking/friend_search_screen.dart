@@ -229,15 +229,6 @@ Widget build(BuildContext context) {
                           valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF52A486)),
                           strokeWidth: 3,
                         ),
-                        SizedBox(height: 16),
-                        Text(
-                          '친구를 검색하고 있어요',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
                       ],
                     ),
                   )

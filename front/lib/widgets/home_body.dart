@@ -229,7 +229,7 @@ class _HomeBodyState extends State<HomeBody> {
         
         // 설명 텍스트
         _buildHelpText(
-          '산에 오를수록 레벨이 올라가는 시스템이에요'
+          '산에 오를수록 레벨이 올라가는 시스템'
         ),
         SizedBox(height: 16),
         
