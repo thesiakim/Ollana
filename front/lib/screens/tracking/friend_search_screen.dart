@@ -492,6 +492,7 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
     }
   }
 
+  // 친구의 이전 등산 기록 목록 모달 표시
   Future<void> _showFriendTrackingOptionsModal(
       BuildContext context, AppState appState) async {
     if (_selectedFriend == null) return;
@@ -500,6 +501,7 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
     _selectedRecordId = null;
 
     try {
+      // 로딩 표시
       if (context.mounted) {
         showDialog(
           context: context,
@@ -514,6 +516,7 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
         );
       }
 
+      // 친구의 이전 등산 기록 목록 가져오기
       final mountainId = appState.selectedRoute?.mountainId ?? 0;
       final pathId = appState.selectedRoute?.id ?? 0;
       final token = appState.accessToken ?? '';
@@ -526,10 +529,12 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
         token: token,
       );
 
+      // 로딩 다이얼로그 닫기
       if (!mounted) return;
       if (context.mounted) Navigator.of(context).pop();
 
       if (recordsList.isEmpty) {
+        // 이전 기록이 없는 경우
         if (!mounted) return;
         if (context.mounted) {
           _showNoRecordsDialog(context);
@@ -537,6 +542,7 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
         return;
       }
 
+      // 이전 기록이 있는 경우 목록 표시
       if (!mounted) return;
       if (context.mounted) {
         showDialog(
@@ -643,6 +649,7 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
+                            // 취소 버튼
                             TextButton(
                               onPressed: () {
                                 Navigator.of(context).pop();
@@ -664,13 +671,9 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                                             _selectedRecordId,
                                       );
 
-                                      final timeInSeconds =
-                                          ((selectedRecord['time'] as num) * 60)
-                                              .toInt();
-
                                       appState.setOpponentRecordData(
                                         date: selectedRecord['date'],
-                                        time: timeInSeconds,
+                                        time: selectedRecord['time'],
                                         maxHeartRate:
                                             selectedRecord['maxHeartRate'],
                                         avgHeartRate:
@@ -678,7 +681,8 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                                       );
 
                                       Navigator.of(context).pop();
-                                      Navigator.of(context).pop();
+                                      Navigator.of(context)
+                                          .pop(); // 친구 검색 화면도 닫기
                                       appState.startTracking(
                                         '나 vs 친구',
                                         opponentId: _selectedFriend!.id.toInt(),
@@ -715,14 +719,16 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
         );
       }
     } catch (e) {
+      // 오류 처리
       debugPrint('친구 등산 기록 목록 조회 오류: $e');
       if (context.mounted) {
-        Navigator.of(context).pop();
+        Navigator.of(context).pop(); // 로딩 다이얼로그 닫기
         _showNoRecordsDialog(context);
       }
     }
   }
 
+  // 분 형식 변환 (예: 72분 -> 1시간 12분)
   String _formatMinutes(num minutes) {
     final int hrs = (minutes / 60).floor();
     final int mins = (minutes % 60).toInt();
@@ -734,6 +740,7 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
     }
   }
 
+  // 기록이 없는 경우 표시할 다이얼로그
   void _showNoRecordsDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -751,6 +758,7 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // 상단 제목
                 Container(
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   child: const Text(
@@ -781,6 +789,8 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                     ),
                   ),
                 ),
+
+                // 확인 버튼
                 Container(
                   margin: const EdgeInsets.only(top: 20),
                   width: double.infinity,
@@ -813,6 +823,7 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
     );
   }
 
+  // isPossible이 false인 경우 표시할 경고창
   void _showNotPossibleDialog(BuildContext context, String nickname) {
     showDialog(
       context: context,

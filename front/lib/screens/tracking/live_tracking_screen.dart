@@ -18,6 +18,7 @@ import '../../models/app_state.dart';
 import '../../utils/app_colors.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import '../../models/mode_data.dart';
+import '../../models/opponent_record.dart'; // OpponentRecord 클래스 import 추가
 import '../../services/mode_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:watch_connectivity/watch_connectivity.dart';
@@ -30,19 +31,19 @@ import 'package:flutter_naver_map/flutter_naver_map.dart';
 // 칼만 필터 클래스 추가
 class SimpleKalmanFilter {
   // 상태 변수
-  late double _estimate;      // 현재 추정값
+  late double _estimate; // 현재 추정값
   late double _errorEstimate; // 추정 오차
-  late double _q;             // 프로세스 잡음 (환경 노이즈)
-  late double _r;             // 측정 잡음 (센서 정확도)
-  late double _lastEstimate;  // 이전 추정값
-  late double _kalmanGain;    // 칼만 게인
+  late double _q; // 프로세스 잡음 (환경 노이즈)
+  late double _r; // 측정 잡음 (센서 정확도)
+  late double _lastEstimate; // 이전 추정값
+  late double _kalmanGain; // 칼만 게인
 
   // 초기화
   SimpleKalmanFilter({
-    required double processNoise,  // Q
-    required double measurementNoise,  // R
-    required double estimateError,  // 초기 추정 오차
-    double? initialValue,  // 초기값 (없으면 첫 측정값 사용)
+    required double processNoise, // Q
+    required double measurementNoise, // R
+    required double estimateError, // 초기 추정 오차
+    double? initialValue, // 초기값 (없으면 첫 측정값 사용)
   }) {
     _q = processNoise;
     _r = measurementNoise;
@@ -63,13 +64,13 @@ class SimpleKalmanFilter {
     _estimate = prediction + _kalmanGain * (measurement - prediction);
     _errorEstimate = (1 - _kalmanGain) * errorPrediction;
     _lastEstimate = _estimate;
-    
+
     return _estimate;
   }
 
   // 현재 추정값 반환
   double get estimate => _estimate;
-  
+
   // 칼만 게인 반환 (디버깅용)
   double get gain => _kalmanGain;
 }
@@ -82,28 +83,28 @@ class GpsKalmanFilter {
   double _filteredLat = 0.0;
   double _filteredLng = 0.0;
   int _updateCount = 0;
-  
+
   GpsKalmanFilter({double? initialLat, double? initialLng}) {
     // 위도 필터: 위도는 -90 ~ 90 범위, 일반적으로 변화가 적음
     _latFilter = SimpleKalmanFilter(
-      processNoise: 0.00001,      // 작은 Q값: 느린 상태 변화 가정
-      measurementNoise: 0.001,    // R값: 측정 신뢰도 (GPS 정확도에 따라 조정)
-      estimateError: 1.0,         // 초기 추정 오차
+      processNoise: 0.00001, // 작은 Q값: 느린 상태 변화 가정
+      measurementNoise: 0.001, // R값: 측정 신뢰도 (GPS 정확도에 따라 조정)
+      estimateError: 1.0, // 초기 추정 오차
       initialValue: initialLat,
     );
-    
+
     // 경도 필터: 경도는 -180 ~ 180 범위, 동일 속도시 위도보다 큰 변화
     _lngFilter = SimpleKalmanFilter(
-      processNoise: 0.00001,      // 작은 Q값: 느린 상태 변화 가정
-      measurementNoise: 0.001,    // R값: 측정 신뢰도 (GPS 정확도에 따라 조정)
-      estimateError: 1.0,         // 초기 추정 오차
+      processNoise: 0.00001, // 작은 Q값: 느린 상태 변화 가정
+      measurementNoise: 0.001, // R값: 측정 신뢰도 (GPS 정확도에 따라 조정)
+      estimateError: 1.0, // 초기 추정 오차
       initialValue: initialLng,
     );
-    
+
     if (initialLat != null) _filteredLat = initialLat;
     if (initialLng != null) _filteredLng = initialLng;
   }
-  
+
   // 필터 업데이트 (새 GPS 측정값 적용)
   void update(double lat, double lng, double accuracy) {
     // GPS 정확도에 따라 측정 잡음 동적 조정
@@ -111,12 +112,12 @@ class GpsKalmanFilter {
     double adjustedR = math.pow(accuracy / 10.0, 2).toDouble();
     _latFilter._r = adjustedR;
     _lngFilter._r = adjustedR;
-    
+
     // 필터 업데이트
     _filteredLat = _latFilter.update(lat);
     _filteredLng = _lngFilter.update(lng);
     _updateCount++;
-    
+
     // 처음 몇 번의 업데이트는 원시 GPS 값에 가중치 부여 (안정화 단계)
     if (_updateCount < 5) {
       double weight = 1.0 - (_updateCount / 5.0);
@@ -124,7 +125,7 @@ class GpsKalmanFilter {
       _filteredLng = _filteredLng * (1 - weight) + lng * weight;
     }
   }
-  
+
   // 현재 필터링된 위치 반환
   double get latitude => _filteredLat;
   double get longitude => _filteredLng;
@@ -244,7 +245,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   double _lastFilteredLat = 0.0;
   double _lastFilteredLng = 0.0;
   bool _isFilterInitialized = false;
-  
+
   // 토스트 메시지 관련 변수 추가
   bool _showToast = false;
   String _toastMessage = '';
@@ -291,14 +292,6 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   // 현재 심박수
   int _currentHeartRate = 0; // _avgHeartRate에서 _currentHeartRate로 변경 및 초기값 설정
 
-  // 경쟁 모드 데이터 (테스트용)
-  Map<String, dynamic> _competitorData = {
-    'name': '내가',
-    'distance': 4.1, // 이 부분은 _currentTotalDistance 또는 다른 방식으로 동기화 필요
-    'time': 47,
-    'isAhead': true, // 경쟁자가 앞서는지 여부
-  };
-
   // 등산로 경로 데이터
   List<NLatLng> _routeCoordinates = [];
 
@@ -340,7 +333,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
   // 목적지 도착 관련 변수
   bool _isDestinationReached = false;
-  final double _destinationRadius = 50.0; // 도착 감지 반경 (미터)
+  final double _destinationRadius = 130.0; // 도착 감지 반경 (미터)
 
   // 이전 기록 비교 관련 변수
   bool _isAheadOfRecord = false;
@@ -366,10 +359,21 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   // ModeData 객체 저장 (이전 기록 및 경쟁자 정보 포함)
   ModeData? _modeData;
 
+  // 경쟁자 데이터를 저장하기 위한 맵 추가
+  Map<String, dynamic> _competitorData = {
+    'name': '이전 기록',
+    'distance': 0,
+    'time': 0,
+    'isAhead': false,
+    'maxHeartRate': 0,
+    'avgHeartRate': 0.0,
+    'formattedRemainingTime': '0분 0초',
+  };
+
   // 등산 기록 데이터 저장을 위한 변수들
   final List<Map<String, dynamic>> _trackingRecords = [];
   DateTime? _lastRecordTime;
-  final int _recordIntervalSeconds = 1200; // 20분마다 records에 기록 추가
+  final int _recordIntervalSeconds = 10; // 20분마다 records에 기록 추가
   Timer? _recordTimer;
   final bool _isSavingEnabled = true; // 기록 저장 여부 (기본값: true)
 
@@ -378,7 +382,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
   // 페이스메이커 level 관련 변수 추가
   String? _previousPacemakerLevel;
-  bool _hasNotifiedWatchForPacemaker = false;
+  final bool _hasNotifiedWatchForPacemaker = false;
   String? _pacemakerMessage;
   String? _pacemakerLevel;
 
@@ -401,9 +405,14 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     // 워치 연결 상태 초기 확인
     _checkWatchConnection();
 
+    // 경쟁자 데이터 초기화 - 기본값을 더 명확하게 설정
+    _initCompetitorData();
+
     // 워치 연결 상태를 주기적으로 확인 (15초 간격으로 변경)
-    _watchConnectionTimer = Timer.periodic(const Duration(seconds: 15), (timer) {
-      if (!_isCheckingWatch) {  // 이미 확인 중이 아닐 때만 실행
+    _watchConnectionTimer =
+        Timer.periodic(const Duration(seconds: 15), (timer) {
+      if (!_isCheckingWatch) {
+        // 이미 확인 중이 아닐 때만 실행
         _checkWatchConnection();
       }
     });
@@ -411,12 +420,12 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     // (1) 워치 메시지 수신 리스너 등록
     _watch.messageStream.listen((Map<String, dynamic> message) {
       debugPrint('워치 메시지 수신: $message');
-      
+
       // 연결 상태가 false인데 메시지를 받은 경우, 연결 상태 재확인
       if (!_isWatchPaired) {
         _checkWatchConnection();
       }
-      
+
       String path = message['path'];
       switch (path) {
         case '/SENSOR_DATA':
@@ -508,11 +517,12 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   // 트래킹 시작
   void _startTracking() {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) async {
-      if (!mounted) {  // mounted 체크 추가
+      if (!mounted) {
+        // mounted 체크 추가
         timer.cancel();
         return;
       }
-      
+
       if (!_isPaused) {
         setState(() {
           _elapsedSeconds++;
@@ -561,7 +571,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       }
     });
 
-         // 트래킹 시작 시 워치에 메시지 전송 (워치가 연결된 경우)
+    // 트래킹 시작 시 워치에 메시지 전송 (워치가 연결된 경우)
     if (_isWatchPaired) {
       try {
         _watch.sendMessage({
@@ -919,7 +929,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
         Geolocator.getPositionStream(locationSettings: locationSettings)
             .listen((Position position) {
       if (!mounted) return;
-      
+
       debugPrint(
           '[BG] 위치 업데이트 수신: ${position.latitude}, ${position.longitude}, 백그라운드 상태: $_currentLifecycleState');
       // 현재 위치 기록
@@ -940,7 +950,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       // 칼만 필터 처리
       double filteredLat = newLat;
       double filteredLng = newLng;
-      
+
       // 칼만 필터 초기화 또는 업데이트
       if (!_isFilterInitialized) {
         // 첫 위치 수신 시 필터 초기화 (정확도가 양호한 경우)
@@ -949,10 +959,12 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
           _isFilterInitialized = true;
           _lastFilteredLat = newLat;
           _lastFilteredLng = newLng;
-          debugPrint('칼만 필터 초기화: 처음 위치(${newLat.toStringAsFixed(6)}, ${newLng.toStringAsFixed(6)})');
+          debugPrint(
+              '칼만 필터 초기화: 처음 위치(${newLat.toStringAsFixed(6)}, ${newLng.toStringAsFixed(6)})');
         } else {
           // 정확도가 낮은 경우 필터 초기화 미루기
-          debugPrint('필터 초기화 대기 중: GPS 정확도 미달 (${currentAccuracy.toStringAsFixed(1)}m)');
+          debugPrint(
+              '필터 초기화 대기 중: GPS 정확도 미달 (${currentAccuracy.toStringAsFixed(1)}m)');
         }
       } else if (_gpsFilter != null) {
         // 급격한 위치 변화 감지 (완전히 다른 위치로 이동한 경우, 예: 앱 재시작 등)
@@ -962,8 +974,9 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
           'lat2': newLat,
           'lng2': newLng,
         });
-        
-        if (distance > 100.0) {  // 100m 이상 순간 이동은 필터 재설정
+
+        if (distance > 100.0) {
+          // 100m 이상 순간 이동은 필터 재설정
           debugPrint('급격한 위치 변화 감지(${distance.toStringAsFixed(1)}m): 필터 재설정');
           _gpsFilter!.reset(newLat, newLng);
           _lastFilteredLat = newLat;
@@ -973,7 +986,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
           _gpsFilter!.update(newLat, newLng, currentAccuracy);
           filteredLat = _gpsFilter!.latitude;
           filteredLng = _gpsFilter!.longitude;
-          
+
           // 필터링 효과 로깅 (10초마다)
           if (_elapsedSeconds % 10 == 0) {
             final rawToFilteredDistance = _calculateDistanceSync({
@@ -982,11 +995,12 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
               'lat2': filteredLat,
               'lng2': filteredLng,
             });
-            debugPrint('칼만 필터 적용: 원본(${newLat.toStringAsFixed(6)}, ${newLng.toStringAsFixed(6)}) → '
+            debugPrint(
+                '칼만 필터 적용: 원본(${newLat.toStringAsFixed(6)}, ${newLng.toStringAsFixed(6)}) → '
                 '필터링(${filteredLat.toStringAsFixed(6)}, ${filteredLng.toStringAsFixed(6)}), '
                 '필터 보정량: ${rawToFilteredDistance.toStringAsFixed(2)}m');
           }
-          
+
           _lastFilteredLat = filteredLat;
           _lastFilteredLng = filteredLng;
         }
@@ -1012,10 +1026,11 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
         }
       } else if (_lastDistanceCalcTime != null) {
         // 기준점 설정 후 더 실시간으로 거리 계산 (1초 간격)
-        final timeSinceLastCalcSeconds = 
+        final timeSinceLastCalcSeconds =
             now.difference(_lastDistanceCalcTime!).inSeconds;
 
-        if (timeSinceLastCalcSeconds >= 1) { // 1초 이상 간격으로 변경
+        if (timeSinceLastCalcSeconds >= 1) {
+          // 1초 이상 간격으로 변경
           final double segmentDistanceMeters = _calculateDistanceSync({
             'lat1': _anchorPointLat,
             'lng1': _anchorPointLng,
@@ -1025,7 +1040,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
           // 시간에 비례한 최소/최대 합리적 이동 거리 설정
           final double minDeltaForUpdateMeters = 0.0; // 최소 이동 거리 제한 제거
-          final double maxDeltaForUpdateMeters = 
+          final double maxDeltaForUpdateMeters =
               _maxReasonableSpeed * timeSinceLastCalcSeconds; // 최대 5m/s * 경과 시간
 
           // 거리가 합리적 범위 내에 있는 경우만 추가
@@ -1033,21 +1048,22 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
               segmentDistanceMeters <= maxDeltaForUpdateMeters) {
             _accumulatedDistanceInMeters += segmentDistanceMeters;
             _currentTotalDistance = _accumulatedDistanceInMeters;
-            
+
             // 로그 출력 줄이기 (5초 간격)
             if (timeSinceLastCalcSeconds >= 5 || _elapsedSeconds % 10 == 0) {
               debugPrint(
                   '${timeSinceLastCalcSeconds}s 간격 이동 거리 추가: ${segmentDistanceMeters.toStringAsFixed(1)}m. 누적: ${_currentTotalDistance.toStringAsFixed(1)}m');
             }
           } else if (segmentDistanceMeters < minDeltaForUpdateMeters) {
-            if (_elapsedSeconds % 30 == 0) { // 로그 간소화
+            if (_elapsedSeconds % 30 == 0) {
+              // 로그 간소화
               debugPrint(
                   '이동 거리 무시 (너무 짧음): ${segmentDistanceMeters.toStringAsFixed(1)}m');
             }
           } else {
             // 비정상적으로 긴 거리인 경우
             debugPrint(
-                '이동 거리 이상 감지: ${segmentDistanceMeters.toStringAsFixed(1)}m / ${maxDeltaForUpdateMeters.toStringAsFixed(1)}m (${timeSinceLastCalcSeconds}초)');
+                '이동 거리 이상 감지: ${segmentDistanceMeters.toStringAsFixed(1)}m / ${maxDeltaForUpdateMeters.toStringAsFixed(1)}m ($timeSinceLastCalcSeconds초)');
           }
 
           // 새 기준점으로 현재 위치 설정 및 시간 업데이트
@@ -1119,37 +1135,44 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
           // 현재 속도 계산 개선 (Position.speed 사용)
           double newSpeed = 0.0;
-          
+
           // 1. GPS 속도 센서 값 사용 (m/s -> km/h 변환)
-          if (currentSpeedFromSensor >= 0 && currentSpeedFromSensor <= 10.0) { // 최대 36km/h 속도 제한
+          if (currentSpeedFromSensor >= 0 && currentSpeedFromSensor <= 10.0) {
+            // 최대 36km/h 속도 제한
             newSpeed = currentSpeedFromSensor * 3.6; // m/s -> km/h
-          } 
+          }
           // 2. GPS 속도 센서 값이 없거나 비정상적인 경우, 위치 변화로 속도 계산
-          else if (_lastLocationUpdateTimeForUserPath != null && _userPath.length > 1) {
+          else if (_lastLocationUpdateTimeForUserPath != null &&
+              _userPath.length > 1) {
             // 마지막 위치부터 현재 위치까지의 거리와 시간으로 속도 계산
-            final timeDiffSeconds = now.difference(_lastLocationUpdateTimeForUserPath!).inMilliseconds / 1000.0;
+            final timeDiffSeconds = now
+                    .difference(_lastLocationUpdateTimeForUserPath!)
+                    .inMilliseconds /
+                1000.0;
             if (timeDiffSeconds > 0) {
               // 현재 위치와 마지막 위치 사이의 거리 계산
               final distanceMeters = _calculateDistanceSync({
-                'lat1': _userPath.last.latitude, 
+                'lat1': _userPath.last.latitude,
                 'lng1': _userPath.last.longitude,
                 'lat2': filteredLat,
                 'lng2': filteredLng,
               });
-              
+
               // 속도 계산 (m/s)
               final calculatedSpeed = distanceMeters / timeDiffSeconds;
-              
+
               // 합리적인 값인지 검증 (최대 5m/s = 18km/h)
-              if (calculatedSpeed >= 0 && calculatedSpeed <= _maxReasonableSpeed) {
+              if (calculatedSpeed >= 0 &&
+                  calculatedSpeed <= _maxReasonableSpeed) {
                 newSpeed = calculatedSpeed * 3.6; // m/s -> km/h
                 if (_elapsedSeconds % 10 == 0) {
-                  debugPrint('GPS 속도 센서 대체 계산: ${newSpeed.toStringAsFixed(1)}km/h (거리: ${distanceMeters.toStringAsFixed(1)}m, 시간: ${timeDiffSeconds.toStringAsFixed(1)}s)');
+                  debugPrint(
+                      'GPS 속도 센서 대체 계산: ${newSpeed.toStringAsFixed(1)}km/h (거리: ${distanceMeters.toStringAsFixed(1)}m, 시간: ${timeDiffSeconds.toStringAsFixed(1)}s)');
                 }
               }
             }
           }
-          
+
           // 3. 급격한 변화 방지를 위한 스무딩 적용 (이전 값과 가중 평균)
           if (_currentSpeed > 0 && newSpeed > 0) {
             // 이전 값에 70%, 새 값에 30% 가중치 부여
@@ -1158,7 +1181,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
             // 첫 계산이거나 둘 중 하나가 0인 경우는 그대로 사용
             _currentSpeed = newSpeed;
           }
-          
+
           // 4. 최종 속도가 합리적인 범위를 벗어나면 보정
           if (_currentSpeed < 0) _currentSpeed = 0.0;
           if (_currentSpeed > 20.0) _currentSpeed = 20.0; // 최대 20km/h로 제한
@@ -1595,27 +1618,113 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     if (_modeData == null || _modeData?.opponent == null) return;
 
     try {
-      // 현재 시간에 해당하는 이전 기록의 진행 거리 계산
-      // (간단한 비례식으로 계산: 전체 시간 대비 현재 진행 시간의 비율로 계산)
-      final totalTime = _modeData!.path.estimatedTime * 60; // 초 단위로 변환
-      if (totalTime <= 0) return;
+      // ModeData의 opponent 확인 로그 출력
+      debugPrint('=== _compareWithPastRecord에서 ModeData 확인 ===');
+      debugPrint(
+          'ModeData.opponent: ${_modeData?.opponent != null ? '있음' : '없음'}');
+      debugPrint(
+          'Path Distance: ${_modeData?.path.distance}km (${_modeData?.path.distance != null ? (_modeData!.path.distance * 1000).toInt() : 0}m)');
 
-      // 현재 진행 시간이 전체 예상 시간보다 적을 때만 계산
-      final currentElapsedTime = _elapsedMinutes * 60 + _elapsedSeconds;
-      if (currentElapsedTime > totalTime) return;
+      if (_modeData?.opponent != null &&
+          _modeData!.opponent!.records.isNotEmpty) {
+        final recordsCount = _modeData!.opponent!.records.length;
+        debugPrint('Records 개수: $recordsCount');
 
-      // 현재 시간에 해당하는 이전 기록의 예상 진행 거리
-      _pastDistanceAtCurrentTime =
-          (_modeData!.path.distance * currentElapsedTime) / totalTime;
+        if (recordsCount > 0) {
+          final lastRecord = _modeData!.opponent!.records.last;
+          debugPrint('마지막 레코드 distance: ${lastRecord.distance}m');
+        }
+      }
+
+      // opponent의 records 배열에서 현재 시간에 해당하는 기록 찾기
+      final opponentRecords = _modeData?.opponent?.records;
+
+      if (opponentRecords == null || opponentRecords.isEmpty) {
+        // 기록이 없는 경우 기존 방식 사용
+        // 현재 시간에 해당하는 이전 기록의 진행 거리 계산
+        final totalTime = _modeData!.path.estimatedTime * 60; // 초 단위로 변환
+        if (totalTime <= 0) return;
+
+        // 현재 진행 시간이 전체 예상 시간보다 적을 때만 계산
+        final currentElapsedTime = _elapsedMinutes * 60 + _elapsedSeconds;
+        if (currentElapsedTime > totalTime) return;
+
+        // 현재 시간에 해당하는 이전 기록의 예상 진행 거리
+        _pastDistanceAtCurrentTime =
+            (_modeData!.path.distance * currentElapsedTime) / totalTime;
+
+        // 경쟁자 데이터 업데이트 (간단한 비례 계산 방식)
+        _competitorData['distance'] =
+            (_pastDistanceAtCurrentTime * 1000).toInt(); // km -> m 변환
+        _competitorData['formattedRemainingTime'] =
+            _formattedRemainingTime; // 현재 사용자의 예상 남은 시간
+        _competitorData['maxHeartRate'] =
+            _currentHeartRate > 0 ? _currentHeartRate : 100; // 기본값
+        _competitorData['avgHeartRate'] =
+            _currentHeartRate > 0 ? _currentHeartRate * 0.9 : 90.0; // 기본값
+      } else {
+        // records 배열을 사용하여 현재 시간에 해당하는 상대방 진행 거리 계산
+        final currentElapsedTime = _elapsedSeconds;
+
+        // 현재 시간보다 작거나 같은 마지막 기록과 큰 첫 번째 기록 찾기
+        OpponentRecord? beforeRecord;
+        OpponentRecord? afterRecord;
+
+        for (var record in opponentRecords) {
+          final recordTime = record.time;
+          if (recordTime <= currentElapsedTime) {
+            beforeRecord = record;
+          } else {
+            afterRecord = record;
+            break;
+          }
+        }
+
+        if (beforeRecord != null) {
+          if (afterRecord != null) {
+            // 두 기록 사이에 현재 시간이 있는 경우 보간
+            final beforeTime = beforeRecord.time;
+            final afterTime = afterRecord.time;
+            final beforeDistance = beforeRecord.distance;
+            final afterDistance = afterRecord.distance;
+
+            // 시간 비율로 거리 보간
+            final ratio =
+                (currentElapsedTime - beforeTime) / (afterTime - beforeTime);
+            _pastDistanceAtCurrentTime =
+                beforeDistance + (afterDistance - beforeDistance) * ratio;
+          } else {
+            // 마지막 기록보다 현재 시간이 더 큰 경우, 마지막 기록 사용
+            _pastDistanceAtCurrentTime = beforeRecord.distance;
+          }
+        } else if (afterRecord != null) {
+          // 현재 시간이 첫 번째 기록보다 작은 경우, 첫 번째 기록의 비율로 계산
+          final afterTime = afterRecord.time;
+          final afterDistance = afterRecord.distance;
+          final ratio = currentElapsedTime / afterTime;
+          _pastDistanceAtCurrentTime = afterDistance * ratio;
+        } else {
+          _pastDistanceAtCurrentTime = 0.0;
+        }
+
+        // 경쟁자 데이터 처리 재호출 (심박수, 남은 시간 등 계산)
+        _processOpponentData();
+
+        // 디버깅용 로그
+        debugPrint(
+            '상대 기록 분석: 현재 시간 $currentElapsedTime초, 진행 거리 ${_pastDistanceAtCurrentTime.toStringAsFixed(2)}m');
+        debugPrint(
+            '상대 심박수 정보: 최대 ${_competitorData['maxHeartRate']}, 평균 ${_competitorData['avgHeartRate']?.toStringAsFixed(1)}');
+      }
 
       // 현재 총 이동 거리는 이미 실시간으로 계산되어 _currentTotalDistance에 반영되어 있음
-      // _calculateTotalDistance() 호출은 불필요함 (중복 계산 방지)
-      // await _calculateTotalDistance();
-
       // 현재 기록과 이전 기록 비교
       final oldAheadState = _isAheadOfRecord;
       _distanceDifference = _currentTotalDistance - _pastDistanceAtCurrentTime;
       _isAheadOfRecord = _distanceDifference > 0;
+
+      // 항상 _competitorData 업데이트
+      _competitorData['isAhead'] = !_isAheadOfRecord; // 내가 앞서면 경쟁자는 뒤처짐
 
       debugPrint(
           '기록 비교: 현재=${_currentTotalDistance.toStringAsFixed(2)}km, 이전=${_pastDistanceAtCurrentTime.toStringAsFixed(2)}km, 차이=${_distanceDifference.toStringAsFixed(2)}km');
@@ -1790,7 +1899,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       debugPrint('워치 연결 없음: 알림 전송 생략 ($status)');
       return;
     }
-    
+
     // 워치 알림 메시지 구성
     String notificationTitle = '등산 상태 알림';
     String notificationBody = '';
@@ -1864,16 +1973,61 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     // 일반 모드 여부 확인 (opponent가 없으면 일반 모드)
     final bool isGeneralMode = _modeData?.opponent == null;
 
-    // 경쟁자의 남은 시간 포맷팅 (일반 모드가 아닌 경우만)
-    String competitorTimeFormatted = '';
-    if (!isGeneralMode) {
-      final compMinutes = _competitorData['time'] as int;
-      if (compMinutes >= 60) {
-        final hours = compMinutes ~/ 60;
-        final mins = compMinutes % 60;
-        competitorTimeFormatted = '$hours시 $mins분 00초';
+    // 상대방의 남은 시간 계산
+    String competitorRemainingTimeFormatted = '';
+    if (!isGeneralMode && _modeData != null) {
+      // records 기반 상대방 남은 시간 계산
+      final pathLength = _modeData!.path.distance;
+      final opponentRecords = _modeData?.opponent?.records;
+
+      if (opponentRecords != null && opponentRecords.isNotEmpty) {
+        // 상대의 마지막 기록 찾기
+        final lastRecordIdx = opponentRecords.length - 1;
+        final lastRecord = opponentRecords[lastRecordIdx];
+        final lastRecordTime = lastRecord.time;
+        final lastRecordDistance = lastRecord.distance;
+
+        // 상대의 평균 속도 계산 (미터/초)
+        double opponentAvgSpeed = 0;
+        if (lastRecordTime > 0) {
+          opponentAvgSpeed = lastRecordDistance / lastRecordTime;
+        }
+
+        // 상대의 예상 남은 시간 (초)
+        double remainingDistance = pathLength - _pastDistanceAtCurrentTime;
+        if (remainingDistance < 0) remainingDistance = 0;
+
+        int opponentRemainingSeconds = 0;
+        if (opponentAvgSpeed > 0) {
+          opponentRemainingSeconds =
+              (remainingDistance / opponentAvgSpeed).round();
+        }
+
+        // 시간 형식 변환
+        final hours = opponentRemainingSeconds ~/ 3600;
+        final minutes = (opponentRemainingSeconds % 3600) ~/ 60;
+        final seconds = opponentRemainingSeconds % 60;
+
+        if (hours > 0) {
+          competitorRemainingTimeFormatted = '$hours시간 $minutes분 $seconds초';
+        } else {
+          competitorRemainingTimeFormatted = '$minutes분 $seconds초';
+        }
       } else {
-        competitorTimeFormatted = '$compMinutes분 00초';
+        // 기존 경로 기반 계산 방식 유지
+        final totalPathTimeSeconds = (_modeData!.path.estimatedTime ?? 0) * 60;
+        final remainingPathTimeSeconds =
+            totalPathTimeSeconds * (1 - _completedPercentage);
+
+        final hours = remainingPathTimeSeconds ~/ 3600;
+        final minutes = (remainingPathTimeSeconds % 3600) ~/ 60;
+        final seconds = remainingPathTimeSeconds.toInt() % 60;
+
+        if (hours > 0) {
+          competitorRemainingTimeFormatted = '$hours시간 $minutes분 $seconds초';
+        } else {
+          competitorRemainingTimeFormatted = '$minutes분 $seconds초';
+        }
       }
     }
 
@@ -1922,25 +2076,73 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
             ),
           ),
           SizedBox(height: 10),
-          Text(
-            '남은 거리 : ${_competitorData['distance']}km',
-            style: TextStyle(fontSize: 14),
-          ),
-          SizedBox(height: 4),
-          Text(
-            '예상 남은 시간 : $competitorTimeFormatted',
-            style: TextStyle(fontSize: 14),
-          ),
-          SizedBox(height: 4),
-          // Text(
-          //   '최고 심박수 : ${_competitorData['maxHeartRate']} bpm',
-          //   style: TextStyle(fontSize: 14),
-          // ),
-          // SizedBox(height: 4),
-          // Text(
-          //   '평균 심박수 : ${_competitorData['avgHeartRate']} bpm',
-          //   style: TextStyle(fontSize: 14),
-          // ),
+
+          // records가 비어있는 경우 표시
+          if (_modeData?.opponent?.records == null ||
+              (_modeData!.opponent!.records.isEmpty)) ...[
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Center(
+                child: Text(
+                  '기록이 없습니다',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ),
+            ),
+          ]
+          // 상대방 기록이 있는 경우 정보 표시
+          else ...[
+            // 상대의 남은 거리 - 현재 진행률에 맞춰 계산
+            Text(
+              '상대의 진행 거리: ${_competitorData['distance']}m',
+              style: TextStyle(fontSize: 14),
+            ),
+            SizedBox(height: 4),
+            Text(
+              '상대의 예상 남은 시간: ${_competitorData['formattedRemainingTime']}',
+              style: TextStyle(fontSize: 14),
+            ),
+            SizedBox(height: 4),
+            Text(
+              '차이: ${_distanceDifference.abs().toStringAsFixed(2)}km ${_isAheadOfRecord ? "앞섬" : "뒤처짐"}',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: _isAheadOfRecord ? Colors.green : Colors.red,
+              ),
+            ),
+            SizedBox(height: 8),
+            // 상대의 심박수 정보
+            Row(
+              children: [
+                Icon(Icons.favorite, color: Colors.red, size: 16),
+                SizedBox(width: 4),
+                Text(
+                  '상대 최고 심박수: ${_competitorData['maxHeartRate']} bpm',
+                  style: TextStyle(fontSize: 14),
+                ),
+              ],
+            ),
+            SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(Icons.favorite_border, color: Colors.red, size: 16),
+                SizedBox(width: 4),
+                Text(
+                  '상대 평균 심박수: ${_competitorData['avgHeartRate']?.toStringAsFixed(1) ?? "0.0"} bpm',
+                  style: TextStyle(fontSize: 14),
+                ),
+              ],
+            ),
+          ],
         ]
         // 일반 모드 정보
         else ...<Widget>[
@@ -1969,7 +2171,9 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   // 피드백 메시지 위젯
   Widget _buildFeedbackMessage() {
     // 이전 기록이 있는 경우만 표시
-    if (_modeData?.opponent == null) {
+    if (_modeData?.opponent == null ||
+        _modeData?.opponent?.records == null ||
+        _modeData!.opponent!.records.isEmpty) {
       return SizedBox.shrink();
     }
 
@@ -2187,6 +2391,19 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
                     ),
                   ),
                 ),
+              if (!isEarlyExit && !shouldSave)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10.0),
+                  child: Text(
+                    '기록이 저장되지 않고 경험치도 주어지지 않습니다.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
               SizedBox(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -2262,18 +2479,33 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
       // 대결 관련 설정
       final opponentId = _modeData?.opponent?.opponentId;
-      final recordId = null; // ModeData에 recordId가 없으므로 null로 설정
+      final recordId = appState.recordId; // AppState에서 저장된 recordId를 가져옴
 
       // 선택된 모드 (서버 형식으로 변환)
       final String selectedMode = appState.selectedMode ?? '일반 등산';
       final String serverMode = _convertToServerMode(selectedMode);
 
       debugPrint(
-          '등산 종료 요청 준비: mountainId=$mountainId, pathId=$pathId, 기록 저장: $shouldSave, 모드: $serverMode');
+          '등산 종료 요청 준비: mountainId=$mountainId, pathId=$pathId, opponentId=$opponentId, recordId=$recordId, 기록 저장: $shouldSave, 모드: $serverMode');
 
       // 서버에 전송할 데이터
       // 기록 저장 여부에 관계없이 API는 항상 호출, isSave 값만 다르게 전달
       final modeService = ModeService();
+
+      // 친구 기록 데이터 미리 저장 (endTracking 전에)
+      final String? opponentRecordDate = appState.opponentRecordDate;
+      final int? opponentRecordTime = appState.opponentRecordTime;
+      final int? opponentMaxHeartRate = appState.opponentMaxHeartRate;
+      final int? opponentAvgHeartRate = appState.opponentAvgHeartRate;
+
+      // 디버그 로그 추가
+      debugPrint('[finishTracking] AppState에서 가져온 친구 기록 데이터:');
+      debugPrint('  - date: $opponentRecordDate');
+      debugPrint('  - time: $opponentRecordTime');
+      debugPrint('  - maxHeartRate: $opponentMaxHeartRate');
+      debugPrint('  - avgHeartRate: $opponentAvgHeartRate');
+
+      debugPrint('  - elapsedMinutes: $_elapsedMinutes');
 
       // 종료 API 호출
       final Map<String, dynamic> response = await modeService.endTracking(
@@ -2285,37 +2517,64 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
         isSave: shouldSave, // 사용자 선택에 따라 저장 여부 설정
         finalLatitude: _currentLat,
         finalLongitude: _currentLng,
-        finalTime: _elapsedSeconds,
+        finalTime: _elapsedMinutes,
         finalDistance: _currentTotalDistance.toInt(), // km -> m 변환
         records: _trackingRecords,
         token: token,
       );
 
       debugPrint('등산 종료 요청 성공 (기록 저장: $shouldSave)');
+      debugPrint('서버 응답 데이터: ${response['data']}');
 
       // 종료 처리 (앱 상태 초기화)
-      appState.endTracking(); // isTracking = false, AppState 리스너들에게 알림
+      // appState.endTracking(); // isTracking = false, AppState 리스너들에게 알림
 
       // 결과 화면으로 이동 또는 홈으로 이동
-      if (response['status'] == true && mounted && showResultScreen) {
+      if (response['status'] == true &&
+          mounted &&
+          showResultScreen &&
+          shouldSave) {
+        // 저장하지 않는 경우 바로 홈화면으로 이동
+        if (!shouldSave) {
+          debugPrint('기록 저장하지 않음: 바로 홈화면으로 이동합니다.');
+          appState.endTracking(); // 트래킹 상태 초기화
+          appState.changePage(0);
+          return;
+        }
+
+        // shouldSave가 true일 때만 결과 화면 표시
+        final int finalElapsedMinutes = _elapsedMinutes;
+        final double finalDistanceMeters = _currentTotalDistance;
+        // 이전 기록(AppState에 이미 설정된 값) 캡처
+        final String? prevRecordDate = appState.previousRecordDate;
+        final int? prevRecordTimeSeconds = appState.previousRecordTime;
+        final int? prevMaxHeartRate = appState.previousMaxHeartRate;
+        final int? prevAvgHeartRate = appState.previousAvgHeartRate;
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (context) => TrackingResultScreen(
               resultData: response['data'],
               selectedMode: selectedMode, // 선택된 모드 전달
+              opponentRecordDate: opponentRecordDate,
+              opponentRecordTime: opponentRecordTime,
+              opponentMaxHeartRate: opponentMaxHeartRate,
+              opponentAvgHeartRate: opponentAvgHeartRate,
+              currentElapsedMinutes: finalElapsedMinutes,
+              currentDistanceMeters: finalDistanceMeters,
+              previousRecordDate: prevRecordDate,
+              previousRecordTimeSeconds: prevRecordTimeSeconds,
+              previousMaxHeartRate: prevMaxHeartRate,
+              previousAvgHeartRate: prevAvgHeartRate,
             ),
           ),
         );
       } else {
-        // 결과 데이터가 없거나 실패했거나 showResultScreen이 false인 경우 홈 화면으로 이동
+        // 결과 데이터가 없거나 실패했거나 showResultScreen이 false이거나 shouldSave가 false인 경우 홈 화면으로 이동
+        appState.endTracking(); // 트래킹 상태 초기화
         appState.changePage(0);
       }
     } catch (e) {
       debugPrint('등산 종료 요청 오류: $e');
-      // 오류 발생 시에도 트래킹은 종료
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('등산 기록 저장 중 오류가 발생했습니다: $e')),
-      );
 
       // 홈 화면으로 이동
       final appState = Provider.of<AppState>(context, listen: false);
@@ -2575,7 +2834,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     // 나침반 센서가 사용 가능한지 확인
     if (FlutterCompass.events != null) {
       _compassStream = FlutterCompass.events!.listen((CompassEvent event) {
-        if (!mounted) return;  // mounted 체크 추가
+        if (!mounted) return; // mounted 체크 추가
 
         // 유효한 방향 데이터가 있을 때만 업데이트
         if (event.heading != null) {
@@ -2705,9 +2964,19 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
               'name': _modeData?.opponent?.nickname ?? '이전 기록',
               'distance': _modeData?.path.distance ?? 0.0,
               'time': _modeData?.path.estimatedTime ?? 0,
-              'isAhead': true,
+              'isAhead': false,
+              'maxHeartRate': appState.opponentMaxHeartRate ?? 0,
+              'avgHeartRate': appState.opponentAvgHeartRate ?? 0.0,
+              'formattedRemainingTime': '0분 0초', // 초기값
             };
             debugPrint('경쟁자 데이터 설정: ${_competitorData['name']}');
+            debugPrint('경쟁자 거리: ${_competitorData['distance']}km');
+            debugPrint('경쟁자 시간: ${_competitorData['time']}분');
+            debugPrint('경쟁자 최고 심박수: ${_competitorData['maxHeartRate']}bpm');
+            debugPrint('경쟁자 평균 심박수: ${_competitorData['avgHeartRate']}bpm');
+
+            // 경쟁자 데이터 처리
+            _processOpponentData();
           }
         });
       } else {
@@ -2715,6 +2984,118 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       }
     } catch (e) {
       debugPrint('모드 데이터 로드 오류: $e');
+    }
+  }
+
+  // 상대방 데이터 처리
+  void _processOpponentData() {
+    if (_modeData?.opponent == null || _modeData?.opponent?.records == null) {
+      debugPrint('상대방 데이터가 없거나 레코드가 없습니다.');
+      return;
+    }
+
+    // ModeData의 opponent 내부의 records 확인
+    debugPrint('=== ModeData.opponent 데이터 확인 (로그 추가) ===');
+    debugPrint('Opponent ID: ${_modeData?.opponent?.opponentId}');
+    debugPrint('Opponent Nickname: ${_modeData?.opponent?.nickname}');
+    debugPrint('Records 개수: ${_modeData?.opponent?.records.length}');
+
+    if (_modeData?.opponent?.records.isNotEmpty ?? false) {
+      // 첫번째 레코드와 마지막 레코드 정보 출력
+      final firstRecord = _modeData!.opponent!.records.first;
+      final lastRecord = _modeData!.opponent!.records.last;
+
+      debugPrint(
+          '첫번째 레코드 - 시간: ${firstRecord.time}초, 거리: ${firstRecord.distance}m, 심박수: ${firstRecord.heartRate}');
+      debugPrint(
+          '마지막 레코드 - 시간: ${lastRecord.time}초, 거리: ${lastRecord.distance}m, 심박수: ${lastRecord.heartRate}');
+    }
+
+    try {
+      final opponentRecords = _modeData!.opponent!.records;
+      final totalPathLength = _modeData!.path.distance; // 전체 경로 길이(km)
+
+      // 1. 상대의 진행 거리 (마지막 기록 사용) - m 단위로 변환하고 int로 캐스팅
+      final lastRecord = opponentRecords[opponentRecords.length - 1];
+      final int opponentDistance = lastRecord.distance.toInt(); // m 단위
+
+      // 2. 상대의 최고 심박수 계산
+      int maxHeartRate = 0;
+      int totalHeartRate = 0;
+      int validHeartRateCount = 0;
+
+      for (var record in opponentRecords) {
+        if (record.heartRate > 0) {
+          // 0보다 큰 심박수만 고려
+          if (record.heartRate > maxHeartRate) {
+            maxHeartRate = record.heartRate;
+          }
+          totalHeartRate += record.heartRate;
+          validHeartRateCount++;
+        }
+      }
+
+      // 3. 상대의 평균 심박수 계산 (int로 변환)
+      int avgHeartRate = 0;
+      if (validHeartRateCount > 0) {
+        avgHeartRate = (totalHeartRate / validHeartRateCount).round();
+      }
+
+      // 4. 상대의 평균 속도 및 예상 남은 시간 계산
+      double opponentAvgSpeed = 0; // 미터/초
+      int opponentRemainingSeconds = 0;
+
+      if (lastRecord.time > 0) {
+        // 평균 속도 계산 (m/초)
+        opponentAvgSpeed = opponentDistance / lastRecord.time;
+
+        // 남은 거리 계산 (m)
+        double remainingDistance = (totalPathLength * 1000) - opponentDistance;
+        if (remainingDistance < 0) remainingDistance = 0;
+
+        // 남은 시간 계산 (초)
+        if (opponentAvgSpeed > 0) {
+          opponentRemainingSeconds =
+              (remainingDistance / opponentAvgSpeed).round();
+        }
+      }
+
+      // 5. 시간 형식 변환 (시:분:초)
+      String formattedRemainingTime = _formatSeconds(opponentRemainingSeconds);
+
+      // 6. UI 업데이트를 위한 데이터 저장
+      setState(() {
+        _competitorData = {
+          'name': _modeData?.opponent?.nickname ?? '이전 기록',
+          'distance': opponentDistance, // m 단위 int 값
+          'time': lastRecord.time, // 초 단위
+          'formattedRemainingTime': formattedRemainingTime,
+          'maxHeartRate': maxHeartRate,
+          'avgHeartRate': avgHeartRate,
+          'isAhead': false, // 기본값, 실제 비교 후 업데이트
+        };
+      });
+
+      debugPrint('상대 데이터 처리 완료:');
+      debugPrint('- 진행 거리: ${opponentDistance}m');
+      debugPrint('- 예상 남은 시간: $formattedRemainingTime');
+      debugPrint('- 최고 심박수: $maxHeartRate bpm');
+      debugPrint('- 평균 심박수: $avgHeartRate bpm');
+    } catch (e) {
+      debugPrint('상대 데이터 처리 중 오류 발생: $e');
+    }
+  }
+
+  // 초를 시:분:초 형식으로 변환
+  String _formatSeconds(int totalSeconds) {
+    final hours = totalSeconds ~/ 3600;
+    final minutes = (totalSeconds % 3600) ~/ 60;
+    final seconds = totalSeconds % 60;
+
+    if (hours > 0) {
+      return '$hours시간 $minutes분 $seconds초';
+    } else {
+      return '$minutes분 $seconds초';
     }
   }
 
@@ -2912,12 +3293,13 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
   // 등산 기록 저장 시작
   void _startTrackingRecords() {
-    _recordTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
-      if (!mounted) {  // mounted 체크 추가
+    _recordTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      if (!mounted) {
+        // mounted 체크 추가
         timer.cancel();
         return;
       }
-      
+
       if (!_isPaused) {
         _saveCurrentTrackingData();
       }
@@ -2932,12 +3314,12 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     // 처음 기록하는 경우 lastRecordTime 초기화
     _lastRecordTime ??= now;
 
-    // 30초마다 records에 데이터 추가
+    // 10초마다 records에 데이터 추가
     final secondsSinceLastRecord = now.difference(_lastRecordTime!).inSeconds;
     if (secondsSinceLastRecord >= _recordIntervalSeconds) {
       // 추가할 기록 생성
       final record = {
-        'time': _elapsedSeconds,
+        'time': _elapsedMinutes,
         'distance': _currentTotalDistance.toInt(), // 이미 m 단위로 저장
         'latitude': _currentLat,
         'longitude': _currentLng,
@@ -2973,8 +3355,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   Future<void> _checkWatchConnection() async {
     if (_isCheckingWatch) return;
 
-    if (!mounted) return;  // mounted 체크 추가
-    
+    if (!mounted) return; // mounted 체크 추가
+
     setState(() {
       _isCheckingWatch = true;
       _watchStatus = '워치 연결 확인 중...';
@@ -2983,9 +3365,9 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     try {
       // 1. 기본 연결 상태 확인
       final isPaired = await _watch.isPaired;
-      
-      if (!mounted) return;  // mounted 체크 추가
-      
+
+      if (!mounted) return; // mounted 체크 추가
+
       // 2. 실제 통신 가능 여부 확인을 위한 테스트 메시지 전송
       bool isActuallyConnected = false;
       if (isPaired) {
@@ -2999,20 +3381,20 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
         }
       }
 
-      if (!mounted) return;  // mounted 체크 추가
+      if (!mounted) return; // mounted 체크 추가
 
       // 3. 최종 연결 상태 결정
       final finalConnectionState = isPaired && isActuallyConnected;
 
       setState(() {
         _isWatchPaired = finalConnectionState;
-        _watchStatus = finalConnectionState 
-            ? '워치가 연결되어 있습니다' 
-            : '워치가 연결되어 있지 않습니다';
+        _watchStatus =
+            finalConnectionState ? '워치가 연결되어 있습니다' : '워치가 연결되어 있지 않습니다';
         _isCheckingWatch = false;
       });
 
-      debugPrint('워치 연결 상태: ${finalConnectionState ? '연결됨' : '연결되지 않음'} (isPaired: $isPaired, isActuallyConnected: $isActuallyConnected)');
+      debugPrint(
+          '워치 연결 상태: ${finalConnectionState ? '연결됨' : '연결되지 않음'} (isPaired: $isPaired, isActuallyConnected: $isActuallyConnected)');
 
       // 4. 연결이 끊어진 경우 관련 기능 비활성화
       if (!finalConnectionState) {
@@ -3039,7 +3421,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   Future<void> _sendMessageToWatch() async {
     // 1. 연결 상태 재확인
     await _checkWatchConnection();
-    
+
     if (!_isWatchPaired) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('워치가 연결되어 있지 않습니다.')),
@@ -3066,7 +3448,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       );
     } catch (e) {
       debugPrint('워치 메시지 전송 오류: $e');
-      
+
       // 4. 오류 발생 시 연결 상태 재설정
       setState(() {
         _isWatchPaired = false;
@@ -3196,32 +3578,17 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
         if (_previousPacemakerLevel != level) {
           debugPrint('페이스메이커 level 변경: $_previousPacemakerLevel -> $level');
 
-          // level별 맞춤 메시지
-          String pacemakerMessage;
-          switch (level) {
-            case '저강도':
-              pacemakerMessage = '운동 강도가 낮아요. 조금 더 힘내볼까요?';
-              break;
-            case '중강도':
-              pacemakerMessage = '적절한 강도로 등산 중입니다!';
-              break;
-            case '고강도':
-              pacemakerMessage = '운동 강도가 높아요! 무리하지 않게 조심하세요.';
-              break;
-            default:
-              pacemakerMessage = message; // 서버에서 온 기본 메시지
-          }
-
           // 페이스메이커 level이 변경되었는지 확인
           if (_previousPacemakerLevel != level) {
             debugPrint('페이스메이커 level 변경: $_previousPacemakerLevel -> $level');
             // 워치에 알람 전송 (앱이 백그라운드 상태가 아니거나 워치가 연결된 경우만)
-            if (_isWatchPaired && _currentLifecycleState != AppLifecycleState.paused) {
+            if (_isWatchPaired &&
+                _currentLifecycleState != AppLifecycleState.paused) {
               try {
                 await _watch.sendMessage({
                   "path": "/PACEMAKER_ALERT",
                   "level": level,
-                  "message": pacemakerMessage
+                  "message": message
                 });
                 debugPrint('페이스메이커 level 변경 알람 전송 완료');
               } catch (e) {
@@ -3236,7 +3603,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
           // 바텀시트에 메시지 표시
           setState(() {
-            _pacemakerMessage = pacemakerMessage;
+            _pacemakerMessage = message;
             _pacemakerLevel = level;
           });
 
@@ -3245,17 +3612,10 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
             _watch.sendMessage({
               "path": "/PACEMAKER",
               "level": level,
-              "message": pacemakerMessage
+              "message": message
             });
             debugPrint('페이스메이커 메시지 전송됨');
           }
-        }
-
-        // 워치 메시지 전송 (워치가 연결된 경우)
-        if (_isWatchPaired) {
-          _watch.sendMessage(
-              {"path": "/PACEMAKER", "level": level, "message": message});
-          debugPrint('페이스메이커 상태 전송됨');
         }
       } else {
         debugPrint('Error: ${response.statusCode}');
@@ -3299,19 +3659,19 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
           setState(() {
             _currentLat = position.latitude;
             _currentLng = position.longitude;
-            
+
             // 초기 위치로 칼만 필터 초기화
             if (position.accuracy < 20.0) {
               _gpsFilter = GpsKalmanFilter(
-                initialLat: position.latitude,
-                initialLng: position.longitude
-              );
+                  initialLat: position.latitude,
+                  initialLng: position.longitude);
               _lastFilteredLat = position.latitude;
               _lastFilteredLng = position.longitude;
               _isFilterInitialized = true;
-              debugPrint('초기 위치로 칼만 필터 초기화: Lat: ${position.latitude}, Lng: ${position.longitude}, 정확도: ${position.accuracy}m');
+              debugPrint(
+                  '초기 위치로 칼만 필터 초기화: Lat: ${position.latitude}, Lng: ${position.longitude}, 정확도: ${position.accuracy}m');
             }
-            
+
             debugPrint('초기 위치 가져오기 성공: Lat: $_currentLat, Lng: $_currentLng');
           });
         }
@@ -3324,8 +3684,32 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
     // 2. AppState의 트래킹 상태에 따라 데이터 로드 또는 새 트래킹 준비
     if (appState.isTracking) {
+      // ModeData 확인 로그 추가
+      if (appState.modeData != null) {
+        debugPrint('=== AppState에 저장된 ModeData 확인 ===');
+        debugPrint('ModeData: ${appState.modeData != null ? '있음' : '없음'}');
+        debugPrint('Mountain: ${appState.modeData?.mountain.name}');
+        debugPrint(
+            'Path: ${appState.modeData?.path.name}, 거리: ${appState.modeData?.path.distance}km');
+
+        if (appState.modeData?.opponent != null) {
+          debugPrint('Opponent: ${appState.modeData?.opponent?.nickname}');
+          debugPrint(
+              'Opponent Records: ${appState.modeData?.opponent?.records.length}개');
+
+          if (appState.modeData!.opponent!.records.isNotEmpty) {
+            final lastRecord = appState.modeData!.opponent!.records.last;
+            debugPrint(
+                '마지막 Record - 시간: ${lastRecord.time}초, 거리: ${lastRecord.distance}m');
+          }
+        } else {
+          debugPrint('Opponent: 없음 (일반 등산 모드)');
+        }
+      }
+
       final List<NLatLng> previousUserPath = List.from(appState.userPath);
-      final List<NLatLng> previousRouteCoordinates = List.from(appState.routeCoordinates);
+      final List<NLatLng> previousRouteCoordinates =
+          List.from(appState.routeCoordinates);
       final double prevLat = appState.currentLat;
       final double prevLng = appState.currentLng;
       final double prevDist = appState.distance;
@@ -3408,5 +3792,19 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     _startTracking();
     _startCompassTracking();
     _startTrackingRecords();
+  }
+
+  // 경쟁자 데이터 초기화 메서드
+  void _initCompetitorData() {
+    _competitorData = {
+      'name': '이전 기록',
+      'distance': 0,
+      'time': 0,
+      'isAhead': false,
+      'maxHeartRate': 0,
+      'avgHeartRate': 0.0,
+      'formattedRemainingTime': '0분 0초',
+    };
+    debugPrint('경쟁자 데이터 기본값 초기화 완료');
   }
 }

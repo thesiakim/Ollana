@@ -104,6 +104,7 @@ class ModeService {
       try {
         final jsonData = jsonDecode(decodedBody);
         debugPrint('등산 시작 응답: ${response.statusCode}, ${jsonData['status']}');
+        debugPrint('등산 시작 데이터: ${jsonData['data']}');
 
         if (response.statusCode == 200 && jsonData['status'] == true) {
           // data 필드에서 ModeData 객체 생성
@@ -244,6 +245,7 @@ class ModeService {
 
       debugPrint(
           '등산 종료 요청 데이터: mountainId=$mountainId, pathId=$pathId, mode=$mode');
+      debugPrint('등산 종료 요청 데이터: $body');
 
       final response = await _client.post(
         uri,
@@ -345,7 +347,6 @@ class ModeService {
       return [];
     }
   }
-
 
   /// Client 자원 정리
   void dispose() {
