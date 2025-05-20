@@ -2526,6 +2526,22 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       debugPrint('등산 종료 요청 성공 (기록 저장: $shouldSave)');
       debugPrint('서버 응답 데이터: ${response['data']}');
 
+      if (_isWatchPaired) {
+        if (shouldSave) {
+          _watch.sendMessage({
+            "path": "/STOP_TRACKING_CONFIRM",
+            "badge": response['data']['badge'],
+            "averageHeartRate": response['data']['averageHeartRate'],
+            "maxHeartRate": response['data']['maxHeartRate'],
+            "timeDiff": response['data']['timeDiff'],
+          });
+        } else {
+          _watch.sendMessage({
+            "path": "/STOP_TRACKING_CANCEL",
+          });
+        }
+      }
+
       // 종료 처리 (앱 상태 초기화)
       // appState.endTracking(); // isTracking = false, AppState 리스너들에게 알림
 
@@ -3236,6 +3252,40 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
         setState(() {
           // 이미 값은 변경되어 있으므로 UI 갱신만 수행
         });
+
+        // 워치 연결되어 있는 경우 예상 도착시간과 남은 거리 정보 전송
+        if (_isWatchPaired) {
+          // 예상 도착 시간 포맷팅
+          String etaFormatted;
+          final totalSeconds = _estimatedRemainingSeconds;
+          final hours = totalSeconds ~/ 3600;
+          final minutes = (totalSeconds % 3600) ~/ 60;
+
+          if (hours > 0) {
+            etaFormatted = '$hours시간 $minutes분';
+          } else {
+            etaFormatted = '$minutes분';
+          }
+
+          // 남은 거리를 미터 단위로 변환
+          final distanceInMeters = (_remainingDistance * 1000).toInt();
+
+          try {
+            _watch.sendMessage({
+              'path': '/ETA_DISTANCE',
+              'eta': etaFormatted,
+              'distance': distanceInMeters
+            });
+
+            if (_elapsedSeconds % 30 == 0) {
+              // 로그 과다 출력 방지
+              debugPrint(
+                  '워치로 ETA/거리 정보 전송: $etaFormatted, $distanceInMeters미터');
+            }
+          } catch (e) {
+            debugPrint('워치 메시지(ETA/거리) 전송 실패: $e');
+          }
+        }
       }
 
       // 디버그 로그 (10초마다 출력)
@@ -3582,8 +3632,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
           if (_previousPacemakerLevel != level) {
             debugPrint('페이스메이커 level 변경: $_previousPacemakerLevel -> $level');
             // 워치에 알람 전송 (앱이 백그라운드 상태가 아니거나 워치가 연결된 경우만)
-            if (_isWatchPaired &&
-                _currentLifecycleState != AppLifecycleState.paused) {
+            if (_isWatchPaired) {
               try {
                 await _watch.sendMessage({
                   "path": "/PACEMAKER_ALERT",
@@ -3606,16 +3655,6 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
             _pacemakerMessage = message;
             _pacemakerLevel = level;
           });
-
-          // 워치 메시지 전송 (워치가 연결된 경우)
-          if (_isWatchPaired) {
-            _watch.sendMessage({
-              "path": "/PACEMAKER",
-              "level": level,
-              "message": message
-            });
-            debugPrint('페이스메이커 메시지 전송됨');
-          }
         }
       } else {
         debugPrint('Error: ${response.statusCode}');
