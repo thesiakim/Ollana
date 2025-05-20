@@ -465,7 +465,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    '• 다른 사용자와 중복되지 않는 닉네임을 사용해주세요.',
+                    '• 다른 사용자와 중복되지 않는 닉네임을 사용해주세요',
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.grey.shade600,
@@ -473,7 +473,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '• 특수문자와 이모지는 사용할 수 없습니다.',
+                    '• 특수문자와 이모지는 사용할 수 없어요',
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.grey.shade600,

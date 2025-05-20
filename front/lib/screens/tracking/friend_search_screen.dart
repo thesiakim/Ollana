@@ -411,7 +411,7 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                                                       ),
                                                       SizedBox(width: 4),
                                                       Text(
-                                                        isPossible ? '등산 기록 있음' : '등산 기록 없음',
+                                                        isPossible ? '등산 기록 존재' : '등산 기록 미존재',
                                                         style: TextStyle(
                                                           fontSize: 11, // Adjusted font size
                                                           fontWeight: FontWeight.w500,

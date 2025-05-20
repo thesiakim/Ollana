@@ -678,7 +678,7 @@ Widget build(BuildContext context) {
                           child: Text(
                             formattedTime,
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 10,
                               fontWeight: FontWeight.w400,
                               color: isPastTime 
                                   ? const Color(0xFF9E9E9E) // 지나간 시간은 회색 텍스트
