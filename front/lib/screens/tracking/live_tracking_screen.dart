@@ -1564,7 +1564,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     );
   }
 
-  // 기본 정보 섹션 위젯 - 세련되고 깔끔한 디자인
+  // 기본 정보 섹션 위젯 - 색상 일관성 개선
 Widget _buildBasicInfoSection() {
   // 거리 변환: 미터를 km로 표시
   String distanceText = '';
@@ -1584,9 +1584,10 @@ Widget _buildBasicInfoSection() {
     movedDistanceText = '${(_currentTotalDistance / 1000).toStringAsFixed(2)}km';
   }
 
-  // 앱 테마 컬러
-  const Color themeColor = Color(0xFF52A486);
-  const Color lightThemeColor = Color(0xFFE8F5EC);
+  // 앱 테마 컬러 - 현재 등반 상태 뱃지와 동일한 색상으로 통일
+  const Color badgeColor = Color(0xFF52A486);  // 현재 등반 상태 뱃지의 아이콘 색상
+  const Color textColor = Color.fromARGB(255, 58, 133, 106);  // 현재 등반 상태 뱃지의 텍스트 색상
+  const Color lightBadgeColor = Color.fromARGB(255, 190, 233, 203);  // 현재 등반 상태 뱃지의 배경색
   
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1597,7 +1598,7 @@ Widget _buildBasicInfoSection() {
           margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: const Color(0xFFDCEFE2),
+            color: const Color.fromARGB(255, 192, 225, 202),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Row(
@@ -1606,15 +1607,15 @@ Widget _buildBasicInfoSection() {
               Icon(
                 Icons.insert_chart_outlined,
                 size: 12,
-                color: const Color(0xFF52A486),
+                color: badgeColor,
               ),
               const SizedBox(width: 4),
-              const Text(
+              Text(
                 '현재 등반 상태',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: Color(0xFF52A486),
+                  color: textColor,
                 ),
               ),
             ],
@@ -1654,13 +1655,13 @@ Widget _buildBasicInfoSection() {
                             Container(
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
-                                color: lightThemeColor,
+                                color: textColor.withOpacity(0.15), // 텍스트 색상으로 배경색 변경
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.directions_walk,
                                 size: 16,
-                                color: themeColor,
+                                color: badgeColor, // 아이콘 색상 변경
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -1678,7 +1679,7 @@ Widget _buildBasicInfoSection() {
                         Text(
                           distanceText,
                           style: const TextStyle(
-                            fontSize: 18,
+                            fontSize: 16,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF333333),
                           ),
@@ -1704,13 +1705,13 @@ Widget _buildBasicInfoSection() {
                               Container(
                                 padding: const EdgeInsets.all(6),
                                 decoration: BoxDecoration(
-                                  color: lightThemeColor,
+                                  color: textColor.withOpacity(0.15), // 텍스트 색상으로 배경색 변경
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: const Icon(
+                                child: Icon(
                                   Icons.timer_outlined,
                                   size: 16,
-                                  color: themeColor,
+                                  color: badgeColor, // 아이콘 색상 변경
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -1728,7 +1729,7 @@ Widget _buildBasicInfoSection() {
                           Text(
                             _formattedRemainingTime,
                             style: const TextStyle(
-                              fontSize: 18,
+                              fontSize: 16,
                               fontWeight: FontWeight.bold,
                               color: Color(0xFF333333),
                             ),
@@ -1760,13 +1761,13 @@ Widget _buildBasicInfoSection() {
                             Container(
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
-                                color: lightThemeColor,
+                                color: textColor.withOpacity(0.15), // 텍스트 색상으로 배경색 변경
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.speed,
                                 size: 16,
-                                color: themeColor,
+                                color: badgeColor, // 아이콘 색상 변경
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -1784,7 +1785,7 @@ Widget _buildBasicInfoSection() {
                         Text(
                           '${_currentSpeed.toStringAsFixed(1)} km/h',
                           style: const TextStyle(
-                            fontSize: 18,
+                            fontSize: 16,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF333333),
                           ),
@@ -1810,13 +1811,13 @@ Widget _buildBasicInfoSection() {
                               Container(
                                 padding: const EdgeInsets.all(6),
                                 decoration: BoxDecoration(
-                                  color: lightThemeColor,
+                                  color: textColor.withOpacity(0.15), // 텍스트 색상으로 배경색 변경
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: const Icon(
+                                child: Icon(
                                   Icons.terrain,
                                   size: 16,
-                                  color: themeColor,
+                                  color: badgeColor, // 아이콘 색상 변경
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -1834,7 +1835,7 @@ Widget _buildBasicInfoSection() {
                           Text(
                             '${_currentAltitude.toStringAsFixed(1)}m',
                             style: const TextStyle(
-                              fontSize: 18,
+                              fontSize: 16,
                               fontWeight: FontWeight.bold,
                               color: Color(0xFF333333),
                             ),
@@ -1879,13 +1880,13 @@ Widget _buildBasicInfoSection() {
                         Container(
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
-                            color: lightThemeColor,
+                            color: textColor.withOpacity(0.15), // 텍스트 색상으로 배경색 변경
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.access_time,
                             size: 16,
-                            color: themeColor,
+                            color: badgeColor, // 아이콘 색상 변경
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -1903,7 +1904,7 @@ Widget _buildBasicInfoSection() {
                     Text(
                       _formattedTime,
                       style: const TextStyle(
-                        fontSize: 18,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF333333),
                       ),
@@ -1929,13 +1930,13 @@ Widget _buildBasicInfoSection() {
                           Container(
                             padding: const EdgeInsets.all(6),
                             decoration: BoxDecoration(
-                              color: lightThemeColor,
+                              color: textColor.withOpacity(0.15), // 텍스트 색상으로 배경색 변경
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.straighten,
                               size: 16,
-                              color: themeColor,
+                              color: badgeColor, // 아이콘 색상 변경
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -1953,7 +1954,7 @@ Widget _buildBasicInfoSection() {
                       Text(
                         movedDistanceText,
                         style: const TextStyle(
-                          fontSize: 18,
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF333333),
                         ),
@@ -2061,7 +2062,7 @@ Widget _buildBasicInfoSection() {
         ),
       ),
       
-      // 페이스메이커 메시지 카드
+      // 페이스메이커 메시지 카드 - 여기도 동일한 색상 변경
       if (_pacemakerMessage != null)
         Container(
           margin: const EdgeInsets.only(bottom: 12),
@@ -2073,7 +2074,7 @@ Widget _buildBasicInfoSection() {
                   ? Colors.red.withOpacity(0.3)
                   : _pacemakerLevel == '저강도'
                       ? Colors.blue.withOpacity(0.3)
-                      : themeColor.withOpacity(0.3),
+                      : badgeColor.withOpacity(0.3), // 아이콘 색상 사용
               width: 1,
             ),
             boxShadow: [
@@ -2096,7 +2097,7 @@ Widget _buildBasicInfoSection() {
                         ? Colors.red.withOpacity(0.1)
                         : _pacemakerLevel == '저강도'
                             ? Colors.blue.withOpacity(0.1)
-                            : themeColor.withOpacity(0.1),
+                            : textColor.withOpacity(0.15), // 텍스트 색상으로 배경색 변경
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
@@ -2110,7 +2111,7 @@ Widget _buildBasicInfoSection() {
                         ? Colors.red
                         : _pacemakerLevel == '저강도'
                             ? Colors.blue
-                            : themeColor,
+                            : badgeColor, // 아이콘 색상 변경
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -2183,7 +2184,7 @@ Widget _buildBasicInfoSection() {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
-                          color: themeColor,
+                          color: badgeColor, // 아이콘 색상 변경
                         ),
                       )
                     ],
@@ -2196,7 +2197,6 @@ Widget _buildBasicInfoSection() {
     ],
   );
 }
-
 
   // 이전 기록과 현재 기록 비교
   Future<void> _compareWithPastRecord({bool sendNotification = false}) async {
@@ -2630,8 +2630,7 @@ void _showDestinationReachedDialog() {
     }
   }
 
-  // 확장된 정보 섹션 위젯
-Widget _buildExpandedInfoSection() {
+  Widget _buildExpandedInfoSection() {
   // 일반 모드 여부 확인 (opponent가 없으면 일반 모드)
   final bool isGeneralMode = _modeData?.opponent == null;
 
@@ -2648,11 +2647,10 @@ Widget _buildExpandedInfoSection() {
     }
   }
 
-  // 앱 테마 컬러
-  const Color themeColor = Color(0xFF52A486);
-  const Color lightThemeColor = Color(0xFFE8F5EC);
-  const Color purpleColor = Color(0xFF8A64D9);
-  const Color lightPurpleColor = Color(0xFFF0E6FC);
+  // 앱 테마 컬러 - 현재 등반 상태 뱃지와 동일한 색상으로 통일
+  const Color badgeColor = Color(0xFF52A486);  // 현재 등반 상태 뱃지의 아이콘 색상
+  const Color textColor = Color.fromARGB(255, 58, 133, 106);  // 현재 등반 상태 뱃지의 텍스트 색상
+  const Color lightBadgeColor = Color.fromARGB(255, 190, 233, 203);  // 현재 등반 상태 뱃지의 배경색
   
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -2667,7 +2665,7 @@ Widget _buildExpandedInfoSection() {
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFFDCEFE2),
+              color: const Color.fromARGB(255, 192, 225, 202), // '현재 등반 상태'와 동일한 배경색
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
@@ -2676,15 +2674,15 @@ Widget _buildExpandedInfoSection() {
                 Icon(
                   Icons.compare_arrows,
                   size: 12,
-                  color: const Color(0xFF52A486),
+                  color: badgeColor, // badgeColor 변수 사용
                 ),
                 const SizedBox(width: 4),
-                const Text(
+                Text(
                   '비교 정보',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: Color(0xFF52A486),
+                    color: textColor, // textColor 변수 사용
                   ),
                 ),
               ],
@@ -2712,15 +2710,15 @@ Widget _buildExpandedInfoSection() {
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(6), // 6으로 변경하여 남은 거리 아이콘과 동일하게
                 decoration: BoxDecoration(
-                  color: lightThemeColor,
-                  borderRadius: BorderRadius.circular(10),
+                  color: textColor.withOpacity(0.15), // 텍스트 색상으로 배경색 변경
+                  borderRadius: BorderRadius.circular(8), // 8로 변경하여 남은 거리 아이콘과 동일하게
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.compare_arrows,
-                  size: 18,
-                  color: themeColor,
+                  size: 16, // 16으로 변경하여 남은 거리 아이콘과 동일하게
+                  color: badgeColor, // 아이콘 색상 변경
                 ),
               ),
               const SizedBox(width: 14),
@@ -2738,13 +2736,13 @@ Widget _buildExpandedInfoSection() {
                     ),
                     SizedBox(height: 4),
                     Text(
-                      _modeData?.opponent?.nickname ?? '이전 기록',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF333333),
-                      ),
+                    _getComparisonModeText(),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF333333),
                     ),
+                  ),
                   ],
                 ),
               ),
@@ -2781,15 +2779,15 @@ Widget _buildExpandedInfoSection() {
                           Row(
                             children: [
                               Container(
-                                padding: const EdgeInsets.all(6),
+                                padding: const EdgeInsets.all(6), // 6으로 변경
                                 decoration: BoxDecoration(
-                                  color: lightThemeColor,
-                                  borderRadius: BorderRadius.circular(8),
+                                  color: textColor.withOpacity(0.15), // 텍스트 색상으로 배경색 변경
+                                  borderRadius: BorderRadius.circular(8), // 8로 변경
                                 ),
-                                child: const Icon(
+                                child: Icon(
                                   Icons.straighten,
-                                  size: 16,
-                                  color: themeColor,
+                                  size: 16, // 16으로 변경
+                                  color: badgeColor, // 아이콘 색상 변경
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -2807,7 +2805,7 @@ Widget _buildExpandedInfoSection() {
                           Text(
                             '${_competitorData['distance']}km',
                             style: const TextStyle(
-                              fontSize: 18,
+                              fontSize: 16,
                               fontWeight: FontWeight.bold,
                               color: Color(0xFF333333),
                             ),
@@ -2831,15 +2829,15 @@ Widget _buildExpandedInfoSection() {
                             Row(
                               children: [
                                 Container(
-                                  padding: const EdgeInsets.all(6),
+                                  padding: const EdgeInsets.all(6), // 6으로 변경
                                   decoration: BoxDecoration(
-                                    color: lightThemeColor,
-                                    borderRadius: BorderRadius.circular(8),
+                                    color: textColor.withOpacity(0.15), // 텍스트 색상으로 배경색 변경
+                                    borderRadius: BorderRadius.circular(8), // 8로 변경
                                   ),
-                                  child: const Icon(
+                                  child: Icon(
                                     Icons.timer_outlined,
-                                    size: 16,
-                                    color: themeColor,
+                                    size: 16, // 16으로 변경
+                                    color: badgeColor, // 아이콘 색상 변경
                                   ),
                                 ),
                                 const SizedBox(width: 8),
@@ -2857,7 +2855,7 @@ Widget _buildExpandedInfoSection() {
                             Text(
                               competitorTimeFormatted,
                               style: const TextStyle(
-                                fontSize: 18,
+                                fontSize: 16,
                                 fontWeight: FontWeight.bold,
                                 color: Color(0xFF333333),
                               ),
@@ -2896,15 +2894,15 @@ Widget _buildExpandedInfoSection() {
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(6), // 6으로 변경
                 decoration: BoxDecoration(
-                  color: lightThemeColor,
-                  borderRadius: BorderRadius.circular(10),
+                  color: textColor.withOpacity(0.15), // 텍스트 색상으로 배경색 변경
+                  borderRadius: BorderRadius.circular(8), // 8로 변경
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.hiking,
-                  size: 18,
-                  color: themeColor,
+                  size: 16, // 16으로 변경
+                  color: badgeColor, // 아이콘 색상 변경
                 ),
               ),
               const SizedBox(width: 14),
@@ -2926,7 +2924,7 @@ Widget _buildExpandedInfoSection() {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: themeColor,
+                        color: badgeColor, // 아이콘 색상과 동일하게 변경
                       ),
                     ),
                   ],
@@ -2946,6 +2944,19 @@ Widget _buildExpandedInfoSection() {
   );
 }
 
+String _getComparisonModeText() {
+  final appState = Provider.of<AppState>(context, listen: false);
+  final String selectedMode = appState.selectedMode ?? '일반 등산';
+  
+  if (selectedMode == '나 vs 나') {
+    return '나와의 대결';
+  } else if (selectedMode == '나 vs 친구') {
+    return '친구와의 대결';
+  } else {
+    // 기본값은 기존처럼 nickname 또는 '이전 기록'
+    return _modeData?.opponent?.nickname ?? '이전 기록';
+  }
+}
 
   // 피드백 메시지 위젯
   Widget _buildFeedbackMessage() {
@@ -2993,6 +3004,7 @@ Widget _buildEndTrackingButton() {
   return Center(
     child: Container(
       margin: EdgeInsets.only(top: 30, bottom: 20),
+      width: double.infinity,
       decoration: BoxDecoration(
         color: const Color(0xFF52A486),
         borderRadius: BorderRadius.circular(50),
@@ -3073,7 +3085,7 @@ Widget _buildEndTrackingButton() {
             Container(
               margin: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: Text(
-                '등산 기록을 저장하시겠습니까?',
+                '등산 기록을 저장하시겠어요?',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,
@@ -3205,10 +3217,10 @@ Widget _buildEndTrackingButton() {
 }
 
   void _showEndTrackingDialog(BuildContext context, bool shouldSave, {bool isEarlyExit = false}) {
-  // 색상 정의 - 색상을 빨간색 계열로 변경
-  final Color dangerColor = Color(0xFFE53935); // 빨간색으로 변경
-  final Color lightDangerColor = Color(0xFFFBEBEB); // 연한 빨간색 배경
-  final Color borderDangerColor = Color(0xFFFFCCCC); // 빨간색 테두리
+  // 색상 정의 - 색상을 초록색 계열로 변경 (빨간색에서 변경)
+  final Color themeColor = Color(0xFF52A486); // 초록색으로 변경
+  final Color lightThemeColor = Color(0xFFE8F5EC); // 연한 초록색 배경
+  final Color borderThemeColor = Color(0xFFDCEFE2); // 초록색 테두리
   
   showDialog(
     context: context,
@@ -3222,7 +3234,7 @@ Widget _buildEndTrackingButton() {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // 상단 아이콘 영역 - 빨간색으로 변경
+            // 상단 아이콘 영역 - 초록색으로 변경
             Stack(
               alignment: Alignment.center,
               children: [
@@ -3230,14 +3242,14 @@ Widget _buildEndTrackingButton() {
                   height: 80,
                   width: 80,
                   decoration: BoxDecoration(
-                    color: Color(0xFFFEE8E8), // 연한 빨간색 배경
+                    color: lightThemeColor, // 연한 초록색 배경
                     shape: BoxShape.circle,
                   ),
                 ),
                 Icon(
                   isEarlyExit ? Icons.warning_rounded : Icons.help_outline_rounded,
                   size: 40,
-                  color: dangerColor, // 빨간색 아이콘
+                  color: themeColor, // 초록색 아이콘
                 ),
               ],
             ),
@@ -3272,26 +3284,26 @@ Widget _buildEndTrackingButton() {
             
             // 저장 상태 표시 컨테이너
             Container(
-              margin: EdgeInsets.symmetric(vertical: 8),
-              padding: EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+              margin: EdgeInsets.symmetric(vertical: 4), // 8에서 4로 줄임
+              padding: EdgeInsets.symmetric(vertical: 6, horizontal: 16), // 10에서 6으로 줄임
               decoration: BoxDecoration(
-                color: shouldSave ? Color(0xFFF0F9F4) : Colors.grey[100],
+                color: shouldSave ? Color(0xFFF0F9F4) : Color(0xFFF0F9F4),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: shouldSave ? Color(0xFFDCEFE2) : Colors.grey[300]!,
+                  color: shouldSave ? Color(0xFFDCEFE2) : Color(0xFFDCEFE2),
                   width: 1,
                 ),
               ),
               child: Row(
                 children: [
                   Container(
-                    padding: EdgeInsets.all(6),
+                    padding: EdgeInsets.all(4), // 6에서 4로 줄임
                     decoration: BoxDecoration(
                       color: Colors.white,
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: shouldSave ? Color(0xFF52A486).withOpacity(0.2) : Colors.grey.withOpacity(0.2),
+                          color: shouldSave ? themeColor.withOpacity(0.2) : Colors.grey.withOpacity(0.2),
                           blurRadius: 3,
                           offset: Offset(0, 1),
                         ),
@@ -3299,83 +3311,87 @@ Widget _buildEndTrackingButton() {
                     ),
                     child: Icon(
                       shouldSave ? Icons.save : Icons.do_not_disturb_alt,
-                      color: shouldSave ? Color(0xFF52A486) : Colors.grey[600],
-                      size: 18,
+                      color: shouldSave ? themeColor : themeColor,
+                      size: 16, // 18에서 16으로 줄임
                     ),
                   ),
-                  SizedBox(width: 12),
+                  SizedBox(width: 8), // 12에서 8로 줄임
                   Expanded(
                     child: Text(
                       shouldSave ? '등산 기록이 저장돼요' : '등산 기록이 저장되지 않아요',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 12, // 크기는 그대로 유지
                         fontWeight: FontWeight.w500,
-                        color: shouldSave ? Color(0xFF52A486) : Colors.grey[700],
+                        color: shouldSave ? themeColor : themeColor,
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-            
-            // 목적지 미도달 시 경고 컨테이너 - 빨간색 계열로 변경
+
+            // 목적지 미도달 시 경고 컨테이너
             if (isEarlyExit || (!shouldSave && !isEarlyExit))
               Container(
-                margin: EdgeInsets.only(top: 8, bottom: 12),
-                padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                margin: EdgeInsets.only(top: 4, bottom: 8),
+                padding: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                 decoration: BoxDecoration(
-                  color: lightDangerColor, // 연한 빨간색 배경
+                  color: isEarlyExit ? Colors.red.withOpacity(0.1) : lightThemeColor,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: borderDangerColor, // 빨간색 테두리
+                    color: isEarlyExit ? Colors.red.withOpacity(0.3) : borderThemeColor,
                     width: 1,
                   ),
                 ),
                 child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  // crossAxisAlignment를 center로 변경하여 수직 중앙 정렬
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Container(
-                      padding: EdgeInsets.all(6),
-                      margin: EdgeInsets.only(top: 2), // 아이콘 약간 위로 조정
+                      padding: EdgeInsets.all(4),
+                      // margin 제거 (불필요한 위치 조정 방지)
                       decoration: BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: dangerColor.withOpacity(0.2), // 빨간색 그림자
+                            color: isEarlyExit ? Colors.red.withOpacity(0.2) : themeColor.withOpacity(0.2),
                             blurRadius: 3,
                             offset: Offset(0, 1),
                           ),
                         ],
                       ),
                       child: Icon(
-                        Icons.error_outline,
-                        color: dangerColor, // 빨간색 아이콘
-                        size: 16,
+                        isEarlyExit ? Icons.error_outline : Icons.info_outline,
+                        color: isEarlyExit ? Colors.red : themeColor,
+                        size: 14,
                       ),
                     ),
-                    SizedBox(width: 12),
+                    SizedBox(width: 8),
                     Expanded(
                       child: Column(
+                        // mainAxisSize 추가하여 컬럼이 필요한 높이만 차지하도록
+                        mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (isEarlyExit)
                             Text(
                               '목적지에 도달하지 않았어요',
                               style: TextStyle(
-                                fontSize: 14,
+                                fontSize: 12,
                                 fontWeight: FontWeight.bold,
-                                color: dangerColor, // 빨간색 텍스트
+                                color: Colors.red,
                               ),
                             ),
-                          SizedBox(height: 4),
+                          // isEarlyExit이 true일 때만 간격 추가
+                          if (isEarlyExit) SizedBox(height: 2),
                           Text(
                             isEarlyExit
                                 ? '경험치도 얻을 수 없어요'
                                 : '경험치도 얻을 수 없어요',
                             style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.red[700], // 진한 빨간색 텍스트
+                              fontSize: 11,
+                              color: isEarlyExit ? Colors.red[700] : themeColor,
                             ),
                           ),
                         ],
@@ -3384,8 +3400,9 @@ Widget _buildEndTrackingButton() {
                   ],
                 ),
               ),
-            
-            SizedBox(height: 16),
+
+            // 버튼 영역과의 간격 조정
+            SizedBox(height: 12), // 16에서 12로 줄임
             
             // 버튼 영역
             Row(
@@ -3412,7 +3429,7 @@ Widget _buildEndTrackingButton() {
                   ),
                 ),
                 SizedBox(width: 12),
-                // 종료 버튼 - 빨간색으로 변경
+                // 종료 버튼 - 초록색으로 변경
                 Expanded(
                   child: TextButton(
                     onPressed: () {
@@ -3421,12 +3438,12 @@ Widget _buildEndTrackingButton() {
                     },
                     style: TextButton.styleFrom(
                       padding: EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: dangerColor, // 빨간색 배경
+                      backgroundColor: themeColor, // 초록색 배경
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
                       elevation: 2,
-                      shadowColor: dangerColor.withOpacity(0.5), // 빨간색 그림자
+                      shadowColor: themeColor.withOpacity(0.5), // 초록색 그림자
                     ),
                     child: Text(
                       '종료',

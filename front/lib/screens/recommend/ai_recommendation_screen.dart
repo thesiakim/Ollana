@@ -131,34 +131,22 @@ class _AiRecommendationScreenState extends State<AiRecommendationScreen> with Si
   }
   
   Widget _buildLoadingView() {
-    return Center(
-      child: FadeTransition(
-        opacity: _fadeAnimation,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: 48,
-              height: 48,
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
-                strokeWidth: 4, // MountainMapScreen과 동일
-              ),
-            ),
-            const SizedBox(height: 24), // MountainMapScreen과 동일
-            Text(
-              '맞춤 추천을 불러오는 중', // 문맥에 맞게 수정
-              style: TextStyle(
-                fontSize: 16, // MountainMapScreen과 동일
-                fontWeight: FontWeight.w500, // MountainMapScreen과 동일
-                color: Colors.grey[700], // MountainMapScreen과 동일
-              ),
-            ),
-          ],
+  return Center(
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        SizedBox(
+          width: 48,
+          height: 48,
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+            strokeWidth: 4,
+          ),
         ),
-      ),
-    );
-  }
+      ],
+    ),
+  );
+}
   
   Widget _buildErrorView(String errorMessage) {
     return Center(

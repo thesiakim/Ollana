@@ -923,76 +923,82 @@ Widget _buildEmptySearchResult() {
                         ),
                         SizedBox(height: 20),
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            OutlinedButton(
-                              onPressed: () {
-                                Navigator.of(context).pop();
-                              },
-                              style: OutlinedButton.styleFrom(
-                                side: BorderSide(color: Colors.grey.shade300),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
+                            // 취소 버튼
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  side: BorderSide(color: Colors.grey.shade300),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
                                 ),
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 18,
-                                  vertical: 12,
-                                ),
-                              ),
-                              child: Text(
-                                '취소',
-                                style: TextStyle(
-                                  color: Colors.grey[700],
-                                  fontWeight: FontWeight.w500,
+                                child: Text(
+                                  '취소',
+                                  style: TextStyle(
+                                    color: Colors.grey[700],
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 14,
+                                  ),
                                 ),
                               ),
                             ),
-                            ElevatedButton(
-                              onPressed: _selectedRecordId != null
-                                  ? () {
-                                      final selectedRecord = recordsList.firstWhere(
-                                        (record) => record['recordId'] == _selectedRecordId,
-                                      );
+                            SizedBox(width: 10), // 버튼 사이 간격
+                            // 시작하기 버튼
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: _selectedRecordId != null
+                                    ? () {
+                                        final selectedRecord = recordsList.firstWhere(
+                                          (record) => record['recordId'] == _selectedRecordId,
+                                        );
 
-                                      appState.setOpponentRecordData(
-                                        date: selectedRecord['date'],
-                                        time: selectedRecord['time'],
-                                        maxHeartRate: selectedRecord['maxHeartRate'],
-                                        avgHeartRate: selectedRecord['averageHeartRate'],
-                                      );
+                                        appState.setOpponentRecordData(
+                                          date: selectedRecord['date'],
+                                          time: selectedRecord['time'],
+                                          maxHeartRate: selectedRecord['maxHeartRate'],
+                                          avgHeartRate: selectedRecord['averageHeartRate'],
+                                        );
 
-                                      Navigator.of(context).pop();
-                                      Navigator.of(context).pop();
-                                      appState.startTracking(
-                                        '나 vs 친구',
-                                        opponentId: _selectedFriend!.id.toInt(),
-                                        recordId: _selectedRecordId,
-                                      );
-                                    }
-                                  : null,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Color(0xFF52A486),
-                                disabledBackgroundColor: Colors.grey.shade300,
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
+                                        Navigator.of(context).pop();
+                                        Navigator.of(context).pop();
+                                        appState.startTracking(
+                                          '나 vs 친구',
+                                          opponentId: _selectedFriend!.id.toInt(),
+                                          recordId: _selectedRecordId,
+                                        );
+                                      }
+                                    : null,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Color(0xFF52A486),
+                                  disabledBackgroundColor: Colors.grey.shade300,
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
                                 ),
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                  vertical: 12,
-                                ),
-                              ),
-                              child: Text(
-                                '시작하기',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
+                                child: Text(
+                                  '시작하기',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
                                 ),
                               ),
                             ),
                           ],
                         ),
+                        
                       ],
                     ),
                   ),

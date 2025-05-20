@@ -128,27 +128,23 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
   }
 
   // 로딩 화면
-  Widget _buildLoadingView() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(
+Widget _buildLoadingView() {
+  return Center(
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        SizedBox(
+          width: 48,
+          height: 48,
+          child: CircularProgressIndicator(
             valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+            strokeWidth: 4,
           ),
-          const SizedBox(height: 24),
-          Text(
-            '산 정보를 불러오는 중...',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              color: Colors.grey[700],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 
   // 오류 화면
   Widget _buildErrorView() {

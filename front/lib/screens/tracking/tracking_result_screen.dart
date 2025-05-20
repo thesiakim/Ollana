@@ -174,7 +174,9 @@ Widget _buildVsMeResult(String mountainName) {
   final String timeDiffText = timeDiff != null
       ? timeDiff < 0
           ? "${timeDiff.abs()}분 단축"
-          : "$timeDiff분 증가"
+          : timeDiff > 0
+              ? "$timeDiff분 증가" 
+              : "변화 없음"  // timeDiff가 0인 경우
       : "";
 
   // 현재/이전 기록
@@ -706,7 +708,9 @@ Widget _buildVsFriendResult(String mountainName) {
   final String timeDiffText = timeDiff != null
       ? timeDiff < 0
           ? "${timeDiff.abs()}분 단축"
-          : "$timeDiff분 증가"
+          : timeDiff > 0
+              ? "$timeDiff분 증가" 
+              : "변화 없음"  // timeDiff가 0인 경우
       : "";
 
   // badge URL 가져오기
