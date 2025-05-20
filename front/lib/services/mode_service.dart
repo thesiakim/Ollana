@@ -191,6 +191,7 @@ class ModeService {
                       'id': item['userId'],
                       'nickname': item['nickname'],
                       'isPossible': item['isPossible'],
+                      'profileImg': item['profileImg'],
                     }))
                 .toList();
           }

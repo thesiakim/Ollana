@@ -1,12 +1,26 @@
-// status_info_pages.dart - 스타일 통일 및 아이콘 변경
+// first_status_info.dart 수정
+
+import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../models/app_state.dart';
+import '../../models/weather_data.dart';
+import '../../services/weather_service.dart';
 
-/// 첫 번째 페이지: 등산지수 조회 (기존 코드 유지)
+// first_status_info.dart 오버플로우 수정
+
+import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../models/app_state.dart';
+import '../../models/weather_data.dart';
+import '../../services/weather_service.dart';
+
+/// 첫 번째 페이지: 등산지수 조회 (오버플로우 수정)
 class FirstStatusInfo extends StatefulWidget {
   const FirstStatusInfo({super.key});
   @override
@@ -14,171 +28,615 @@ class FirstStatusInfo extends StatefulWidget {
 }
 
 class _FirstStatusInfoState extends State<FirstStatusInfo> {
-  // 기존 코드는 그대로 유지...
-  late Future<int> _climbingIndexFuture;
+  late Future<List<WeatherData>> _weatherDataFuture;
 
   @override
   void initState() {
     super.initState();
-    _climbingIndexFuture = fetchClimbingIndex();
+    _weatherDataFuture = _loadWeatherData();
+    WeatherService.checkCachedData();
   }
 
-  Future<int> fetchClimbingIndex() async {
-    final baseUrl = dotenv.env['AI_BASE_URL']!;
-    final url = Uri.parse('$baseUrl/weather');
+  // 날씨 데이터 로드
+  Future<List<WeatherData>> _loadWeatherData() async {
     final token = Provider.of<AppState>(context, listen: false).accessToken;
-    final appState = Provider.of<AppState>(context, listen: false);
-
-    final resp = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-        'authorization': 'Bearer $token',
-      },
-    );
-
-    if (resp.statusCode == 200) {
-      final data = json.decode(resp.body);
-      final raw = data['score'];
-      if (raw is num) {
-        final score = raw.toInt();
-        
-        // AppState에 등산지수 업데이트
-        appState.updateClimbingIndex(score);
-        
-        return score;
-      }
-      throw Exception('score 필드가 숫자가 아닙니다.');
-    }
-    throw Exception('등산지수 조회 실패 (HTTP ${resp.statusCode})');
+    return await WeatherService.fetchWeatherData(token);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<int>(
-      future: _climbingIndexFuture,
-      builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.5,
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF64B792)),
+  // 데이터 새로고침
+  Future<void> _refreshData() async {
+    setState(() {
+      _weatherDataFuture = _loadWeatherData();
+    });
+  }
+
+// 모달창으로 날씨 정보 표시 (최종 요구사항 반영 - 그래프 및 헤더 수정)
+void _showWeatherModal(BuildContext context, WeatherData data) {
+  final score = data.score.round();
+  final scoreColor = score < 50
+      ? const Color(0xFFE53935)
+      : score < 80
+          ? const Color(0xFFFF9800)
+          : const Color(0xFF52A486);
+          
+  // AppState에 선택된 등산지수 업데이트
+  final appState = Provider.of<AppState>(context, listen: false);
+  appState.updateClimbingIndex(score);
+  
+  // 시간 자연스럽게 변환 (06:00 -> 6시)
+  final hour = int.parse(data.time.substring(11, 13));
+  final timeText = '$hour시';
+
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
+    builder: (context) => Container(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+
+          // 모달 헤더
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F5EC),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.eco,
+                  size: 20,
+                  color: Color(0xFF52A486),
+                ),
               ),
-            ),
-          );
-        }
-        
-        if (snap.hasError) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.error_outline_rounded,
-                  color: Colors.red[400],
-                  size: 22,
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  '정보를 불러오지 못했습니다',
-                  style: TextStyle(
-                    color: Colors.red[400], 
-                    fontSize: 11,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          );
-        }
-
-        final score = snap.data!;
-        final normalizedScore = score / 100.0;
-        
-        final Color scoreColor = score < 50
-            ? const Color(0xFFE53935)
-            : score < 80
-                ? const Color(0xFFFF8F00)
-                : const Color(0xFF52A486);
-
-        return Center(
-          child: SizedBox(
-            width: 110,
-            height: 110,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  width: 85,
-                  height: 85,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
-                        blurRadius: 10,
-                        spreadRadius: 1,
-                        offset: const Offset(0, 2),
+              const SizedBox(width: 10),
+              
+              // 시간과 설명을 한 줄로 통합
+              Flexible(
+                child: RichText(
+                  textAlign: TextAlign.start,
+                  overflow: TextOverflow.ellipsis,
+                  text: TextSpan(
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: Color(0xFF333333),
+                    ),
+                    children: [
+                      TextSpan(
+                        text: data.getFormattedTime(),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                      TextSpan(
+                        text: ' 의 등산지수가 궁금하신가요?',
+                        style: TextStyle(
+                          color: Colors.grey[700],
+                          fontSize: 14,
+                        ),
                       ),
                     ],
                   ),
                 ),
-                
-                SizedBox(
-                  width: 110,
-                  height: 110,
-                  child: TweenAnimationBuilder<double>(
-                    tween: Tween<double>(begin: 0.0, end: normalizedScore),
-                    duration: const Duration(milliseconds: 1500),
-                    curve: Curves.easeOutCubic,
-                    builder: (context, value, child) {
-                      return CircularProgressIndicator(
-                        value: value,
-                        strokeWidth: 8.5,
+              ),
+            ],
+          ),
+          
+          const Divider(
+            height: 30,
+            thickness: 1,
+            color: Color(0xFFEEEEEE),
+          ),
+          
+          // 등산지수 표시 - 침범 문제 해결
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // 원형 프로그레스 (침범 문제 해결)
+              SizedBox(
+                width: 100,
+                height: 100,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // 외부 원형 배경
+                    Container(
+                      width: 90,
+                      height: 90,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    // 프로그레스 표시기
+                    SizedBox(
+                      width: 90,
+                      height: 90,
+                      child: CircularProgressIndicator(
+                        value: score / 100.0,
+                        strokeWidth: 8,
                         backgroundColor: Colors.grey[200],
                         valueColor: AlwaysStoppedAnimation<Color>(scoreColor),
                         strokeCap: StrokeCap.round,
-                      );
-                    },
-                  ),
-                ),
-                
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '$score',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w800,
-                        color: scoreColor,
                       ),
                     ),
-                    Text(
-                      '등산지수',
+                    // 중앙 흰색 원 (텍스트 배경)
+                    Container(
+                      width: 65,
+                      height: 65,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    // 점수 및 등산지수 텍스트
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '$score',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: scoreColor,
+                          ),
+                        ),
+                        Text(
+                          '등산지수',
+                          style: TextStyle(
+                            fontSize: 9,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(width: 12),
+              
+              // 날씨 상태 설명
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: scoreColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // 첫 번째 줄: X시의 등산지수는 XX점!
+                      Text(
+                        '$timeText의 등산지수는 ${score}점!',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: scoreColor,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 4),
+                      // 두 번째 줄: 기존 메시지
+                      Text(
+                        _getScoreMessage(score),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: scoreColor,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          
+          // 날씨 세부정보 제목 - 가운데 정렬
+          Center(
+            child: Container(
+              margin: const EdgeInsets.only(top: 20, bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFECF8F1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Text(
+                '날씨 상세정보',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF52A486),
+                ),
+              ),
+            ),
+          ),
+          
+          // 세부 정보를 ListView로 변경하여 스크롤 가능하도록 함
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.3,
+            ),
+            child: ListView.builder(
+              shrinkWrap: true,
+              physics: const BouncingScrollPhysics(),
+              itemCount: (data.details.length / 2).ceil(),
+              itemBuilder: (context, rowIndex) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      // 첫 번째 항목
+                      if (rowIndex * 2 < data.details.length)
+                        _buildDetailItem(data.details.entries.elementAt(rowIndex * 2)),
+                      
+                      const SizedBox(width: 8),
+                      
+                      // 두 번째 항목 (있는 경우)
+                      if (rowIndex * 2 + 1 < data.details.length)
+                        _buildDetailItem(data.details.entries.elementAt(rowIndex * 2 + 1))
+                      else
+                        Expanded(child: Container()),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // 하단 버튼
+          Center(
+            child: ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF64B792),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 40,
+                  vertical: 12,
+                ),
+              ),
+              child: const Text(
+                '확인',
+                style: TextStyle(fontSize: 15),
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+  
+  // 세부 정보 항목 위젯 (재사용을 위해 분리)
+  Widget _buildDetailItem(MapEntry<String, String> entry) {
+    final key = entry.key;
+    final value = entry.value;
+    final formattedValue = _formatDetailValue(value);
+    final category = _getDetailCategory(value);
+    
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: Colors.grey.withOpacity(0.2),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF64B792).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Icon(
+                _getIconForWeatherDetail(key),
+                size: 14,
+                color: const Color(0xFF64B792),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    key,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.grey[600],
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          formattedValue,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF333333),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (category.isNotEmpty) ...[
+                        const SizedBox(width: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 3,
+                            vertical: 1,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _getCategoryColor(category).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            category,
+                            style: TextStyle(
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold,
+                              color: _getCategoryColor(category),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 시간표 부분의 오버플로우 에러 수정
+
+@override
+Widget build(BuildContext context) {
+  return FutureBuilder<List<WeatherData>>(
+    future: _weatherDataFuture,
+    builder: (context, snap) {
+      if (snap.connectionState == ConnectionState.waiting) {
+        return const Center(
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF64B792)),
+            ),
+          ),
+        );
+      }
+      
+      if (snap.hasError || !snap.hasData || snap.data!.isEmpty) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.error_outline_rounded,
+                color: Colors.red[400],
+                size: 18,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '날씨 정보를 불러오지 못했습니다',
+                style: TextStyle(
+                  color: Colors.red[400], 
+                  fontSize: 10,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              ElevatedButton(
+                onPressed: _refreshData,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF64B792),
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(80, 24),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text('새로고침', style: TextStyle(fontSize: 10)),
+              ),
+            ],
+          ),
+        );
+      }
+
+      final weatherDataList = snap.data!;
+      
+      // 시간 목록과 제목 표시 (오버플로우 수정)
+      return SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // 귀여운 제목 (오버플로우 방지를 위해 패딩 축소)
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDCEFE2),
+                  borderRadius: BorderRadius.circular(30),
+                  // 그림자 제거하여 오버헤드 감소
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.access_time_rounded,
+                      size: 12, // 아이콘 크기 축소
+                      color: const Color(0xFF52A486),
+                    ),
+                    const SizedBox(width: 4), // 간격 축소
+                    const Text(
+                      '등산지수 시간표',
                       style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey[700],
+                        fontSize: 11, // 글자 크기 축소
                         fontWeight: FontWeight.w500,
+                        color: Color(0xFF52A486),
                       ),
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+              
+              // 시간 버튼 - 스크롤 가능한 영역으로 변경
+              GridView.builder(
+                shrinkWrap: true, // 필수: 내부 ScrollView에서는 shrinkWrap 필요
+                physics: const NeverScrollableScrollPhysics(), // 외부 스크롤과 충돌 방지
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3, // 한 줄에 3개로 유지
+                  childAspectRatio: 2.5, // 가로:세로 비율 높게 설정 (더 납작하게)
+                  crossAxisSpacing: 6, // 간격 줄임
+                  mainAxisSpacing: 6, // 간격 줄임
+                ),
+                itemCount: weatherDataList.length,
+                itemBuilder: (context, index) {
+                  final data = weatherDataList[index];
+                  // 시간 포맷 수정 - 21:0 대신 21:00 형식으로 표시되도록
+                  final hour = data.time.substring(11, 13);
+                  final minute = data.time.substring(14, 16);
+                  final formattedTime = '$hour:$minute';
+                  
+                  return InkWell(
+                    onTap: () => _showWeatherModal(context, data),
+                    borderRadius: BorderRadius.circular(8), // 반경 축소
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8F5EC).withOpacity(0.4),
+                        borderRadius: BorderRadius.circular(8), // 반경 축소
+                        border: Border.all(
+                          color: const Color(0xFFCCE5D7),
+                          width: 0.5, // 테두리 얇게
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          formattedTime,
+                          style: const TextStyle(
+                            fontSize: 12, // 글자 크기 축소
+                            fontWeight: FontWeight.w500, // 두께 낮춤
+                            color: Color.fromARGB(255, 53, 118, 94),
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
-        );
-      },
-    );
+        ),
+      );
+    },
+  );
+}
+  
+  // 점수에 따른 메시지 반환
+  String _getScoreMessage(int score) {
+    if (score < 50) return '최악의 등산 날씨에요';
+    if (score < 80) return '무난한 등산 날씨에요';
+    return '최고의 등산 날씨에요';
+  }
+  
+  // 세부정보 값 포맷팅 (괄호 내용 제거)
+  String _formatDetailValue(String value) {
+    final regex = RegExp(r'(.*?)\s*\([^)]*\)');
+    final match = regex.firstMatch(value);
+    return match != null ? match.group(1)! : value;
+  }
+  
+  // 세부정보 카테고리 추출 (괄호 안의 내용)
+  String _getDetailCategory(String value) {
+    final regex = RegExp(r'\(([^)]*)\)');
+    final match = regex.firstMatch(value);
+    return match != null ? match.group(1)! : '';
+  }
+  
+  // 날씨 세부정보 항목에 맞는 아이콘 반환
+  IconData _getIconForWeatherDetail(String key) {
+    switch (key) {
+      case '체감온도':
+        return Icons.thermostat_outlined;
+      case '풍속':
+        return Icons.air_outlined;
+      case '습도':
+        return Icons.water_drop_outlined;
+      case '구름':
+        return Icons.cloud_outlined;
+      case '미세먼지':
+        return Icons.air;
+      case '초미세먼지':
+        return Icons.air;
+      default:
+        return Icons.info_outline;
+    }
+  }
+  
+  // 카테고리에 따른 색상 반환
+  Color _getCategoryColor(String category) {
+    switch (category.trim()) {
+      case '좋음':
+        return Colors.green;
+      case '보통':
+        return Colors.blue;
+      case '나쁨':
+        return Colors.orange;
+      case '매우나쁨':
+        return Colors.red;
+      case '많음':
+        return Colors.blueGrey;
+      case '적음':
+        return Colors.lightBlue;
+      default:
+        return Colors.grey;
+    }
   }
 }
 
+// SecondStatusInfo 클래스는 변경 불필요
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// 두 번째 페이지: 등산 기록 (스타일 통일 및 아이콘 변경)
 class SecondStatusInfo extends StatefulWidget {
   const SecondStatusInfo({super.key});
@@ -268,7 +726,7 @@ class _SecondStatusInfoState extends State<SecondStatusInfo> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: const Color(0xFF52A486).withOpacity(0.1),
                     shape: BoxShape.circle,
@@ -319,7 +777,7 @@ class _SecondStatusInfoState extends State<SecondStatusInfo> {
     );
     
     return SizedBox(
-      height: 150,
+      height: 130,
       child: Center(
         child: Card(
           elevation: 0,
@@ -327,7 +785,7 @@ class _SecondStatusInfoState extends State<SecondStatusInfo> {
             borderRadius: BorderRadius.circular(12),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(12),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -449,24 +907,26 @@ class _SecondStatusInfoState extends State<SecondStatusInfo> {
                   ),
                 ] else if (!hasPast) ...[
                   // pastTime이 null인 경우 첫 등산 메시지
-                  const SizedBox(height: 4), // 6에서 4로 줄임
-                  Padding(
-                    padding: const EdgeInsets.only(left: 22),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), // 패딩 축소
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE8F5E9),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        '이 코스는 처음이네요!', 
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFF4CAF50),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const SizedBox(width: 22), 
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE8F5E9), // 연한 초록 배경
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          '이 코스는 첫 등산이네요!',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF4CAF50),
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
                 ],
               ],

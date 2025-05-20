@@ -636,6 +636,7 @@ class AppState extends ChangeNotifier {
     required int time,
     int? maxHeartRate,
     int? avgHeartRate,
+
   }) {
     _opponentRecordDate = date;
     _opponentRecordTime = time;

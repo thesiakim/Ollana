@@ -187,7 +187,7 @@ class _MyFootprintScreenState extends State<MyFootprintScreen> {
                                                 ? (totalDistance / 1000).toStringAsFixed(1)
                                                 : totalDistance.toStringAsFixed(0)),
                                         style: const TextStyle(
-                                          fontSize: 24,
+                                          fontSize: 21,
                                           fontWeight: FontWeight.bold,
                                           color: Color(0xFF52A486),
                                         ),
@@ -342,14 +342,14 @@ class _MyFootprintScreenState extends State<MyFootprintScreen> {
         children: [
           Icon(
             Icons.hiking,
-            size: 80,
+            size: 70,
             color: Colors.grey[400],
           ),
           const SizedBox(height: 16),
           Text(
             '아직 등산 기록이 없어요',
             style: TextStyle(
-              fontSize: 18,
+              fontSize: 14,
               fontWeight: FontWeight.bold,
               color: Colors.grey[700],
             ),
@@ -358,7 +358,7 @@ class _MyFootprintScreenState extends State<MyFootprintScreen> {
           Text(
             '첫 등산을 기록하고 발자취를 남겨볼까요?',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 12,
               color: Colors.grey[600],
             ),
           ),

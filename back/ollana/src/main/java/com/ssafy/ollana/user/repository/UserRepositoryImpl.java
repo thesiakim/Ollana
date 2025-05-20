@@ -32,6 +32,7 @@ public class UserRepositoryImpl implements UserRepositoryCustom {
                         user.id,
                         user.nickname,
                         user.isAgree,
+                        user.profileImage,
                         JPAExpressions
                                 .selectOne()
                                 .from(hikingHistory)
@@ -45,8 +46,8 @@ public class UserRepositoryImpl implements UserRepositoryCustom {
                 )
                 .from(user)
                 .where(
-                        user.nickname.containsIgnoreCase(nickname),
-                        user.id.ne(excludeUserId) // 자기 자신은 제외
+                        user.nickname.eq(nickname), // 정확한 매칭
+                        user.id.ne(excludeUserId)   // 자기 자신은 제외
                 )
                 .fetch();
 
@@ -56,10 +57,16 @@ public class UserRepositoryImpl implements UserRepositoryCustom {
                     Integer userId = tuple.get(0, Integer.class);
                     String userNickname = tuple.get(1, String.class);
                     Boolean isAgree = tuple.get(2, Boolean.class);
-                    Boolean hasHikingRecord = tuple.get(3, Boolean.class);
+                    String profileImg = tuple.get(3, String.class);
+                    Boolean hasHikingRecord = tuple.get(4, Boolean.class);
 
                     Boolean finalResult = isAgree != null && isAgree && hasHikingRecord;
-                    return new FriendInfoResponseDto(userId, userNickname, finalResult);
+                    return FriendInfoResponseDto.builder()
+                            .userId(userId)
+                            .nickname(userNickname)
+                            .isPossible(finalResult)
+                            .profileImg(profileImg)
+                            .build();
                 })
                 .collect(Collectors.toList());
     }
