@@ -26,251 +26,273 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final appState = Provider.of<AppState>(context);
+Widget build(BuildContext context) {
+  final appState = Provider.of<AppState>(context);
 
-    return Scaffold(
+  return Scaffold(
+    backgroundColor: Colors.white,
+    appBar: AppBar(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        title: Text(
-          '친구 검색',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF333333),
-          ),
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      title: Text(
+        '친구 검색',
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          color: Color(0xFF333333),
         ),
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Color(0xFF52A486)),
-          onPressed: () => Navigator.of(context).pop(),
+      ),
+      leading: IconButton(
+        icon: Icon(Icons.arrow_back, color: Color(0xFF52A486)),
+        onPressed: () => Navigator.of(context).pop(),
+      ),
+      flexibleSpace: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
         ),
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-          ),
-        ),
-        bottom: PreferredSize(
-          preferredSize: Size.fromHeight(70),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16.0, 0.0, 16.0, 8.0),
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Color(0xFF52A486).withOpacity(0.08),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Color(0xFF52A486).withOpacity(0.2),
-                  width: 1,
+      ),
+      // mode_select_screen과 동일한 디자인으로 bottom 부분 적용
+      bottom: PreferredSize(
+        preferredSize: Size.fromHeight(70),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16.0, 0.0, 16.0, 8.0),
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Color(0xFF52A486).withOpacity(0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Color(0xFF52A486).withOpacity(0.2),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Color(0xFF52A486).withOpacity(0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.terrain,
+                    color: Color(0xFF52A486),
+                    size: 14,
+                  ),
                 ),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Color(0xFF52A486).withOpacity(0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.terrain, // Changed from Icons.people to Icons.terrain
-                      color: Color(0xFF52A486),
-                      size: 14,
-                    ),
-                  ),
-                  SizedBox(width: 10),
-                  Flexible(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          appState.selectedMountain ?? '선택된 산 없음',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF333333),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                SizedBox(width: 10),
+                Flexible(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        appState.selectedMountain ?? '선택된 산 없음',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF333333),
                         ),
-                        SizedBox(height: 1),
-                        Text(
-                          appState.selectedRoute?.name ?? '선택된 등산로 없음',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(height: 1),
+                      Text(
+                        appState.selectedRoute?.name ?? '선택된 등산로 없음',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
                         ),
-                      ],
-                    ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
       ),
-      body: Container(
-        color: Colors.white,
-        child: Column(
-          children: [
-            // 검색창
-            Padding(
-              padding: EdgeInsets.fromLTRB(20, 0, 20, 20), // Adjusted padding
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white, // Changed from Colors.grey[50]
-                  borderRadius: BorderRadius.circular(16), // Increased radius
-                  border: Border.all(
-                    color: Color(0xFFE0E0E0), // Updated border color
-                    width: 1,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.03),
-                      blurRadius: 12, // Increased blur radius
-                      offset: Offset(0, 3), // Adjusted offset
-                    ),
-                  ],
+    ),
+    // 바디 부분을 SingleChildScrollView로 감싸 bottom overflow 에러 방지
+    body: Container(
+      color: Colors.white,
+      child: Column(
+        children: [
+          // 친구와 함께 등산하세요 섹션 - 스크롤 가능한 부분 위에 배치
+          Padding(
+            padding: EdgeInsets.fromLTRB(20, 12, 20, 8),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.people_alt_rounded, 
+                  size: 18,
+                  color: Color(0xFF52A486),
                 ),
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: '친구의 닉네임을 검색해보세요', // Updated hint text
-                    hintStyle: TextStyle(
-                      color: Colors.grey[400],
-                      fontSize: 13, // Adjusted font size
-                      fontWeight: FontWeight.w400, // Added font weight
-                    ),
-                    prefixIcon: Container(
-                      padding: EdgeInsets.all(12), // Added padding
-                      child: Icon(
-                        Icons.search,
-                        color: Color(0xFF52A486),
-                        size: 22, // Increased size
-                      ),
-                    ),
-                    suffixIcon: null, // Removed suffixIcon
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16), // Matched radius
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: EdgeInsets.symmetric(vertical: 16, horizontal: 16), // Adjusted padding
-                    fillColor: Colors.white,
-                    filled: true,
-                  ),
+                SizedBox(width: 6),
+                Text(
+                  '친구와 함께 등산하세요',
                   style: TextStyle(
                     fontSize: 14,
+                    fontWeight: FontWeight.bold,
                     color: Color(0xFF333333),
                   ),
-                  onSubmitted: (value) => _searchFriends(value, appState),
                 ),
+              ],
+            ),
+          ),
+          
+          // 검색창
+          Padding(
+            padding: EdgeInsets.fromLTRB(20, 8, 20, 16),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Color(0xFFE0E0E0),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.03),
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: '친구의 닉네임을 검색해보세요',
+                  hintStyle: TextStyle(
+                    color: Colors.grey[400],
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
+                  ),
+                  prefixIcon: Padding(
+                    padding: EdgeInsets.all(10),
+                    child: Icon(
+                      Icons.search,
+                      color: Color(0xFF52A486),
+                      size: 20,
+                    ),
+                  ),
+                  suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: Icon(Icons.clear, color: Colors.grey[400], size: 16),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() {
+                            _searchResults = [];
+                          });
+                        },
+                      )
+                    : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                  fillColor: Colors.white,
+                  filled: true,
+                ),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF333333),
+                ),
+                onSubmitted: (value) => _searchFriends(value, appState),
+                textInputAction: TextInputAction.search,
               ),
             ),
-            // 검색 결과 영역
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(24),
-                    topRight: Radius.circular(24),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.03),
-                      offset: Offset(0, -3),
-                      blurRadius: 6,
-                    ),
-                  ],
-                ),
-                child: _isSearching
-                    ? Center(
-                        child: CircularProgressIndicator(
+          ),
+          
+          // 구분선
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 0),
+            child: Container(
+              height: 1,
+              color: Colors.grey[200],
+            ),
+          ),
+          
+          // 검색 결과 영역 - Expanded로 남은 공간 채우기
+          Expanded(
+            child: _isSearching
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(
                           valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF52A486)),
+                          strokeWidth: 3,
                         ),
-                      )
+                        SizedBox(height: 16),
+                        Text(
+                          '친구를 검색하고 있어요',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : _searchController.text.isNotEmpty && _searchResults.isEmpty
+                    ? _buildEmptySearchResult()
                     : _searchResults.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Container(
-                                  padding: EdgeInsets.all(20),
-                                  decoration: BoxDecoration(
-                                    color: Color(0xFF52A486).withOpacity(0.1),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    Icons.search_off,
-                                    size: 40,
-                                    color: Color(0xFF52A486),
-                                  ),
-                                ),
-                                SizedBox(height: 16),
-                                Text(
-                                  '검색 결과가 없습니다',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF333333),
-                                  ),
-                                ),
-                                SizedBox(height: 8),
-                                Text(
-                                  '다른 닉네임으로 검색해보세요',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
+                        ? _buildInitialSearchState()
                         : ListView.builder(
                             itemCount: _searchResults.length,
-                            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16), // Adjusted padding
+                            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                             physics: BouncingScrollPhysics(),
                             itemBuilder: (context, index) {
                               final friend = _searchResults[index];
                               final isSelected = _selectedFriend?.id == friend.id;
                               final isPossible = friend.isPossible;
 
+                              // 친구 리스트 아이템 부분만 수정
                               return Container(
-                                margin: EdgeInsets.only(bottom: 16),
+                                margin: EdgeInsets.only(bottom: 12),
                                 child: InkWell(
                                   onTap: () {
                                     if (!isPossible) {
                                       _showNotPossibleDialog(context, friend.nickname);
                                       return;
                                     }
+                                    
                                     setState(() {
-                                      _selectedFriend = friend;
+                                      // 이미 선택된 친구를 다시 클릭하면 선택 취소
+                                      if (_selectedFriend?.id == friend.id) {
+                                        _selectedFriend = null;
+                                      } else {
+                                        _selectedFriend = friend;
+                                      }
                                     });
-                                  },
+                              },
                                   borderRadius: BorderRadius.circular(16),
                                   child: Container(
                                     decoration: BoxDecoration(
-                                      color: isSelected ? Color(0xFFEAF6F0) : Colors.white, // Added selected background
+                                      // 기본 상태에서는 흰색 배경과 가벼운 테두리
+                                      color: isSelected ? Color(0xFFE6F4EE) : Colors.white,
                                       borderRadius: BorderRadius.circular(16),
                                       boxShadow: [
                                         BoxShadow(
                                           color: isSelected
                                               ? Color(0xFF52A486).withOpacity(0.15)
-                                              : Colors.black.withOpacity(0.05),
-                                          blurRadius: 10,
-                                          offset: Offset(0, 3), // Adjusted offset
+                                              : Colors.black.withOpacity(0.03),
+                                          blurRadius: isSelected ? 8 : 4,
+                                          offset: Offset(0, 2),
                                           spreadRadius: isSelected ? 1 : 0,
                                         ),
                                       ],
                                       border: Border.all(
-                                        color: isSelected ? Color(0xFF52A486) : Colors.grey.shade200,
-                                        width: isSelected ? 1.5 : 1,
+                                        // 선택 여부에 따라 테두리 색상과 두께 차이
+                                        color: isSelected ? Color(0xFF52A486) : Color(0xFFE0E0E0),
+                                        width: isSelected ? 2 : 1,
                                       ),
                                     ),
                                     child: Padding(
@@ -278,26 +300,32 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                                       child: Row(
                                         crossAxisAlignment: CrossAxisAlignment.center,
                                         children: [
-                                          // 프로필 이미지
+                                          // 프로필 이미지 - 선택 시 스타일 변경
                                           Stack(
                                             children: [
                                               Container(
-                                                width: 52, // Increased size
+                                                width: 52,
                                                 height: 52,
                                                 decoration: BoxDecoration(
                                                   shape: BoxShape.circle,
-                                                  color: Color(0xFF52A486).withOpacity(0.1),
+                                                  // 프로필 배경색 - 선택 여부에 따라 변경
+                                                  color: isSelected 
+                                                      ? Color(0xFF52A486).withOpacity(0.12) 
+                                                      : Colors.grey.shade100,
                                                   border: Border.all(
-                                                    color: isSelected ? Color(0xFF52A486) : Colors.grey.shade200,
-                                                    width: 1.5,
+                                                    // 프로필 테두리 - 선택 여부에 따라 변경
+                                                    color: isSelected 
+                                                        ? Color(0xFF52A486) 
+                                                        : Colors.grey.shade300,
+                                                    width: isSelected ? 2 : 1,
                                                   ),
-                                                  boxShadow: [
+                                                  boxShadow: isSelected ? [
                                                     BoxShadow(
                                                       color: Color(0xFF52A486).withOpacity(0.1),
-                                                      blurRadius: 8,
-                                                      offset: Offset(0, 3),
+                                                      blurRadius: 6,
+                                                      offset: Offset(0, 2),
                                                     ),
-                                                  ],
+                                                  ] : [],
                                                 ),
                                                 child: ClipRRect(
                                                   borderRadius: BorderRadius.circular(26),
@@ -314,8 +342,10 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                                                                     ? friend.nickname[0].toUpperCase()
                                                                     : "?",
                                                                 style: TextStyle(
-                                                                  color: Color(0xFF52A486),
-                                                                  fontSize: 22, // Increased font size
+                                                                  color: isSelected 
+                                                                      ? Color(0xFF52A486) 
+                                                                      : Colors.grey.shade600,
+                                                                  fontSize: 22,
                                                                   fontWeight: FontWeight.bold,
                                                                 ),
                                                               ),
@@ -343,7 +373,9 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                                                                 ? friend.nickname[0].toUpperCase()
                                                                 : "?",
                                                             style: TextStyle(
-                                                              color: Color(0xFF52A486),
+                                                              color: isSelected 
+                                                                  ? Color(0xFF52A486) 
+                                                                  : Colors.grey.shade600,
                                                               fontSize: 22,
                                                               fontWeight: FontWeight.bold,
                                                             ),
@@ -351,7 +383,7 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                                                         ),
                                                 ),
                                               ),
-                                              // 선택 표시 아이콘
+                                              // 선택 표시 아이콘 - 선택된 경우에만 표시
                                               if (isSelected)
                                                 Positioned(
                                                   right: 0,
@@ -383,23 +415,31 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                                             child: Column(
                                               crossAxisAlignment: CrossAxisAlignment.start,
                                               children: [
+                                                // 이름 - 선택 시 색상 변경
                                                 Text(
                                                   friend.nickname,
                                                   style: TextStyle(
                                                     fontWeight: FontWeight.bold,
-                                                    fontSize: 14, // Increased font size
+                                                    fontSize: 14,
                                                     color: isSelected ? Color(0xFF52A486) : Color(0xFF333333),
                                                   ),
                                                 ),
-                                                SizedBox(height: 6), // Increased spacing
+                                                SizedBox(height: 6),
+                                                // 상태 표시 뱃지 - 이 부분은 선택 여부와 관계없이 '등산 기록 있음/없음'에 따라 스타일 설정
                                                 Container(
                                                   padding: EdgeInsets.symmetric(
-                                                    horizontal: 10, // Increased padding
+                                                    horizontal: 10,
                                                     vertical: 4,
                                                   ),
                                                   decoration: BoxDecoration(
-                                                    color: isPossible ? Color(0xFFEBF7F3) : Color(0xFFFFEFEF),
+                                                    color: isPossible ? Color(0xFF52A486).withOpacity(0.15) : Color(0xFFFFEFEF),
                                                     borderRadius: BorderRadius.circular(12),
+                                                    border: Border.all(
+                                                      color: isPossible 
+                                                        ? Color(0xFF52A486).withOpacity(0.3) 
+                                                        : Color(0xFFFF5151).withOpacity(0.3),
+                                                      width: 1,
+                                                    ),
                                                   ),
                                                   child: Row(
                                                     mainAxisSize: MainAxisSize.min,
@@ -407,15 +447,15 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                                                       Icon(
                                                         isPossible ? Icons.check_circle_outline : Icons.cancel_outlined,
                                                         size: 12,
-                                                        color: isPossible ? Color(0xFF52A486) : Color(0xFFFF5151),
+                                                        color: isPossible ? Color(0xFF2B8A6A) : Color(0xFFFF5151),
                                                       ),
                                                       SizedBox(width: 4),
                                                       Text(
-                                                        isPossible ? '등산 기록 존재' : '등산 기록 미존재',
+                                                        isPossible ? '등산 기록 있음' : '등산 기록 없음',
                                                         style: TextStyle(
-                                                          fontSize: 11, // Adjusted font size
+                                                          fontSize: 11,
                                                           fontWeight: FontWeight.w500,
-                                                          color: isPossible ? Color(0xFF52A486) : Color(0xFFFF5151),
+                                                          color: isPossible ? Color(0xFF2B8A6A) : Color(0xFFFF5151),
                                                         ),
                                                       ),
                                                     ],
@@ -424,93 +464,192 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                                               ],
                                             ),
                                           ),
+                                          // 선택 시 오른쪽에 표시되는 아이콘 추가
+                                          if (isSelected)
+                                            Container(
+                                              margin: EdgeInsets.only(left: 8),
+                                              child: Icon(
+                                                Icons.arrow_forward_ios,
+                                                size: 14,
+                                                color: Color(0xFF52A486),
+                                              ),
+                                            ),
                                         ],
                                       ),
                                     ),
                                   ),
                                 ),
                               );
-                            },
-                          ),
-              ),
-            ),
-            if (_searchResults.isNotEmpty)
-              Container(
-                color: Colors.white,
-                padding: EdgeInsets.fromLTRB(20, 10, 20, 24),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 54,
-                  child: ElevatedButton(
-                    onPressed: _selectedFriend != null && _selectedFriend!.isPossible
-                        ? () => _showFriendTrackingOptionsModal(context, appState)
-                        : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF52A486),
-                      disabledBackgroundColor: Colors.grey.shade300,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
+                                                          },
+                                                        ),
+          ),
+          
+          // 하단 선택 완료 버튼
+          if (_searchResults.isNotEmpty)
+            Container(
+              color: Colors.white,
+              padding: EdgeInsets.fromLTRB(20, 10, 20, 24),
+              child: SizedBox(
+                width: double.infinity,
+                height: 54,
+                child: ElevatedButton(
+                  onPressed: _selectedFriend != null && _selectedFriend!.isPossible
+                      ? () => _showFriendTrackingOptionsModal(context, appState)
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFF52A486),
+                    disabledBackgroundColor: Colors.grey.shade300,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
                     ),
-                    child: Text(
-                      '선택 완료',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        color: Colors.white,
-                      ),
+                  ),
+                  child: Text(
+                    '선택 완료',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: Colors.white,
                     ),
                   ),
                 ),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
+
+// 초기 검색 상태 위젯
+Widget _buildInitialSearchState() {
+  return Center(
+    child: Padding(
+      padding: EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: Color(0xFF52A486).withOpacity(0.08),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.people_alt_rounded,
+              size: 40,
+              color: Color(0xFF52A486).withOpacity(0.5),
+            ),
+          ),
+          SizedBox(height: 16),
+          Text(
+            '친구를 검색해보세요',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF333333),
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            '친구의 닉네임을 입력하고 선택해주세요',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey[600],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+// 검색 결과 없음 위젯
+Widget _buildEmptySearchResult() {
+  return Center(
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          padding: EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Color(0xFF52A486).withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            Icons.search_off,
+            size: 40,
+            color: Color(0xFF52A486),
+          ),
+        ),
+        SizedBox(height: 16),
+        Text(
+          '검색 결과가 없습니다',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF333333),
+          ),
+        ),
+        SizedBox(height: 8),
+        Text(
+          '닉네임을 정확히 입력했는지 확인해보세요',
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.grey[600],
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
   Future<void> _searchFriends(String query, AppState appState) async {
-    if (query.isEmpty) return;
+  if (query.isEmpty) return;
+
+  setState(() {
+    _isSearching = true;
+    _selectedFriend = null; // 중요: 검색 시 선택 초기화
+  });
+
+  try {
+    final modeService = ModeService();
+    final token = appState.accessToken ?? '';
+    final mountainId = appState.selectedRoute?.mountainId ?? 0;
+    final pathId = appState.selectedRoute?.id ?? 0;
+
+    final results = await modeService.searchFriends(
+      query,
+      token,
+      mountainId: mountainId,
+      pathId: pathId,
+    );
 
     setState(() {
-      _isSearching = true;
+      _searchResults = results;
+      _isSearching = false;
+      // 자동 선택 없음 - 사용자가 직접 선택하도록 함
+    });
+  } catch (e) {
+    debugPrint('친구 검색 오류: $e');
+    setState(() {
+      _searchResults = [];
+      _isSearching = false;
+      _selectedFriend = null; // 오류 시에도 선택 초기화
     });
 
-    try {
-      final modeService = ModeService();
-      final token = appState.accessToken ?? '';
-      final mountainId = appState.selectedRoute?.mountainId ?? 0;
-      final pathId = appState.selectedRoute?.id ?? 0;
-
-      final results = await modeService.searchFriends(
-        query,
-        token,
-        mountainId: mountainId,
-        pathId: pathId,
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('친구 검색 중 오류가 발생했습니다'),
+          backgroundColor: Color(0xFFFF5151),
+        ),
       );
-
-      setState(() {
-        _searchResults = results;
-        _isSearching = false;
-      });
-    } catch (e) {
-      debugPrint('친구 검색 오류: $e');
-      setState(() {
-        _searchResults = [];
-        _isSearching = false;
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('친구 검색 중 오류가 발생했습니다'),
-            backgroundColor: Color(0xFFFF5151),
-          ),
-        );
-      }
     }
   }
+}
 
   Future<void> _showFriendTrackingOptionsModal(
       BuildContext context, AppState appState) async {
