@@ -544,6 +544,37 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
         _calculateRemainingDistanceAndTime();
 
+        // 워치 연결되어 있는 경우 예상 도착시간과 남은 거리 정보 전송
+        if (_isWatchPaired) {
+          // 예상 도착 시간 계산 (현재 시간 + 남은 시간)
+          String etaFormatted;
+          final totalSeconds = _estimatedRemainingSeconds;
+
+          // 현재 시간에 남은 시간을 더해 실제 도착 예상 시각 계산
+          final now = DateTime.now();
+          final estimatedArrivalTime = now.add(Duration(seconds: totalSeconds));
+
+          // "12시 03분" 형식으로 포맷팅
+          final arrivalHour = estimatedArrivalTime.hour;
+          final arrivalMinute = estimatedArrivalTime.minute;
+          etaFormatted = '$arrivalHour시 $arrivalMinute분';
+
+          // 남은 거리를 미터 단위로 변환
+          final distanceInMeters = (_remainingDistance * 1000).toInt();
+
+          try {
+            _watch.sendMessage({
+              'path': '/ETA_DISTANCE',
+              'eta': etaFormatted,
+              'distance': distanceInMeters
+            });
+            debugPrint(
+                '워치로 ETA/거리 정보 전송: $etaFormatted, $distanceInMeters미터');
+          } catch (e) {
+            debugPrint('워치 메시지(ETA/거리) 전송 실패: $e');
+          }
+        }
+
         if (_modeData?.opponent != null) {
           if (_elapsedSeconds % 5 == 0) {
             await _compareWithPastRecord(sendNotification: false);
@@ -581,7 +612,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       } catch (e) {
         debugPrint('워치 메시지(/START_TRACKING) 전송 실패: $e');
       }
-    } else if (_isWatchPaired) {
+    } else {
       debugPrint('백그라운드 상태: /START_TRACKING 메시지 전송 생략');
     }
   }
@@ -3252,40 +3283,6 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
         setState(() {
           // 이미 값은 변경되어 있으므로 UI 갱신만 수행
         });
-
-        // 워치 연결되어 있는 경우 예상 도착시간과 남은 거리 정보 전송
-        if (_isWatchPaired) {
-          // 예상 도착 시간 포맷팅
-          String etaFormatted;
-          final totalSeconds = _estimatedRemainingSeconds;
-          final hours = totalSeconds ~/ 3600;
-          final minutes = (totalSeconds % 3600) ~/ 60;
-
-          if (hours > 0) {
-            etaFormatted = '$hours시간 $minutes분';
-          } else {
-            etaFormatted = '$minutes분';
-          }
-
-          // 남은 거리를 미터 단위로 변환
-          final distanceInMeters = (_remainingDistance * 1000).toInt();
-
-          try {
-            _watch.sendMessage({
-              'path': '/ETA_DISTANCE',
-              'eta': etaFormatted,
-              'distance': distanceInMeters
-            });
-
-            if (_elapsedSeconds % 30 == 0) {
-              // 로그 과다 출력 방지
-              debugPrint(
-                  '워치로 ETA/거리 정보 전송: $etaFormatted, $distanceInMeters미터');
-            }
-          } catch (e) {
-            debugPrint('워치 메시지(ETA/거리) 전송 실패: $e');
-          }
-        }
       }
 
       // 디버그 로그 (10초마다 출력)
