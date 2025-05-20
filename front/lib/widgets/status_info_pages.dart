@@ -83,54 +83,60 @@ void _showWeatherModal(BuildContext context, WeatherData data) {
         children: [
 
           // 모달 헤더
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8F5EC),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.eco,
-                  size: 20,
-                  color: Color(0xFF52A486),
-                ),
-              ),
-              const SizedBox(width: 10),
-              
-              // 시간과 설명을 한 줄로 통합
-              Flexible(
-                child: RichText(
-                  textAlign: TextAlign.start,
-                  overflow: TextOverflow.ellipsis,
-                  text: TextSpan(
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Color(0xFF333333),
-                    ),
-                    children: [
-                      TextSpan(
-                        text: data.getFormattedTime(),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
-                      TextSpan(
-                        text: ' 의 등산지수가 궁금하신가요?',
-                        style: TextStyle(
-                          color: Colors.grey[700],
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+          // 정보 배지 스타일
+Row(
+  mainAxisAlignment: MainAxisAlignment.center,
+  children: [
+    Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
           ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.calendar_today,
+            size: 16,
+            color: Color(0xFF52A486),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            data.getFormattedTime(),
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF333333),
+            ),
+          ),
+          Container(
+            height: 16,
+            width: 1,
+            margin: const EdgeInsets.symmetric(horizontal: 12),
+            color: Colors.grey[300],
+          ),
+          const Text(
+            "등산지수",
+            style: TextStyle(
+              fontSize: 14,
+              color: Color(0xFF666666),
+            ),
+          ),
+        ],
+      ),
+    ),
+  ],
+),
+
+const SizedBox(height: 5),
           
           const Divider(
             height: 30,
@@ -575,9 +581,9 @@ Widget build(BuildContext context) {
   
   // 점수에 따른 메시지 반환
   String _getScoreMessage(int score) {
-    if (score < 50) return '최악의 등산 날씨에요';
-    if (score < 80) return '무난한 등산 날씨에요';
-    return '최고의 등산 날씨에요';
+    if (score < 50) return '최악의 등산 날씨예요';
+    if (score < 80) return '무난한 등산 날씨예요';
+    return '최고의 등산 날씨예요';
   }
   
   // 세부정보 값 포맷팅 (괄호 내용 제거)
