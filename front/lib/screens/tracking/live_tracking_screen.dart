@@ -3582,8 +3582,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
           if (_previousPacemakerLevel != level) {
             debugPrint('페이스메이커 level 변경: $_previousPacemakerLevel -> $level');
             // 워치에 알람 전송 (앱이 백그라운드 상태가 아니거나 워치가 연결된 경우만)
-            if (_isWatchPaired &&
-                _currentLifecycleState != AppLifecycleState.paused) {
+            if (_isWatchPaired) {
               try {
                 await _watch.sendMessage({
                   "path": "/PACEMAKER_ALERT",
@@ -3606,16 +3605,6 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
             _pacemakerMessage = message;
             _pacemakerLevel = level;
           });
-
-          // 워치 메시지 전송 (워치가 연결된 경우)
-          if (_isWatchPaired) {
-            _watch.sendMessage({
-              "path": "/PACEMAKER",
-              "level": level,
-              "message": message
-            });
-            debugPrint('페이스메이커 메시지 전송됨');
-          }
         }
       } else {
         debugPrint('Error: ${response.statusCode}');
