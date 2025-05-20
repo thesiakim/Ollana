@@ -24,7 +24,7 @@ class _HomeBodyState extends State<HomeBody> {
   bool _isTooltipVisible = false; // 툴팁 표시 여부를 관리하는 상태
   OverlayEntry? _overlayEntry; // 오버레이 엔트리
 
-  // HomeBody 클래스의 initState 메서드 수정 (등산지수 데이터 로드 추가)
+  // HomeBody 클래스의 initState 메서드 수정
   @override
   void initState() {
     super.initState();
@@ -42,7 +42,7 @@ class _HomeBodyState extends State<HomeBody> {
     super.dispose();
   }
 
-  // 데이터 초기화 메서드 수정
+  // 데이터 초기화 메서드 수정 (등산지수 로드 제거)
   Future<void> _initializeData() async {
     // UI가 멈추지 않도록 지연 추가
     await Future.delayed(Duration.zero);
@@ -59,12 +59,6 @@ class _HomeBodyState extends State<HomeBody> {
       
       // 설문 상태 가져오기
       await Future.microtask(() => appState.fetchSurveyStatus());
-      
-      // 등산지수 가져오기 (로그인된 경우만)
-      if (appState.isLoggedIn) {
-        await Future.microtask(() => appState.fetchClimbingIndex());
-        debugPrint('등산지수 로드 완료: ${appState.climbingIndex}');
-      }
     } catch (e) {
       // 오류 처리
       debugPrint('데이터 초기화 실패: $e');
@@ -167,7 +161,6 @@ class _HomeBodyState extends State<HomeBody> {
       ],
     );
   }
-
 
   // 개선된 XP 진행도 섹션
   Widget _buildXpProgressSection() {
@@ -330,159 +323,151 @@ class _HomeBodyState extends State<HomeBody> {
     );
   }
 
-void _showTooltip(BuildContext context) {
-  _removeTooltip(); // 기존 툴팁이 있다면 제거
+  void _showTooltip(BuildContext context) {
+    _removeTooltip(); // 기존 툴팁이 있다면 제거
 
-  final size = MediaQuery.of(context).size;
+    final size = MediaQuery.of(context).size;
 
-  _overlayEntry = OverlayEntry(
-    builder: (context) => Material(
-      color: Colors.transparent,
-      child: Container(
-        width: double.infinity,
-        height: double.infinity,
-        color: Colors.black.withOpacity(0.02), // 배경에 미세한 어두움 추가
-        child: SafeArea(
-          child: Stack(
-            children: [
-              // 전체 화면 도움말 컨텐츠
-              Container(
-                width: double.infinity,
-                height: double.infinity,
-                padding: EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Color.fromARGB(255, 131, 193, 162).withOpacity(0.95),
-                      Color.fromARGB(255, 113, 186, 152).withOpacity(0.95),
-                    ],
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 헤더 부분 수정 - 중첩된 Row 제거
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.start, // 왼쪽 정렬로 변경
-                      children: [
-                        Container(
-                          padding: EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.3),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            Icons.info_outline,
-                            color: Colors.white,
-                            size: 24,
-                          ),
-                        ),
-                        SizedBox(width: 14),
-                        Text(
-                          '도움말',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 22,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
+    _overlayEntry = OverlayEntry(
+      builder: (context) => Material(
+        color: Colors.transparent,
+        child: Container(
+          width: double.infinity,
+          height: double.infinity,
+          color: Colors.black.withOpacity(0.02), // 배경에 미세한 어두움 추가
+          child: SafeArea(
+            child: Stack(
+              children: [
+                // 전체 화면 도움말 컨텐츠
+                Container(
+                  width: double.infinity,
+                  height: double.infinity,
+                  padding: EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Color.fromARGB(255, 131, 193, 162).withOpacity(0.95),
+                        Color.fromARGB(255, 113, 186, 152).withOpacity(0.95),
                       ],
                     ),
-                    
-                    SizedBox(height: 30),
-                    
-                    // 도움말 내용 (스크롤 가능)
-                    Expanded(
-                      child: SingleChildScrollView(
-                        physics: BouncingScrollPhysics(),
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 10),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // 등산지수 설명
-                              _buildHelpSectionTitle('등산지수란?'),
-                              SizedBox(height: 10),
-                              _buildHelpText(
-                                '오늘 날씨가 등산하기 좋은지 평가한 점수예요'
-                              ),
-                              SizedBox(height: 30),
-                              
-                              // 등급 설명 (개선된 디자인)
-                              _buildGradeInfoSection(),
-                              
-                              SizedBox(height: 30),
-                              
-                              // 경험치 획득 설명 (개선된 디자인)
-                              _buildExperienceGainSection(),
-                              
-                              // 하단 여백
-                              SizedBox(height: 50),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              
-              // 하단 닫기 버튼
-              Positioned(
-                bottom: 20,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: GestureDetector(
-                    onTap: _removeTooltip,
-                    child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(30),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 8,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 헤더 부분 수정 - 중첩된 Row 제거
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.start, // 왼쪽 정렬로 변경
                         children: [
-                          Icon(
-                            Icons.home,
-                            color: Color.fromARGB(255, 113, 186, 152),
-                            size: 20,
+                          Container(
+                            padding: EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              Icons.info_outline,
+                              color: Colors.white,
+                              size: 24,
+                            ),
                           ),
-                          SizedBox(width: 8),
+                          SizedBox(width: 14),
                           Text(
-                            '홈으로 돌아가기',
+                            '도움말',
                             style: TextStyle(
-                              color: Color.fromARGB(255, 113, 186, 152),
+                              color: Colors.white,
                               fontWeight: FontWeight.bold,
-                              fontSize: 14,
+                              fontSize: 22,
+                              letterSpacing: 0.5,
                             ),
                           ),
                         ],
                       ),
+                      
+                      SizedBox(height: 30),
+                      
+                      // 도움말 내용 (스크롤 가능)
+                      Expanded(
+                        child: SingleChildScrollView(
+                          physics: BouncingScrollPhysics(),
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 10),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // 등급 설명 (개선된 디자인)
+                                _buildGradeInfoSection(),
+                                
+                                SizedBox(height: 30),
+                                
+                                // 경험치 획득 설명 (개선된 디자인)
+                                _buildExperienceGainSection(),
+                                
+                                // 하단 여백
+                                SizedBox(height: 50),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // 하단 닫기 버튼
+                Positioned(
+                  bottom: 20,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: GestureDetector(
+                      onTap: _removeTooltip,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(30),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 8,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.home,
+                              color: Color.fromARGB(255, 113, 186, 152),
+                              size: 20,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              '홈으로 돌아가기',
+                              style: TextStyle(
+                                color: Color.fromARGB(255, 113, 186, 152),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
+    );
 
-  Overlay.of(context).insert(_overlayEntry!);
-}
+    Overlay.of(context).insert(_overlayEntry!);
+  }
 
   // 도움말 섹션 제목 위젯
   Widget _buildHelpSectionTitle(String title) {
@@ -509,18 +494,18 @@ void _showTooltip(BuildContext context) {
 
   // 도움말 텍스트 위젯
   Widget _buildHelpText(String text) {
-  return Padding(
-    padding: EdgeInsets.only(left: 5),
-    child: Text(
-      text,
-      style: TextStyle(
-        color: Colors.white,
-        fontSize: 16, // 더 큰 글꼴
-        height: 1.5,
+    return Padding(
+      padding: EdgeInsets.only(left: 5),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 16, // 더 큰 글꼴
+          height: 1.5,
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   // 등급 아이콘 위젯
   Widget _buildLevelIcons() {
@@ -870,8 +855,6 @@ void _showTooltip(BuildContext context) {
     final appState = context.watch<AppState>();
     final size = MediaQuery.of(context).size;
 
-    debugPrint('HomeBody build: 등산지수 = ${appState.climbingIndex}');
-
     return Scaffold(
       // 플로팅 버튼 색상 수정
       floatingActionButton: Builder(
@@ -894,156 +877,130 @@ void _showTooltip(BuildContext context) {
         ),
       ),
 
-        body: Container(
-          color: const Color(0xFFFAFAFA),
-          child: SafeArea(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 헤더 영역
-                  _buildHeaderSection(appState),
-                  
-                  // 컨텐츠 영역
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (appState.isLoggedIn) ...[
-                          const SizedBox(height: 24),
-                          
-                          // 상태 컨테이너
-                          StatusContainer(
-                            pageController: _pageController,
-                            currentStatusPage: _currentStatusPage,
-                            onPageChanged: (i) => setState(() => _currentStatusPage = i),
-                          ),
-                          
-                          const SizedBox(height: 32),
-                          
-                          // 맞춤형 추천 섹션
-                          _buildSectionHeader(
-                            title: '맞춤형 추천',
-                            icon: Icons.favorite_rounded,
-                            color: const Color(0xFFFF7043),
-                          ),
-                          const SizedBox(height: 16),
-                          _buildRecommendationCard(
-                            title: '나만의 코스 추천',
-                            description: '취향에 맞는 산을 찾아보세요',
-                            image: 'lib/assets/images/ai_recommend.png',
-                            backgroundColor: const Color(0xFF64B792),
-                            onTap: _navigateToAiRecommendation,
-                          ),
-                        ] else ...[
-                          const SizedBox(height: 8),
-                          _buildLoginPrompt(),
-                        ],
+      body: Container(
+        color: const Color(0xFFFAFAFA),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 헤더 영역
+                _buildHeaderSection(appState),
+                
+                // 컨텐츠 영역
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (appState.isLoggedIn) ...[
+                        const SizedBox(height: 24),
+                        
+                        // 상태 컨테이너
+                        StatusContainer(
+                          pageController: _pageController,
+                          currentStatusPage: _currentStatusPage,
+                          onPageChanged: (i) => setState(() => _currentStatusPage = i),
+                        ),
                         
                         const SizedBox(height: 32),
                         
-                        // 테마별 추천 섹션
+                        // 맞춤형 추천 섹션
                         _buildSectionHeader(
-                          title: '주제별 추천',
-                          icon: Icons.category_rounded,
-                          color: const Color(0xFF42A5F5),
+                          title: '맞춤형 추천',
+                          icon: Icons.favorite_rounded,
+                          color: const Color(0xFFFF7043),
                         ),
                         const SizedBox(height: 16),
-                        
-                        // 테마별 카드 그리드
-                        SizedBox(
-                          height: 140, // 고정 높이
-                          child: Row(
-                            children: [
-                              // 테마별 카드
-                              Expanded(
-                                child: _buildSmallRecommendationCard(
-                                  title: '테마별 산 추천',
-                                  icon: Icons.landscape_rounded,
-                                  backgroundColor: const Color(0xFF26A69A),
-                                  onTap: () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => const ThemeRecommendationScreen(),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              
-                              // 지역별 카드
-                              Expanded(
-                                child: _buildSmallRecommendationCard(
-                                  title: '지역별 산 추천',
-                                  icon: Icons.map_rounded,
-                                  backgroundColor: const Color.fromARGB(255, 147, 193, 168),
-                                  onTap: () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => const LocationRecommendationScreen(),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                        _buildRecommendationCard(
+                          title: '나만의 코스 추천',
+                          description: '취향에 맞는 산을 찾아보세요',
+                          image: 'lib/assets/images/ai_recommend.png',
+                          backgroundColor: const Color(0xFF64B792),
+                          onTap: _navigateToAiRecommendation,
                         ),
-                        
-                        const SizedBox(height: 32),
-                        
-                        // 로딩 표시기
-                        if (_isLoading)
-                          const Center(
-                            child: Padding(
-                              padding: EdgeInsets.all(16.0),
-                              child: CircularProgressIndicator(
-                                color: Color(0xFF64B792),
+                      ] else ...[
+                        const SizedBox(height: 8),
+                        _buildLoginPrompt(),
+                      ],
+                      
+                      const SizedBox(height: 32),
+                      
+                      // 테마별 추천 섹션
+                      _buildSectionHeader(
+                        title: '주제별 추천',
+                        icon: Icons.category_rounded,
+                        color: const Color(0xFF42A5F5),
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      // 테마별 카드 그리드
+                      SizedBox(
+                        height: 140, // 고정 높이
+                        child: Row(
+                          children: [
+                            // 테마별 카드
+                            Expanded(
+                              child: _buildSmallRecommendationCard(
+                                title: '테마별 산 추천',
+                                icon: Icons.landscape_rounded,
+                                backgroundColor: const Color(0xFF26A69A),
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const ThemeRecommendationScreen(),
+                                  ),
+                                ),
                               ),
                             ),
+                            const SizedBox(width: 12),
+                            
+                            // 지역별 카드
+                            Expanded(
+                              child: _buildSmallRecommendationCard(
+                                title: '지역별 산 추천',
+                                icon: Icons.map_rounded,
+                                backgroundColor: const Color.fromARGB(255, 147, 193, 168),
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const LocationRecommendationScreen(),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 32),
+                      
+                      // 로딩 표시기
+                      if (_isLoading)
+                        const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(16.0),
+                            child: CircularProgressIndicator(
+                              color: Color(0xFF64B792),
+                            ),
                           ),
-                        
-                        // 여백
-                        const SizedBox(height: 20),
-                      ],
-                    ),
+                        ),
+                      
+                      // 여백
+                      const SizedBox(height: 20),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
-      );
-    }
+      ),
+    );
+  }
   
   Widget _buildHeaderSection(AppState appState) {
-    debugPrint('_buildHeaderSection: 등산지수 = ${appState.climbingIndex}');
-    
-    // 등산지수 메시지 관련 로직
-    String _climateMessage = '';
-    Color _climateMessageColor = Colors.grey;
-    
-    // 등산지수 값 가져오기
-    final int _climbingIndex = appState.climbingIndex ?? 0;
-    
-    // 디버깅 출력
-    debugPrint('등산지수 값: $_climbingIndex');
-    
-    // 점수에 따른 메시지와 색상 설정
-    if (_climbingIndex > 0) {  // 등산지수가 있는 경우에만 메시지 설정
-      if (_climbingIndex < 50) {
-        _climateMessage = '현재 등산 지수는 $_climbingIndex점!  최악의 등산 날씨에요';
-        _climateMessageColor = const Color(0xFFEF5350); // 빨강
-      } else if (_climbingIndex < 80) {
-        _climateMessage = '현재 등산 지수는 $_climbingIndex점!  무난한 등산 날씨에요';
-        _climateMessageColor = const Color(0xFFFF9800); // 주황
-      } else {
-        _climateMessage = '현재 등산 지수는 $_climbingIndex점!  최고의 등산 날씨에요';
-        _climateMessageColor = const Color(0xFF52A486); // 초록
-      }
-    }
-    
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
       decoration: BoxDecoration(
@@ -1061,100 +1018,30 @@ void _showTooltip(BuildContext context) {
           ),
         ],
       ),
-      child: appState.isLoggedIn
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 등산 관련 메시지
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.hiking_rounded,
-                      size: 18,
-                      color: Color(0xFF64B792),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '어떤 산행을 계획하고 계신가요?',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: const Color(0xFF666666),
-                        height: 1.3,
-                      ),
-                    ),
-                  ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 등산 관련 메시지
+          Row(
+            children: [
+              const Icon(
+                Icons.hiking_rounded,
+                size: 18,
+                color: Color(0xFF64B792),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '어떤 산행을 계획하고 계신가요?',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: const Color(0xFF666666),
+                  height: 1.3,
                 ),
-                
-                // 등산지수 메시지 부분 수정
-                if (_climbingIndex > 0) ...[
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _climateMessageColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      // Row의 크기를 내용물에 맞게 최소화
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          _climbingIndex < 50
-                              ? Icons.wb_cloudy_rounded
-                              : _climbingIndex < 80
-                                  ? Icons.cloud_queue_rounded
-                                  : Icons.wb_sunny_rounded,
-                          size: 18, // 아이콘 크기 약간 축소
-                          color: _climbingIndex < 50
-                              ? Colors.black 
-                              : _climbingIndex < 80
-                                  ? Colors.amber 
-                                  : Colors.amber,
-                        ),
-                        const SizedBox(width: 6), // 간격 줄임
-                        // 글자 크기를 줄여서 한 줄에 표시되도록 함
-                        Text(
-                          _climateMessage,
-                          style: TextStyle(
-                            fontSize: 12, // 글자 크기 축소 (14 -> 12)
-                            fontWeight: FontWeight.w500,
-                            color: _climateMessageColor,
-                          ),
-                          softWrap: false, // 한 줄로만 표시
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 비로그인 상태 메시지
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.hiking_rounded,
-                      size: 18,
-                      color: Color(0xFF64B792),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '어떤 산행을 계획하고 계신가요?',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: const Color(0xFF666666),
-                        height: 1.3,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
   

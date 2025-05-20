@@ -83,54 +83,60 @@ void _showWeatherModal(BuildContext context, WeatherData data) {
         children: [
 
           // 모달 헤더
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8F5EC),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.eco,
-                  size: 20,
-                  color: Color(0xFF52A486),
-                ),
-              ),
-              const SizedBox(width: 10),
-              
-              // 시간과 설명을 한 줄로 통합
-              Flexible(
-                child: RichText(
-                  textAlign: TextAlign.start,
-                  overflow: TextOverflow.ellipsis,
-                  text: TextSpan(
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Color(0xFF333333),
-                    ),
-                    children: [
-                      TextSpan(
-                        text: data.getFormattedTime(),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
-                      TextSpan(
-                        text: ' 의 등산지수가 궁금하신가요?',
-                        style: TextStyle(
-                          color: Colors.grey[700],
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+          // 정보 배지 스타일
+Row(
+  mainAxisAlignment: MainAxisAlignment.center,
+  children: [
+    Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
           ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.calendar_today,
+            size: 16,
+            color: Color(0xFF52A486),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            data.getFormattedTime(),
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF333333),
+            ),
+          ),
+          Container(
+            height: 16,
+            width: 1,
+            margin: const EdgeInsets.symmetric(horizontal: 12),
+            color: Colors.grey[300],
+          ),
+          const Text(
+            "등산지수",
+            style: TextStyle(
+              fontSize: 14,
+              color: Color(0xFF666666),
+            ),
+          ),
+        ],
+      ),
+    ),
+  ],
+),
+
+const SizedBox(height: 5),
           
           const Divider(
             height: 30,
@@ -235,7 +241,7 @@ void _showWeatherModal(BuildContext context, WeatherData data) {
                       Text(
                         _getScoreMessage(score),
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 13,
                           fontWeight: FontWeight.bold,
                           color: scoreColor,
                         ),
@@ -441,7 +447,8 @@ Widget build(BuildContext context) {
         );
       }
       
-      if (snap.hasError || !snap.hasData || snap.data!.isEmpty) {
+      // 에러 발생 시 메시지 표시
+      if (snap.hasError) {
         return Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -479,39 +486,128 @@ Widget build(BuildContext context) {
           ),
         );
       }
+      
+      // 데이터가 없는 경우 (API 호출 실패 또는 21시~자정 사이) 메시지 표시
+      if (!snap.hasData || snap.data!.isEmpty) {
+        // 현재 시간이 21시~자정 사이인지 확인
+        final now = DateTime.now();
+        final currentHour = now.hour;
+        final isNightTime = currentHour >= 21 && currentHour <= 23;
+        
+        return SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // 심플한 헤더 유지
+                Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDCEFE2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.table_chart_outlined,
+                        size: 12,
+                        color: const Color(0xFF52A486),
+                      ),
+                      const SizedBox(width: 4),
+                      const Text(
+                        '등산지수 시간표',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF52A486),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // 시간대에 따른 메시지 표시
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 20),
+                  child: Column(
+                    children: [
+                      Icon(
+                        isNightTime ? Icons.nightlight_round : Icons.error_outline,
+                        color: isNightTime ? const Color(0xFF78909C) : Colors.amber,
+                        size: 36,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        isNightTime 
+                            ? '아직 시간표가 나올 시간이 아니에요' 
+                            : '등산지수 정보를 불러오지 못했습니다',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: isNightTime ? const Color(0xFF78909C) : Colors.amber[700],
+                          fontWeight: FontWeight.w500,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      if (!isNightTime) ...[
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: _refreshData,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF64B792),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text('새로고침'),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
 
       final weatherDataList = snap.data!;
       
       // 시간 목록과 제목 표시 (오버플로우 수정)
-      return SingleChildScrollView(
+      return 
+      SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // 귀여운 제목 (오버플로우 방지를 위해 패딩 축소)
+              // 심플한 헤더
               Container(
-                margin: const EdgeInsets.only(bottom: 12),
+                margin: const EdgeInsets.only(bottom: 10),
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
                   color: const Color(0xFFDCEFE2),
-                  borderRadius: BorderRadius.circular(30),
-                  // 그림자 제거하여 오버헤드 감소
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      Icons.access_time_rounded,
-                      size: 12, // 아이콘 크기 축소
+                      Icons.table_chart_outlined,
+                      size: 12,
                       color: const Color(0xFF52A486),
                     ),
-                    const SizedBox(width: 4), // 간격 축소
+                    const SizedBox(width: 4),
                     const Text(
                       '등산지수 시간표',
                       style: TextStyle(
-                        fontSize: 11, // 글자 크기 축소
+                        fontSize: 11,
                         fontWeight: FontWeight.w500,
                         color: Color(0xFF52A486),
                       ),
@@ -520,50 +616,85 @@ Widget build(BuildContext context) {
                 ),
               ),
               
-              // 시간 버튼 - 스크롤 가능한 영역으로 변경
-              GridView.builder(
-                shrinkWrap: true, // 필수: 내부 ScrollView에서는 shrinkWrap 필요
-                physics: const NeverScrollableScrollPhysics(), // 외부 스크롤과 충돌 방지
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3, // 한 줄에 3개로 유지
-                  childAspectRatio: 2.5, // 가로:세로 비율 높게 설정 (더 납작하게)
-                  crossAxisSpacing: 6, // 간격 줄임
-                  mainAxisSpacing: 6, // 간격 줄임
-                ),
-                itemCount: weatherDataList.length,
-                itemBuilder: (context, index) {
-                  final data = weatherDataList[index];
-                  // 시간 포맷 수정 - 21:0 대신 21:00 형식으로 표시되도록
-                  final hour = data.time.substring(11, 13);
-                  final minute = data.time.substring(14, 16);
-                  final formattedTime = '$hour:$minute';
-                  
-                  return InkWell(
-                    onTap: () => _showWeatherModal(context, data),
-                    borderRadius: BorderRadius.circular(8), // 반경 축소
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE8F5EC).withOpacity(0.4),
-                        borderRadius: BorderRadius.circular(8), // 반경 축소
-                        border: Border.all(
-                          color: const Color(0xFFCCE5D7),
-                          width: 0.5, // 테두리 얇게
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          formattedTime,
-                          style: const TextStyle(
-                            fontSize: 12, // 글자 크기 축소
-                            fontWeight: FontWeight.w500, // 두께 낮춤
-                            color: Color.fromARGB(255, 53, 118, 94),
+              // 지나간 시간에 취소선 추가
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(2),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    childAspectRatio: 2.5,
+                    crossAxisSpacing: 4,
+                    mainAxisSpacing: 4,
+                  ),
+                  itemCount: weatherDataList.length,
+                  itemBuilder: (context, index) {
+                    final data = weatherDataList[index];
+                    final hour = data.time.substring(11, 13);
+                    final minute = data.time.substring(14, 16);
+                    final formattedTime = '$hour:$minute';
+                    
+                    // 현재 시간 가져오기
+                    final now = DateTime.now();
+                    
+                    // 날씨 데이터의 시간만 추출하여 간단하게 비교
+                    int weatherHour = 0;
+                    int weatherMinute = 0;
+                    
+                    try {
+                      weatherHour = int.parse(hour);
+                      weatherMinute = int.parse(minute);
+                    } catch (e) {
+                      print("시간 파싱 오류: $e");
+                    }
+                    
+                    // 날짜는 무시하고 시간만 비교
+                    final currentHour = now.hour;
+                    final currentMinute = now.minute;
+                    
+                    // 단순하게 시간만 비교 (같은 날짜라고 가정)
+                    final isPastTime = (weatherHour < currentHour) || 
+                                      (weatherHour == currentHour && weatherMinute < currentMinute);
+                    
+                    return InkWell(
+                      onTap: () => _showWeatherModal(context, data),
+                      borderRadius: BorderRadius.circular(6),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: isPastTime 
+                              ? const Color(0xFFF5F5F5) // 지나간 시간은 회색 배경
+                              : const Color(0xFFF5F9F7), // 미래 시간은 연한 민트 배경
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: isPastTime 
+                                ? const Color(0xFFE0E0E0) // 지나간 시간은 회색 테두리
+                                : const Color(0xFFE0EDE7), // 미래 시간은 연한 민트 테두리
+                            width: 0.5,
                           ),
-                          textAlign: TextAlign.center,
+                        ),
+                        child: Center(
+                          child: Text(
+                            formattedTime,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w400,
+                              color: isPastTime 
+                                  ? const Color(0xFF9E9E9E) // 지나간 시간은 회색 텍스트
+                                  : const Color(0xFF407A6B), // 미래 시간은 민트 텍스트
+                              decoration: isPastTime 
+                                  ? TextDecoration.lineThrough // 지나간 시간에 취소선 추가
+                                  : TextDecoration.none,
+                              decorationColor: const Color(0xFF9E9E9E), // 취소선 색상
+                              decorationThickness: 1.5, // 취소선 두께
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ],
           ),
@@ -575,9 +706,9 @@ Widget build(BuildContext context) {
   
   // 점수에 따른 메시지 반환
   String _getScoreMessage(int score) {
-    if (score < 50) return '최악의 등산 날씨에요';
-    if (score < 80) return '무난한 등산 날씨에요';
-    return '최고의 등산 날씨에요';
+    if (score < 50) return '최악의 등산 날씨예요';
+    if (score < 80) return '무난한 등산 날씨예요';
+    return '최고의 등산 날씨예요';
   }
   
   // 세부정보 값 포맷팅 (괄호 내용 제거)

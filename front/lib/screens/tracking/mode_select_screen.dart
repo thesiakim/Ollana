@@ -145,7 +145,7 @@ class _ModeSelectScreenState extends State<ModeSelectScreen> {
                   // 나 vs 친구 모드
                   _buildEnhancedModeCard(
                     title: '나 vs 친구',
-                    description: '친구와 경쟁하며 등산해보세요!\n친구의 기록과 실시간으로 비교됩니다',
+                    description: '친구와 경쟁하며 등산해보세요!\n친구의 기록과 실시간으로 비교할 수 있어요',
                     icon: Icons.people,
                     color: Color(0xFF52A486),
                     onTap: () => Navigator.push(
@@ -161,7 +161,7 @@ class _ModeSelectScreenState extends State<ModeSelectScreen> {
                   // 일반 등산 모드
                   _buildEnhancedModeCard(
                     title: '일반 등산',
-                    description: '경쟁 없이 편안하게 등산해보세요!\n기본적인 등산 정보만 제공됩니다',
+                    description: '경쟁 없이 편안하게 등산해보세요!\n기본적인 등산 정보만 제공돼요',
                     icon: Icons.directions_walk,
                     color: Color(0xFF52A486),
                     onTap: () async {
