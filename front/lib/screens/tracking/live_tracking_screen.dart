@@ -305,6 +305,10 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   // 현재 심박수
   int _currentHeartRate = 0; // _avgHeartRate에서 _currentHeartRate로 변경 및 초기값 설정
 
+  // 최대/평균 심박수
+  int _maxHeartRate = 0;
+  int _avgHeartRate = 0;
+
   // 등산로 경로 데이터
   List<NLatLng> _routeCoordinates = [];
 
@@ -346,7 +350,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
   // 목적지 도착 관련 변수
   bool _isDestinationReached = false;
-  final double _destinationRadius = 30.0; // 도착 감지 반경 (미터)
+  final double _destinationRadius = 50.0; // 도착 감지 반경 (미터)
 
   // 이전 기록 비교 관련 변수
   bool _isAheadOfRecord = false;
@@ -447,6 +451,9 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
         case '/SENSOR_DATA':
           // heartRate 데이터 타입 처리
           var hrData = message['heartRate'];
+          logger.d('심박수 데이터: $hrData');
+          int prevHeartRate = _currentHeartRate;
+
           if (hrData is int) {
             _currentHeartRate = hrData;
           } else if (hrData is double) {
@@ -458,6 +465,24 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
             logger.w("심박수 null 수신, 이전 값 유지");
           }
           _steps = message['steps'] ?? _steps;
+
+          // 심박수가 변경되었을 때만 AppState 업데이트
+          if (_currentHeartRate != prevHeartRate && mounted) {
+            logger
+                .d('심박수 업데이트: $_currentHeartRate bpm (이전: $prevHeartRate bpm)');
+
+            // AppState 업데이트
+            final appState = Provider.of<AppState>(context, listen: false);
+            if (_currentHeartRate > 0) {
+              if (_currentHeartRate > _maxHeartRate) {
+                _maxHeartRate = _currentHeartRate;
+                appState.updateTrackingData(maxHeartRate: _maxHeartRate);
+              }
+
+              // 평균 심박수 계산 로직은 이미 다른 곳에서 처리된다고 가정
+              appState.updateTrackingData(avgHeartRate: _avgHeartRate);
+            }
+          }
           break;
         case '/STOP_TRACKING_CONFIRM':
           logger.i('워치로부터 /STOP_TRACKING_CONFIRM 메시지 수신');
@@ -617,13 +642,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
               '[BG] 타이머 동작 중: $_elapsedSeconds초 경과, 백그라운드 상태: $_currentLifecycleState');
         }
 
-        // 이동 거리는 _startLocationTracking()에서 실시간으로 계산됨
-
-        if (_elapsedSeconds % 5 == 0) {
-          _updateHeartRate();
-        }
-
-        _calculateRemainingDistanceAndTime();
+        // 이동 거리는 _startLocationTracking()에서 실시간으로 계산됨                _calculateRemainingDistanceAndTime();
 
         // 워치 연결되어 있는 경우 예상 도착시간과 남은 거리 정보 전송 (처음 한 번만)
         if (_isWatchPaired && !_hasSentEtaToWatch) {
@@ -3597,7 +3616,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       );
 
       logger.d('등산 종료 요청 성공 (기록 저장: $shouldSave)');
-      logger.d('서버 응답 데이터: ${response['data']}');
+      logger.d('종료 api 서버 응답 데이터: ${response['data']}');
 
       if (_isWatchPaired) {
         if (shouldSave) {
