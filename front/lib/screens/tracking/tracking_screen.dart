@@ -174,7 +174,8 @@ class _IntegratedMountainRouteScreenState
         name: routeData['name'],
         difficulty: routeData['difficulty'],
         distance:
-            double.tryParse(routeData['distance'].replaceAll('km', '')) ?? 5.0,
+            (double.tryParse(routeData['distance'].replaceAll('km', '')) ?? 5.0)
+                .toInt(),
         estimatedTime: int.tryParse(
                 routeData['time'].replaceAll('약 ', '').replaceAll('시간', '')) ??
             120,

@@ -12,7 +12,7 @@ class TrackingResultScreen extends StatefulWidget {
   final int? opponentMaxHeartRate;
   final int? opponentAvgHeartRate;
   final int? currentElapsedMinutes;
-  final double? currentDistanceMeters;
+  final int? currentDistanceMeters;
   final String? previousRecordDate;
   final int? previousRecordTimeSeconds;
   final int? previousMaxHeartRate;
@@ -1282,7 +1282,7 @@ Widget _buildGeneralResult(String mountainName) {
   final int avgHeartRate = (widget.resultData['averageHeartRate'] is double)
       ? (widget.resultData['averageHeartRate'] as double).round()
       : widget.resultData['averageHeartRate'] ?? 0;
-  final double distance = appState.distance;
+  final int distance = appState.distance;
   final String distanceFormatted = distance < 1.0
       ? '${(distance * 1000).toInt()}m'
       : '${distance.toStringAsFixed(1)}km';

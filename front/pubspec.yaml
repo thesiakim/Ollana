@@ -66,6 +66,7 @@ dependencies:
   smooth_page_indicator: ^1.2.1
   charset_converter: ^2.3.0
   flutter_background_service: ^5.1.0
+  logger: ^2.5.0
 
 dev_dependencies:
   flutter_test:

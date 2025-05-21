@@ -8,7 +8,7 @@ class HikingRoute {
   final num id;
   final num mountainId;
   final String name;
-  final double distance;
+  final int distance;
   final int estimatedTime; // 분 단위
   final String difficulty;
   final String description;
@@ -65,10 +65,10 @@ class HikingRoute {
           json['mountainId'] ?? json['mountain_id'] ?? 0, // mountain_id도 확인
       name: json['pathName'] ?? '',
       distance: (json['distance'] is num)
-          ? json['distance'].toDouble()
+          ? json['distance'].toInt()
           : (json['pathLength'] is num)
-              ? json['pathLength'].toDouble()
-              : 0.0,
+              ? json['pathLength'].toInt()
+              : 0,
       estimatedTime: json['estimatedTime'] is int
           ? json['estimatedTime']
           : (json['pathTime'] != null)
