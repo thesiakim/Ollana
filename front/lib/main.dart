@@ -8,6 +8,7 @@ import 'models/app_state.dart';
 import 'screens/home_screen.dart';
 import 'screens/tracking/tracking_result_screen.dart';
 import 'services/deep_link_handler.dart';
+import 'dart:io';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 final DeepLinkHandler deepLinkHandler = DeepLinkHandler();
@@ -29,9 +30,18 @@ void main() async {
       statusBarIconBrightness: Brightness.light,
     ),
   );
+  HttpOverrides.global = MyHttpOverrides();
   runApp(
     ChangeNotifierProvider(create: (_) => AppState(), child: const MyApp()),
   );
+}
+
+class MyHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    return super.createHttpClient(context)
+      ..badCertificateCallback = (X509Certificate cert, String host, int port) => true;
+  }
 }
 
 class MyApp extends StatefulWidget {

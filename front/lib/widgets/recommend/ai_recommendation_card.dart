@@ -34,7 +34,13 @@ class RecommendationCard extends StatelessWidget {
     // 산 정보 가져오기
     final name = mountain['mountain_name'] as String? ?? '';
     final location = mountain['location'] as String? ?? '위치 정보 없음';
-    final imgUrl = formatImageUrl(mountain['image_url'] as String?);
+    
+    // 원본 이미지 URL 가져오기
+    final rawImageUrl = mountain['image_url'] as String?;
+    
+    // 제한된 도메인인지 확인하고 적절히 처리된 URL 획득
+    final imgUrl = ImageUtils.getProcessedImageUrl(rawImageUrl);
+    
     final height = mountain['height'] ?? 0; 
     final level = mountain['level'] as String? ?? 'M';
     
@@ -55,7 +61,6 @@ class RecommendationCard extends StatelessWidget {
     final levelColor = _getLevelColor(level);
     final primaryColor = const Color(0xFF52A486);
 
-    // 카드 가로 너비를 늘림 
     return FadeTransition(
       opacity: fadeAnimation,
       child: Container(
@@ -82,7 +87,7 @@ class RecommendationCard extends StatelessWidget {
               padding: const EdgeInsets.all(12),
               child: Row(
                 children: [
-                  // 이미지
+                  // 이미지 - 여기서 mount_default.png 사용하도록 수정
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: imgUrl != null
@@ -91,9 +96,23 @@ class RecommendationCard extends StatelessWidget {
                           width: 100,
                           height: 100,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => _buildMountainPlaceholder(),
+                          errorBuilder: (context, error, stackTrace) {
+                            print('이미지 로딩 오류: $error');
+                            // mount_default.png 이미지 사용하도록 변경
+                            return Image.asset(
+                              'lib/assets/images/mount_default.png',
+                              width: 100,
+                              height: 100,
+                              fit: BoxFit.cover,
+                            );
+                          },
                         )
-                      : _buildMountainPlaceholder(),
+                      : Image.asset(
+                          'lib/assets/images/mount_default.png',
+                          width: 100,
+                          height: 100,
+                          fit: BoxFit.cover,
+                        ),
                   ),
                   const SizedBox(width: 16), // 간격 늘림
                   
@@ -183,45 +202,6 @@ class RecommendationCard extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-  
-  // 산 이미지 플레이스홀더
-  Widget _buildMountainPlaceholder() {
-    return Container(
-      width: 100,
-      height: 100,
-      decoration: BoxDecoration(
-        color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(14),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.grey[300]!,
-            Colors.grey[200]!,
-          ],
-        ),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.terrain,
-            size: 36,
-            color: Colors.grey[400],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '이미지 없음',
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.grey[500],
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
       ),
     );
   }

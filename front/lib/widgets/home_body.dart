@@ -902,7 +902,7 @@ OverlayEntry _showLoadingOverlay(BuildContext context) {
                         ),
                         const SizedBox(height: 16),
                         _buildRecommendationCard(
-                          title: '나만의 코스 추천',
+                          title: '나만의 산 추천',
                           description: '취향에 맞는 산을 찾아보세요',
                           image: 'lib/assets/images/ai_recommend.png',
                           backgroundColor: const Color(0xFF64B792),
