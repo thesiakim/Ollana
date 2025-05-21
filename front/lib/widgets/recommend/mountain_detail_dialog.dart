@@ -17,7 +17,13 @@ class MountainDetailDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final name = mountain['mountain_name'] as String?;
     final desc = mountain['mountain_description'] as String?;
-    final imgUrl = formatImageUrl(mountain['image_url'] as String?);
+
+    // 원본 이미지 URL 가져오기
+  final rawImageUrl = mountain['image_url'] as String?;
+  print("원본 이미지 URL: $rawImageUrl");
+  
+  // 제한된 도메인인지 확인하고 적절히 처리된 URL 획득
+  final imgUrl = ImageUtils.getProcessedImageUrl(rawImageUrl);
 
     // 높이 포맷 변경: 소수점이 있는 경우 정수로 변환
     final double? heightValue = mountain['height'] is double ? mountain['height'] as double : null;
@@ -68,24 +74,35 @@ class MountainDetailDialog extends StatelessWidget {
             Stack(
               children: [
                 imgUrl != null
-                  ? Image.network(
-                      imgUrl,
-                      height: 220,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (ctx, err, st) => Image.asset(
+                ? Image.network(
+                    imgUrl,
+                    height: 220,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      print("이미지 로딩 중: ${loadingProgress.expectedTotalBytes != null 
+                        ? '${loadingProgress.cumulativeBytesLoaded}/${loadingProgress.expectedTotalBytes}'
+                        : '알 수 없음'}");
+                      return Center(child: CircularProgressIndicator());
+                    },
+                    errorBuilder: (ctx, err, st) {
+                      print('이미지 로딩 오류: $err');
+                      print('스택 트레이스: $st');
+                      return Image.asset(
                         'lib/assets/images/mount_default.png',
                         height: 220,
                         width: double.infinity,
                         fit: BoxFit.cover,
-                      ),
-                    )
-                  : Image.asset(
-                      'lib/assets/images/mount_default.png',
-                      height: 220,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                    ),
+                      );
+                    },
+                  )
+                : Image.asset(
+                    'lib/assets/images/mount_default.png',
+                    height: 220,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
                 Positioned.fill(
                   child: Container(
                     decoration: BoxDecoration(
@@ -148,7 +165,11 @@ class MountainDetailDialog extends StatelessWidget {
                     backgroundColor: Colors.black26,
                     child: IconButton(
                       icon: const Icon(Icons.close, size: 18, color: Colors.white),
-                      onPressed: () => Navigator.of(context).pop(),
+                      onPressed: () {
+                        if (Navigator.canPop(context)) {
+                          Navigator.of(context).pop();
+                        }
+                      },
                     ),
                   ),
                 ),
@@ -298,7 +319,11 @@ class MountainDetailDialog extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.all(20),
               child: ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: () {
+                  if (Navigator.canPop(context)) {
+                    Navigator.of(context).pop();
+                  }
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryColor,
                   foregroundColor: Colors.white,

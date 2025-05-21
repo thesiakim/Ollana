@@ -32,8 +32,13 @@ class ThemeRecommendationCard extends StatelessWidget {
     // 산 정보 가져오기
     final name = mountain['mountain_name'] as String? ?? '';
     final location = mountain['location'] as String? ?? '위치 정보 없음';
-    final rawImg = mountain['image_url'] as String?;
-    final imgUrl = formatImageUrl(rawImg);
+    
+    // 원본 이미지 URL 가져오기
+    final rawImageUrl = mountain['image_url'] as String?;
+    
+    // 제한된 도메인인지 확인하고 적절히 처리된 URL 획득
+    final imgUrl = ImageUtils.getProcessedImageUrl(rawImageUrl);
+    
     final height = mountain['height'] ?? 0;
     final level = mountain['level'] as String? ?? 'M';
     
@@ -78,7 +83,7 @@ class ThemeRecommendationCard extends StatelessWidget {
             padding: const EdgeInsets.all(12),
             child: Row(
               children: [
-                // 이미지
+                // 이미지 - 수정된 부분
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: imgUrl != null
@@ -105,13 +110,33 @@ class ThemeRecommendationCard extends StatelessWidget {
                             ),
                           );
                         },
-                        errorBuilder: (context, error, stackTrace) => _buildMountainPlaceholder(),
+                        errorBuilder: (context, error, stackTrace) {
+                          print('이미지 로딩 오류: $error');
+                          // mount_default.png 이미지 사용
+                          return ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.asset(
+                              'lib/assets/images/mount_default.png',
+                              width: 100,
+                              height: 100,
+                              fit: BoxFit.cover,
+                            ),
+                          );
+                        },
                       )
-                    : _buildMountainPlaceholder(),
+                    : ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.asset(
+                          'lib/assets/images/mount_default.png',
+                          width: 100,
+                          height: 100,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
                 ),
                 const SizedBox(width: 16),
                 
-                // 산 정보
+                // 산 정보 (이하 코드는 동일)
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

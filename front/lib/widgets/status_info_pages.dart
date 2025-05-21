@@ -1,5 +1,4 @@
-// first_status_info.dart 수정
-
+import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:convert';
@@ -8,46 +7,165 @@ import 'package:provider/provider.dart';
 import '../../models/app_state.dart';
 import '../../models/weather_data.dart';
 import '../../services/weather_service.dart';
+import 'package:shared_preferences/shared_preferences.dart'; 
+import 'package:intl/intl.dart';
 
-// first_status_info.dart 오버플로우 수정
 
-import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'dart:convert';
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../models/app_state.dart';
-import '../../models/weather_data.dart';
-import '../../services/weather_service.dart';
-
-/// 첫 번째 페이지: 등산지수 조회 (오버플로우 수정)
 class FirstStatusInfo extends StatefulWidget {
   const FirstStatusInfo({super.key});
   @override
   State<FirstStatusInfo> createState() => _FirstStatusInfoState();
 }
 
-class _FirstStatusInfoState extends State<FirstStatusInfo> {
+class _FirstStatusInfoState extends State<FirstStatusInfo> with WidgetsBindingObserver {
   late Future<List<WeatherData>> _weatherDataFuture;
+  Timer? _midnightTimer;
 
   @override
   void initState() {
     super.initState();
-    _weatherDataFuture = _loadWeatherData();
-    WeatherService.checkCachedData();
+    WidgetsBinding.instance.addObserver(this);
+    
+    // 단일 초기화 함수만 호출
+    _initializeData();
+    _setupMidnightTimer();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _midnightTimer?.cancel();
+    super.dispose();
+  }
+
+  
+// 자정 타이머 설정
+  void _setupMidnightTimer() {
+    // 현재 시간
+    final now = DateTime.now();
+    
+    // 다음 자정 계산
+    final tomorrow = DateTime(now.year, now.month, now.day + 1);
+    final duration = tomorrow.difference(now);
+    
+    debugPrint('다음 자정까지 남은 시간: ${duration.inHours}시간 ${duration.inMinutes % 60}분');
+    
+    _midnightTimer = Timer(duration, () {
+      debugPrint('자정이 되어 데이터 새로고침');
+      _refreshData(forceRefresh: true);
+      
+      // 다음 자정 타이머 설정
+      _setupMidnightTimer();
+    });
+  }
+  
+  // 앱 라이프사이클 관리
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // 앱이 포그라운드로 돌아왔을 때 날짜 확인
+      _checkDateAndRefresh();
+    }
+  }
+  
+  // 날짜 변경 확인 및 새로고침
+  Future<void> _checkDateAndRefresh() async {
+    final token = Provider.of<AppState>(context, listen: false).accessToken;
+    final dateChanged = await WeatherService.checkAndUpdateIfNeeded(token);
+    
+    if (dateChanged) {
+      setState(() {
+        _weatherDataFuture = _loadWeatherData();
+      });
+    }
   }
 
   // 날씨 데이터 로드
   Future<List<WeatherData>> _loadWeatherData() async {
-    final token = Provider.of<AppState>(context, listen: false).accessToken;
-    return await WeatherService.fetchWeatherData(token);
+    try {
+      final token = Provider.of<AppState>(context, listen: false).accessToken;
+      return await WeatherService.fetchWeatherData(token);
+    } catch (e) {
+      debugPrint('데이터 로드 오류: $e');
+      return []; // 오류 시 빈 리스트 반환
+    }
   }
 
-  // 데이터 새로고침
-  Future<void> _refreshData() async {
-    setState(() {
-      _weatherDataFuture = _loadWeatherData();
+  // 초기 데이터 로드 - 자정 직후 한 번만 새로고침
+Future<void> _initializeData() async {
+  final token = Provider.of<AppState>(context, listen: false).accessToken;
+  
+  // 현재 시간 확인
+  final now = DateTime.now();
+  final hour = now.hour;
+  debugPrint('현재 시간: ${now.toString()}, hour: $hour');
+  
+  // 자정 직후 시간대 확인
+  final isPostMidnight = hour >= 0 && hour < 3;
+  
+  setState(() {
+    _weatherDataFuture = Future(() async {
+      try {
+        if (isPostMidnight) {
+          // 자정 직후에는 이미 갱신했는지 확인
+          final prefs = await SharedPreferences.getInstance();
+          final lastMidnightRefresh = prefs.getString('last_midnight_refresh');
+          final today = DateFormat('yyyy-MM-dd').format(now);
+          
+          // 오늘 자정에 아직 갱신하지 않았다면
+          if (lastMidnightRefresh != today) {
+            debugPrint('자정 직후 첫 방문: 강제 새로고침');
+            
+            // 자정 갱신 기록 저장
+            await prefs.setString('last_midnight_refresh', today);
+            
+            // 강제 새로고침으로 데이터 가져오기
+            final weatherData = await WeatherService.fetchWeatherData(token, forceRefresh: true);
+            await WeatherService.checkCachedData();
+            return weatherData;
+          } else {
+            // 이미 오늘 자정에 갱신했다면 캐시 사용
+            debugPrint('자정 직후 재방문: 이미 갱신했으므로 캐시 사용');
+            final weatherData = await WeatherService.fetchWeatherData(token, forceRefresh: false);
+            return weatherData;
+          }
+        } else {
+          // 일반 시간대는 기존과 동일
+          debugPrint('일반 시간대: 캐시 우선 사용');
+          
+          final dateChanged = await WeatherService.checkAndUpdateIfNeeded(token);
+          
+          if (dateChanged) {
+            debugPrint('날짜 변경됨: 새 데이터 가져오기');
+            return await WeatherService.fetchWeatherData(token, forceRefresh: true);
+          } else {
+            debugPrint('기존 날짜: 캐시된 데이터 사용');
+            final weatherData = await WeatherService.fetchWeatherData(token, forceRefresh: false);
+            await WeatherService.checkCachedData();
+            return weatherData;
+          }
+        }
+      } catch (e) {
+        debugPrint('초기화 오류: $e');
+        return <WeatherData>[];
+      }
     });
+  });
+}
+  
+  // 데이터 새로고침 (UI에서 사용)
+  Future<void> _refreshData({bool forceRefresh = false}) async {
+    try {
+      final token = Provider.of<AppState>(context, listen: false).accessToken;
+      
+      if (mounted) {
+        setState(() {
+          _weatherDataFuture = WeatherService.fetchWeatherData(token, forceRefresh: forceRefresh);
+        });
+      }
+    } catch (e) {
+      debugPrint('새로고침 오류: $e');
+    }
   }
 
   // 모달창으로 날씨 정보 표시 (확인 버튼 제거 및 상단 닫기 버튼 추가)
