@@ -131,7 +131,7 @@ class _MountainMapScreenState extends State<MountainMapScreen> with SingleTicker
               ),
             ],
           ),
-          backgroundColor: isError ? Colors.red.shade800 : Colors.green.shade700,
+          backgroundColor: isError ? Colors.red.shade800 : Color(0xFF52A486),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           margin: const EdgeInsets.all(12),
@@ -557,63 +557,69 @@ class _MountainMapScreenState extends State<MountainMapScreen> with SingleTicker
     );
   }
 
-  // 산 정보 카드 위젯 - 디자인 개선
-  Widget _buildInfoCard({
-    required IconData icon,
-    required String title,
-    required String value,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: color.withOpacity(0.3),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 5,
-            spreadRadius: 0,
-            offset: const Offset(0, 2),
-          ),
-        ],
+// MountainMapScreen 클래스의 _buildInfoCard 메서드 수정
+Widget _buildInfoCard({
+  required IconData icon,
+  required String title,
+  required String value,
+  required Color color,
+}) {
+  return Container(
+    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 14),
+    decoration: BoxDecoration(
+      color: color.withOpacity(0.1),
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(
+        color: color.withOpacity(0.3),
+        width: 1,
       ),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.grey[700],
-                  ),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.05),
+          blurRadius: 5,
+          spreadRadius: 0,
+          offset: const Offset(0, 2),
+        ),
+      ],
+    ),
+    child: Row(
+      children: [
+        Icon(icon, color: color, size: 20),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min, // 컨텐츠에 맞게 높이 조정
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 12, // 폰트 크기 축소
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey[700], // textColor 대신 Colors.grey[700] 사용
                 ),
-                const SizedBox(height: 2),
-                Text(
+              ),
+              const SizedBox(height: 1),
+              // FittedBox로 감싸 긴 텍스트가 줄바꿈되지 않도록 함
+              FittedBox(
+                alignment: Alignment.centerLeft,
+                fit: BoxFit.scaleDown,
+                child: Text(
                   value,
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 14,
                     fontWeight: FontWeight.bold,
                     color: Colors.grey[900],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 
   // 산 상세 정보 바텀 시트 
 Widget _buildMountainDetailDialog(MountainMap mountain) {
@@ -645,6 +651,12 @@ Widget _buildMountainDetailDialog(MountainMap mountain) {
         return Icons.landscape;
     }
   }
+
+  // 높이 값 포맷 개선 추가
+  final double? altitudeValue = mountain.altitude is double ? mountain.altitude as double : null;
+  final String formattedAltitude = altitudeValue != null 
+      ? '${altitudeValue % 1 == 0 ? altitudeValue.toInt() : altitudeValue}m' // 소수점이 .0인 경우 정수로 표시
+      : '${mountain.altitude}m';
 
   return Container(
     margin: EdgeInsets.only(
@@ -732,35 +744,136 @@ Widget _buildMountainDetailDialog(MountainMap mountain) {
                     ],
                   ),
                 ),
-                
-                // 정보 카드 섹션
+
                 Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      // 고도 정보 카드
-                      Expanded(
-                        child: _buildInfoCard(
-                          icon: Icons.height,
-                          title: '높이',
-                          value: '${mountain.altitude}m',
-                          color: levelColor,
+                      // 정보 라벨
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 4, bottom: 8),
+                          child: Text(
+                            '기본 정보',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey[800],
+                            ),
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      // 난이도 정보 카드
-                      Expanded(
-                        child: _buildInfoCard(
-                          icon: getDifficultyIcon(level),
-                          title: '난이도',
-                          value: difficultyText,
-                          color: levelColor,
+                      
+                      // 정보 행 - 외곽선 제거하고 높이/난이도 나란히 표시
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          borderRadius: BorderRadius.circular(16),
+                          // 외곽선 제거 (Border.all 코드 제거)
+                        ),
+                        child: Row(  // 수직 Column에서 가로 Row로 변경
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,  // 균등하게 배치
+                          children: [
+                            // 높이 정보
+                            Row(
+                              children: [
+                                // 아이콘
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: levelColor.withOpacity(0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.height,
+                                    color: levelColor,
+                                    size: 16,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                
+                                // 내용
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '높이',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                    Text(
+                                      formattedAltitude,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.grey[900],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            
+                            // 구분선
+                            Container(
+                              height: 40,
+                              width: 1,
+                              color: Colors.grey[300],
+                            ),
+                            
+                            // 난이도 정보
+                            Row(
+                              children: [
+                                // 아이콘
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: levelColor.withOpacity(0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    getDifficultyIcon(level),
+                                    color: levelColor,
+                                    size: 16,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                
+                                // 내용
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '난이도',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                    Text(
+                                      difficultyText,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.grey[900],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
                 ),
-                
+                                
                 // 설명 섹션
                 Flexible(
                   child: SingleChildScrollView(
@@ -1056,21 +1169,7 @@ Widget _buildListView() {
               padding: const EdgeInsets.only(left: 12, right: 8),
               child: Icon(Icons.search, color: _primaryColor),
             ),
-            suffixIcon: _isSearching
-                ? Container(
-                    margin: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      shape: BoxShape.circle,
-                    ),
-                    child: IconButton(
-                      icon: Icon(Icons.close, size: 16, color: Colors.grey[700]),
-                      onPressed: _cancelSearch,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                  )
-                : null,
+            // suffixIcon 부분을 제거
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(30),
               borderSide: BorderSide.none,
@@ -1081,7 +1180,7 @@ Widget _buildListView() {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(30),
-              borderSide: BorderSide(color: _primaryColor, width: 1.5),
+              borderSide: BorderSide(color: Color(0xFF52A486), width: 1.5),
             ),
             filled: true,
             fillColor: Colors.grey[100],
@@ -1287,14 +1386,6 @@ Widget _buildFilterChip({
             ),
           ),
           const SizedBox(height: 24),
-          Text(
-            '산 정보를 불러오는 중입니다',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              color: Colors.grey[700],
-            ),
-          ),
         ],
       ),
     );
@@ -1317,21 +1408,13 @@ Widget _buildFilterChip({
         centerTitle: true,
         iconTheme: const IconThemeData(color: Color(0xFF52A486)),
         actions: [
-          // 데이터 새로고침 버튼
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Color(0xFF52A486)),
-            tooltip: '산 정보 새로고침',
-            onPressed: _isLoading ? null : _refreshMountainData,
-          ),
-          // 필터 버튼 (사용자 경험 향상을 위한 제안)
-          IconButton(
-            icon: const Icon(Icons.filter_list, color: Color(0xFF52A486)),
-            tooltip: '난이도 필터',
-            onPressed: () {
-              // 추후 필터링 기능 구현 가능
-              _showSnackBar('난이도 필터링 기능은 준비 중입니다');
-            },
-          ),
+          // 데이터 새로고침 버튼 - 지도 뷰일 때만 표시
+          if (_isMapView)
+            IconButton(
+              icon: const Icon(Icons.refresh, color: Color(0xFF52A486)),
+              tooltip: '산 정보 새로고침',
+              onPressed: _isLoading ? null : _refreshMountainData,
+            ),
         ],
       ),
       // 기존 body 내용은 그대로 유지
@@ -1415,12 +1498,12 @@ Widget _buildFilterChip({
                           Icons.info_outline,
                           color: Color(0xFF52A486),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 5),
                         Expanded(
                           child: Text(
                             '마커를 탭하면 산의 정보를 확인할 수 있어요',
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: 12,
                               color: Colors.grey[800],
                             ),
                           ),

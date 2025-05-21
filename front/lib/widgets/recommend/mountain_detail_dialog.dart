@@ -13,62 +13,18 @@ class MountainDetailDialog extends StatelessWidget {
     required this.textColor,
   }) : super(key: key);
 
-  Widget _buildInfoCard({
-    required IconData icon,
-    required String title,
-    required String value,
-    required Color color,
-    required Color textColor,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: color.withOpacity(0.3),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: textColor.withOpacity(0.7),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: textColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final name = mountain['mountain_name'] as String?;
     final desc = mountain['mountain_description'] as String?;
     final imgUrl = formatImageUrl(mountain['image_url'] as String?);
-    final elevation = mountain['height'] != null ? '${mountain['height']}m' : '정보 없음';
+
+    // 높이 포맷 변경: 소수점이 있는 경우 정수로 변환
+    final double? heightValue = mountain['height'] is double ? mountain['height'] as double : null;
+    final String elevation = heightValue != null 
+        ? '${heightValue % 1 == 0 ? heightValue.toInt() : heightValue}m' // 소수점이 .0인 경우 정수로 표시
+        : '정보 없음';
+
     final difficulty = () {
       switch (mountain['level'] as String?) {
         case 'L':
@@ -81,6 +37,20 @@ class MountainDetailDialog extends StatelessWidget {
           return '보통';
       }
     }();
+
+    // 난이도에 따른 아이콘 선택
+    IconData getDifficultyIcon(String? level) {
+      switch (level) {
+        case 'H':
+          return Icons.trending_up;
+        case 'M':
+          return Icons.trending_flat;
+        case 'L':
+          return Icons.trending_down;
+        default:
+          return Icons.landscape;
+      }
+    }
 
     return Dialog(
       shape: RoundedRectangleBorder(
@@ -184,32 +154,120 @@ class MountainDetailDialog extends StatelessWidget {
                 ),
               ],
             ),
+            
+            // 수정된 정보 영역 (배경색 제거 버전)
             Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _buildInfoCard(
-                      icon: Icons.height,
-                      title: '높이',
-                      value: elevation,
-                      color: primaryColor,
-                      textColor: textColor,
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                decoration: BoxDecoration(
+                  // color 속성 제거로 배경색 없음
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  children: [
+                    // 높이 정보
+                    Expanded(
+                      child: Row(
+                        children: [
+                          // 아이콘
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: primaryColor.withOpacity(0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.height,
+                              color: primaryColor,
+                              size: 18,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          
+                          // 내용
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '높이',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: textColor.withOpacity(0.6),
+                                ),
+                              ),
+                              Text(
+                                elevation,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: textColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildInfoCard(
-                      icon: Icons.trending_up,
-                      title: '난이도',
-                      value: difficulty,
-                      color: primaryColor,
-                      textColor: textColor,
+                    
+                    // 구분선
+                    Container(
+                      height: 40,
+                      width: 1,
+                      color: Colors.grey[300],
                     ),
-                  ),
-                ],
+                    
+                    // 난이도 정보
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 16),
+                        child: Row(
+                          children: [
+                            // 아이콘
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: primaryColor.withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                getDifficultyIcon(mountain['level'] as String?),
+                                color: primaryColor,
+                                size: 18,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            
+                            // 내용
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '난이도',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: textColor.withOpacity(0.6),
+                                  ),
+                                ),
+                                Text(
+                                  difficulty,
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: textColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
+            
             Flexible(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),

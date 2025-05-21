@@ -123,15 +123,6 @@ class _LocationRecommendationScreenState
                 strokeWidth: 4,
               ),
             ),
-            const SizedBox(height: 24),
-            Text(
-              '추천 산을 불러오는 중',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: Colors.grey[700],
-              ),
-            ),
           ],
         ),
       ),

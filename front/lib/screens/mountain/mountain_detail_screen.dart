@@ -5,6 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter/services.dart';
 
 class MountainDetailScreen extends StatefulWidget {
   final int mountainId;
@@ -23,6 +24,8 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
   Map<String, dynamic> _mountainData = {};
   int _currentImageIndex = 0;
   NaverMapController? _mapController;
+  ScrollController _scrollController = ScrollController();
+  bool _isCollapsed = false;
   
   // 테마 색상
   final Color _primaryColor = const Color(0xFF52A486);
@@ -31,6 +34,27 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
   void initState() {
     super.initState();
     _loadMountainDetail();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    // 스크롤 리스너 해제
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.hasClients) {
+      // 확장 높이의 절반 이상 스크롤 했을 때 상태 변경
+      final bool isCollapsed = _scrollController.offset > 160;
+      if (isCollapsed != _isCollapsed) {
+        setState(() {
+          _isCollapsed = isCollapsed;
+        });
+      }
+    }
   }
 
   // 산 상세 정보 로드
@@ -85,6 +109,14 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 시스템 UI 설정을 앱 전체에 적용
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+      ),
+    );
+    
     return Scaffold(
       backgroundColor: Colors.white,
       body: _isLoading
@@ -96,27 +128,23 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
   }
 
   // 로딩 화면
-  Widget _buildLoadingView() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(
+Widget _buildLoadingView() {
+  return Center(
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        SizedBox(
+          width: 48,
+          height: 48,
+          child: CircularProgressIndicator(
             valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+            strokeWidth: 4,
           ),
-          const SizedBox(height: 24),
-          Text(
-            '산 정보를 불러오는 중...',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              color: Colors.grey[700],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 
   // 오류 화면
   Widget _buildErrorView() {
@@ -161,6 +189,7 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
   // 상세 정보 화면
   Widget _buildDetailView() {
     return CustomScrollView(
+      controller: _scrollController, 
       physics: const BouncingScrollPhysics(),
       slivers: [
         // 앱바 및 이미지 슬라이더
@@ -206,19 +235,29 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
       expandedHeight: 320,
       pinned: true,
       stretch: true,
-      backgroundColor: _primaryColor,
+      backgroundColor: Colors.white,
       elevation: 0,
-      leading: Container(
-        margin: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.2),
-          shape: BoxShape.circle,
-        ),
-        child: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ),
+      surfaceTintColor: Colors.white,
+      scrolledUnderElevation: 0,
+      systemOverlayStyle: SystemUiOverlayStyle.dark,
+      // 스크롤 상태에 따라 leading 위젯 변경
+      leading: _isCollapsed
+          // 축소된 상태 - 기본 뒤로가기 버튼 사용
+          ? null
+          // 확장된 상태 - 둥근 컨테이너
+          : Container(
+              margin: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.5),
+                shape: BoxShape.circle,
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ),
+      iconTheme: IconThemeData(color: Colors.black), // 아이콘 색상 설정
+      foregroundColor: Colors.black, // 텍스트 색상 설정
       flexibleSpace: FlexibleSpaceBar(
         background: Stack(
           fit: StackFit.expand,
@@ -497,6 +536,23 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
     return location;
   }
 
+  String _formatDuration(String minutesStr) {
+    int minutes = int.tryParse(minutesStr) ?? 0;
+    
+    if (minutes < 60) {
+      return '$minutes분';
+    } else {
+      int hours = minutes ~/ 60;
+      int remainingMinutes = minutes % 60;
+      
+      if (remainingMinutes == 0) {
+        return '$hours시간';
+      } else {
+        return '$hours시간 $remainingMinutes분';
+      }
+    }
+  }
+
   // 난이도 텍스트 변환
   String _getLevelText(String level) {
     switch (level) {
@@ -634,7 +690,7 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                '소요 시간: 약 $pathTime분',
+                                '소요 시간: 약 ${_formatDuration(pathTime)}',
                                 style: const TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w500,
@@ -829,62 +885,75 @@ class _MountainDetailScreenState extends State<MountainDetailScreen> {
         _buildSectionTitle('날씨 정보', Icons.cloud),
         const SizedBox(height: 16),
 
-        // 날씨 카드 목록
         SizedBox(
           height: 140,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.all(2),
-            itemCount:
-                dailyWeather.length > 5 ? 5 : dailyWeather.length, // 최대 5일치만 표시
+            itemCount: dailyWeather.length > 5 ? 5 : dailyWeather.length, // 최대 5일치만 표시
             itemBuilder: (context, index) {
               final weather = dailyWeather[index];
               final date = weather['date'] ?? '';
-              final minTemp =
-                  weather['temperatureMin']?.toStringAsFixed(1) ?? '-';
-              final maxTemp =
-                  weather['temperatureMax']?.toStringAsFixed(1) ?? '-';
+              final minTemp = weather['temperatureMin']?.toStringAsFixed(1) ?? '-';
+              final maxTemp = weather['temperatureMax']?.toStringAsFixed(1) ?? '-';
               final weatherIcon = weather['weather']?['icon'] ?? '01d';
-              final weatherDesc = weather['weather']?['description'] ?? '';
 
-              // 날짜 포맷팅
+              // 날짜 포맷팅 로직 개선
               String dayText = '오늘';
               if (date.isNotEmpty) {
-                final dateTime = DateTime.parse(date);
-                final today = DateTime.now();
-                final difference = dateTime.difference(today).inDays;
-
-                if (difference == 0) {
-                  dayText = '오늘';
-                } else if (difference == 1) {
-                  dayText = '내일';
-                } else {
-                  // 요일 구하기 (0: 월, 1: 화, ... 6: 일)
-                  final weekday = dateTime.weekday;
-                  switch (weekday) {
-                    case 1:
-                      dayText = '월';
-                      break;
-                    case 2:
-                      dayText = '화';
-                      break;
-                    case 3:
-                      dayText = '수';
-                      break;
-                    case 4:
-                      dayText = '목';
-                      break;
-                    case 5:
-                      dayText = '금';
-                      break;
-                    case 6:
-                      dayText = '토';
-                      break;
-                    case 7:
-                      dayText = '일';
-                      break;
+                try {
+                  // API에서 받은 날짜 파싱
+                  final dateTime = DateTime.parse(date);
+                  
+                  // 현재 날짜 (시간 정보 제외)
+                  final today = DateTime.now();
+                  final todayOnly = DateTime(today.year, today.month, today.day);
+                  
+                  // 비교할 날짜 (시간 정보 제외)
+                  final dateOnly = DateTime(dateTime.year, dateTime.month, dateTime.day);
+                  
+                  // 날짜 차이 계산
+                  final differenceInDays = dateOnly.difference(todayOnly).inDays;
+                  
+                  // 날짜 텍스트 설정
+                  if (differenceInDays == 0) {
+                    dayText = '오늘';
+                  } else if (differenceInDays == 1) {
+                    dayText = '내일';
+                  } else if (differenceInDays > 1) {
+                    // 요일 구하기
+                    switch (dateTime.weekday) {
+                      case DateTime.monday:
+                        dayText = '월';
+                        break;
+                      case DateTime.tuesday:
+                        dayText = '화';
+                        break;
+                      case DateTime.wednesday:
+                        dayText = '수';
+                        break;
+                      case DateTime.thursday:
+                        dayText = '목';
+                        break;
+                      case DateTime.friday:
+                        dayText = '금';
+                        break;
+                      case DateTime.saturday:
+                        dayText = '토';
+                        break;
+                      case DateTime.sunday:
+                        dayText = '일';
+                        break;
+                    }
+                  } else {
+                    // 과거 날짜인 경우 (이런 경우는 보통 없지만, 방어 코드)
+                    dayText = '이전';
                   }
+                } catch (e) {
+                  // 날짜 파싱 에러 처리
+                  print('날짜 파싱 에러: $e');
+                  dayText = '날짜 오류';
                 }
               }
 

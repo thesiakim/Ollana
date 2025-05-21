@@ -18,13 +18,137 @@ import '../../models/app_state.dart';
 import '../../utils/app_colors.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import '../../models/mode_data.dart';
+import '../../models/opponent_record.dart'; // OpponentRecord 클래스 import 추가
 import '../../services/mode_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:watch_connectivity/watch_connectivity.dart';
+import 'package:flutter_background_service/flutter_background_service.dart'; // 백그라운드 서비스 import 추가
 import 'tracking_result_screen.dart'; // 결과 화면 추가
 
 // 네이버 지도 라이브러리 임포트
 import 'package:flutter_naver_map/flutter_naver_map.dart';
+
+// 칼만 필터 클래스 추가
+class SimpleKalmanFilter {
+  // 상태 변수
+  late double _estimate; // 현재 추정값
+  late double _errorEstimate; // 추정 오차
+  late double _q; // 프로세스 잡음 (환경 노이즈)
+  late double _r; // 측정 잡음 (센서 정확도)
+  late double _lastEstimate; // 이전 추정값
+  late double _kalmanGain; // 칼만 게인
+
+  // 초기화
+  SimpleKalmanFilter({
+    required double processNoise, // Q
+    required double measurementNoise, // R
+    required double estimateError, // 초기 추정 오차
+    double? initialValue, // 초기값 (없으면 첫 측정값 사용)
+  }) {
+    _q = processNoise;
+    _r = measurementNoise;
+    _errorEstimate = estimateError;
+    _estimate = initialValue ?? 0.0;
+    _lastEstimate = _estimate;
+    _kalmanGain = 0.0;
+  }
+
+  // 필터 업데이트 메서드
+  double update(double measurement) {
+    // 예측 단계: 이전 상태로부터 새 상태 예측
+    final double prediction = _lastEstimate;
+    final double errorPrediction = _errorEstimate + _q;
+
+    // 업데이트 단계: 측정값으로 예측 보정
+    _kalmanGain = errorPrediction / (errorPrediction + _r);
+    _estimate = prediction + _kalmanGain * (measurement - prediction);
+    _errorEstimate = (1 - _kalmanGain) * errorPrediction;
+    _lastEstimate = _estimate;
+
+    return _estimate;
+  }
+
+  // 현재 추정값 반환
+  double get estimate => _estimate;
+
+  // 칼만 게인 반환 (디버깅용)
+  double get gain => _kalmanGain;
+}
+
+// GPS 위치용 2차원 칼만 필터 래퍼
+class GpsKalmanFilter {
+  // 위도와 경도에 대한 별도 필터
+  late SimpleKalmanFilter _latFilter;
+  late SimpleKalmanFilter _lngFilter;
+  double _filteredLat = 0.0;
+  double _filteredLng = 0.0;
+  int _updateCount = 0;
+
+  GpsKalmanFilter({double? initialLat, double? initialLng}) {
+    // 위도 필터: 위도는 -90 ~ 90 범위, 일반적으로 변화가 적음
+    _latFilter = SimpleKalmanFilter(
+      processNoise: 0.00001, // 작은 Q값: 느린 상태 변화 가정
+      measurementNoise: 0.001, // R값: 측정 신뢰도 (GPS 정확도에 따라 조정)
+      estimateError: 1.0, // 초기 추정 오차
+      initialValue: initialLat,
+    );
+
+    // 경도 필터: 경도는 -180 ~ 180 범위, 동일 속도시 위도보다 큰 변화
+    _lngFilter = SimpleKalmanFilter(
+      processNoise: 0.00001, // 작은 Q값: 느린 상태 변화 가정
+      measurementNoise: 0.001, // R값: 측정 신뢰도 (GPS 정확도에 따라 조정)
+      estimateError: 1.0, // 초기 추정 오차
+      initialValue: initialLng,
+    );
+
+    if (initialLat != null) _filteredLat = initialLat;
+    if (initialLng != null) _filteredLng = initialLng;
+  }
+
+  // 필터 업데이트 (새 GPS 측정값 적용)
+  void update(double lat, double lng, double accuracy) {
+    // GPS 정확도에 따라 측정 잡음 동적 조정
+    // 정확도가 낮을수록(값이 클수록) 측정 잡음이 커짐 = 측정을 덜 신뢰
+    double adjustedR = math.pow(accuracy / 10.0, 2).toDouble();
+    _latFilter._r = adjustedR;
+    _lngFilter._r = adjustedR;
+
+    // 필터 업데이트
+    _filteredLat = _latFilter.update(lat);
+    _filteredLng = _lngFilter.update(lng);
+    _updateCount++;
+
+    // 처음 몇 번의 업데이트는 원시 GPS 값에 가중치 부여 (안정화 단계)
+    if (_updateCount < 5) {
+      double weight = 1.0 - (_updateCount / 5.0);
+      _filteredLat = _filteredLat * (1 - weight) + lat * weight;
+      _filteredLng = _filteredLng * (1 - weight) + lng * weight;
+    }
+  }
+
+  // 현재 필터링된 위치 반환
+  double get latitude => _filteredLat;
+  double get longitude => _filteredLng;
+
+  // 필터 재설정 (급격한 위치 변화 감지 시)
+  void reset(double lat, double lng) {
+    _latFilter = SimpleKalmanFilter(
+      processNoise: 0.00001,
+      measurementNoise: 0.001,
+      estimateError: 1.0,
+      initialValue: lat,
+    );
+    _lngFilter = SimpleKalmanFilter(
+      processNoise: 0.00001,
+      measurementNoise: 0.001,
+      estimateError: 1.0,
+      initialValue: lng,
+    );
+    _filteredLat = lat;
+    _filteredLng = lng;
+    _updateCount = 0;
+  }
+}
 
 // 백그라운드 작업을 위한 헬퍼 함수
 class _BackgroundTask {
@@ -116,6 +240,12 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   double _currentAltitude = 120;
   // double _distance = 3.7; // _currentTotalDistance 또는 _completedRouteDistanceKm 로 대체
 
+  // 칼만 필터 인스턴스 추가
+  GpsKalmanFilter? _gpsFilter;
+  double _lastFilteredLat = 0.0;
+  double _lastFilteredLng = 0.0;
+  bool _isFilterInitialized = false;
+
   // 토스트 메시지 관련 변수 추가
   bool _showToast = false;
   String _toastMessage = '';
@@ -134,7 +264,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   DateTime? _lastDistanceCalcTime;
   bool _isAnchorPointSet = false;
   double _accumulatedDistanceInMeters = 0.0;
-  double _currentTotalDistance = 0.0; // UI 표시용 총 이동 거리 (km)
+  double _currentTotalDistance = 0.0; // UI 표시용 총 이동 거리 (m)
 
   // WatchConnectivity 인스턴스 추가
   final WatchConnectivity _watch = WatchConnectivity();
@@ -161,14 +291,6 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
   // 현재 심박수
   int _currentHeartRate = 0; // _avgHeartRate에서 _currentHeartRate로 변경 및 초기값 설정
-
-  // 경쟁 모드 데이터 (테스트용)
-  Map<String, dynamic> _competitorData = {
-    'name': '내가',
-    'distance': 4.1, // 이 부분은 _currentTotalDistance 또는 다른 방식으로 동기화 필요
-    'time': 47,
-    'isAhead': true, // 경쟁자가 앞서는지 여부
-  };
 
   // 등산로 경로 데이터
   List<NLatLng> _routeCoordinates = [];
@@ -211,7 +333,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
   // 목적지 도착 관련 변수
   bool _isDestinationReached = false;
-  final double _destinationRadius = 50.0; // 도착 감지 반경 (미터)
+  final double _destinationRadius = 130.0; // 도착 감지 반경 (미터)
 
   // 이전 기록 비교 관련 변수
   bool _isAheadOfRecord = false;
@@ -237,15 +359,38 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   // ModeData 객체 저장 (이전 기록 및 경쟁자 정보 포함)
   ModeData? _modeData;
 
+  // 경쟁자 데이터를 저장하기 위한 맵 추가
+  Map<String, dynamic> _competitorData = {
+    'name': '이전 기록',
+    'distance': 0,
+    'time': 0,
+    'isAhead': false,
+    'maxHeartRate': 0,
+    'avgHeartRate': 0.0,
+    'formattedRemainingTime': '0분 0초',
+  };
+
   // 등산 기록 데이터 저장을 위한 변수들
   final List<Map<String, dynamic>> _trackingRecords = [];
   DateTime? _lastRecordTime;
-  final int _recordIntervalSeconds = 10; // 10초마다 records에 기록 추가
+  final int _recordIntervalSeconds = 10; // 20분마다 records에 기록 추가
   Timer? _recordTimer;
   final bool _isSavingEnabled = true; // 기록 저장 여부 (기본값: true)
 
   // 앱 생명주기 상태 저장을 위한 변수
   AppLifecycleState? _currentLifecycleState;
+
+  // 페이스메이커 level 관련 변수 추가
+  String? _previousPacemakerLevel;
+  final bool _hasNotifiedWatchForPacemaker = false;
+  String? _pacemakerMessage;
+  String? _pacemakerLevel;
+
+  // 워치 연결 상태 확인 타이머
+  Timer? _watchConnectionTimer;
+
+  // 기본 생성자 추가
+  _LiveTrackingScreenState();
 
   @override
   void initState() {
@@ -260,9 +405,27 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     // 워치 연결 상태 초기 확인
     _checkWatchConnection();
 
+    // 경쟁자 데이터 초기화 - 기본값을 더 명확하게 설정
+    _initCompetitorData();
+
+    // 워치 연결 상태를 주기적으로 확인 (15초 간격으로 변경)
+    _watchConnectionTimer =
+        Timer.periodic(const Duration(seconds: 15), (timer) {
+      if (!_isCheckingWatch) {
+        // 이미 확인 중이 아닐 때만 실행
+        _checkWatchConnection();
+      }
+    });
+
     // (1) 워치 메시지 수신 리스너 등록
     _watch.messageStream.listen((Map<String, dynamic> message) {
       debugPrint('워치 메시지 수신: $message');
+
+      // 연결 상태가 false인데 메시지를 받은 경우, 연결 상태 재확인
+      if (!_isWatchPaired) {
+        _checkWatchConnection();
+      }
+
       String path = message['path'];
       switch (path) {
         case '/SENSOR_DATA':
@@ -305,146 +468,6 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     _sheetController.addListener(_onSheetChanged);
   }
 
-  // 지도 및 트래킹 관련 초기화 함수
-  Future<void> _initializeMapAndTracking(AppState appState) async {
-    // 1. 현재 위치를 먼저 가져오기 시도 (지도 초기화용)
-    try {
-      PermissionStatus status = await Permission.locationWhenInUse.status;
-      if (status.isDenied) {
-        status = await Permission.locationWhenInUse.request();
-      }
-      if (status.isGranted) {
-        Position position = await Geolocator.getCurrentPosition(
-            desiredAccuracy: LocationAccuracy.high,
-            timeLimit: const Duration(seconds: 5)); // 5초 타임아웃
-        if (mounted) {
-          setState(() {
-            _currentLat = position.latitude;
-            _currentLng = position.longitude;
-            debugPrint('초기 위치 가져오기 성공: Lat: $_currentLat, Lng: $_currentLng');
-          });
-        }
-      } else {
-        debugPrint('초기 위치 권한 거부됨, 기본값 또는 AppState 값 사용');
-        // 권한이 없으면 AppState 값이나 기본값을 사용 (아래 로직에서 처리)
-      }
-    } catch (e) {
-      debugPrint('초기 위치 가져오기 실패: $e, 기본값 또는 AppState 값 사용');
-      // 오류 발생 시에도 AppState 값이나 기본값을 사용 (아래 로직에서 처리)
-    }
-
-    // 2. AppState의 트래킹 상태에 따라 데이터 로드 또는 새 트래킹 준비
-    if (appState.isTracking) {
-      final List<NLatLng> previousUserPath = List.from(appState.userPath);
-      final List<NLatLng> previousRouteCoordinates =
-          List.from(appState.routeCoordinates);
-      final double prevLat = appState.currentLat;
-      final double prevLng = appState.currentLng;
-      final double prevDist = appState.distance;
-      final double prevAltitude = appState.currentAltitude;
-      final int prevElapsedSeconds = appState.elapsedSeconds;
-      final int prevElapsedMinutes = appState.elapsedMinutes;
-      final bool prevIsNavigationMode = appState.isNavigationMode;
-      final double prevDeviceHeading = appState.deviceHeading;
-
-      bool isPrevDataValid = (prevLat.abs() > 0.001 &&
-          prevLng.abs() > 0.001 &&
-          prevLat >= -90 &&
-          prevLat <= 90 &&
-          prevLng >= -180 &&
-          prevLng <= 180 &&
-          prevDist >= 0 &&
-          prevDist < 10000);
-
-      if (isPrevDataValid) {
-        _userPath.addAll(previousUserPath);
-        if (previousRouteCoordinates.isNotEmpty) {
-          _routeCoordinates = previousRouteCoordinates;
-        }
-        // _currentLat, _currentLng는 위에서 현재 위치로 시도했으므로, 여기서는 덮어쓰지 않음
-        // 단, 초기 위치 가져오기에 실패했다면 AppState 값으로 설정될 수 있도록 함
-        if (!(await Geolocator.isLocationServiceEnabled()) ||
-            await Permission.locationWhenInUse.isDenied) {
-          _currentLat = prevLat;
-          _currentLng = prevLng;
-        }
-        _anchorPointLat = _currentLat;
-        _anchorPointLng = _currentLng;
-        _isAnchorPointSet = true;
-        _lastDistanceCalcTime = DateTime.now();
-        _currentTotalDistance = prevDist;
-        _accumulatedDistanceInMeters = _currentTotalDistance * 1000;
-
-        _currentAltitude = prevAltitude;
-        _elapsedSeconds = prevElapsedSeconds;
-        _elapsedMinutes = prevElapsedMinutes;
-        _isNavigationMode = prevIsNavigationMode;
-        _deviceHeading = prevDeviceHeading;
-
-        _calculateRemainingDistanceAndTime();
-        debugPrint(
-            '기존 트래킹 데이터 유효하여 불러옴 (초기 위치 시도 후): $_elapsedMinutes분 $_elapsedSeconds초, 거리: ${_currentTotalDistance}km');
-      } else {
-        debugPrint(
-            'AppState의 이전 위치/거리 데이터가 유효하지 않아 새 트래킹처럼 초기화합니다. Lat: $prevLat, Lng: $prevLng, Dist: $prevDist');
-        _userPath.clear();
-        _routeCoordinates.clear();
-        _loadSelectedRouteData(); // 경로 재로드
-        // _currentLat, _currentLng는 위에서 현재 위치로 시도했거나, 실패 시 기본값으로 설정될 예정
-        // 만약 _loadSelectedRouteData()에서 _currentLat/Lng를 경로 시작점으로 강제한다면, 그 값을 따를 수 있음.
-        // 여기서는 명시적으로 재설정하지 않고, _loadSelectedRouteData()나 초기 위치 가져오기 결과에 의존
-
-        _anchorPointLat = 0.0;
-        _anchorPointLng = 0.0;
-        _isAnchorPointSet = false;
-        _accumulatedDistanceInMeters = 0.0;
-        _currentTotalDistance = 0.0;
-        _currentAltitude = 0.0;
-        _elapsedSeconds = 0;
-        _elapsedMinutes = 0;
-        _isNavigationMode = true;
-        _deviceHeading = 0.0;
-        _remainingDistance = 0.0;
-        _estimatedRemainingSeconds = 0;
-        _completedPercentage = 0.0;
-        debugPrint('새로운 트래킹으로 초기화 완료 (초기 위치 시도 후)');
-      }
-    } else {
-      _loadSelectedRouteData();
-      // _currentLat, _currentLng는 위에서 현재 위치로 시도했거나, 실패 시 _loadSelectedRouteData()의 결과 또는 기본값으로 설정됨
-      // 만약 _loadSelectedRouteData()가 경로 시작점으로 _currentLat/Lng를 설정하고, 초기 위치 가져오기도 실패했다면 그 값을 사용.
-      // 초기 위치 가져오기에 성공했다면 그 값을 사용.
-      // 둘 다 실패하고 _loadSelectedRouteData()도 값을 설정 안하면, 필드 초기값(서울시청)이 사용될 수 있음.
-      // 이를 명확히 하기 위해, 초기 위치 가져오기 실패 시 _loadSelectedRouteData 결과를 _currentLat/Lng에 반영하거나 기본값 설정 필요.
-      if (!(await Geolocator.isLocationServiceEnabled()) ||
-          await Permission.locationWhenInUse.isDenied) {
-        if (_routeCoordinates.isNotEmpty) {
-          _currentLat = _routeCoordinates.first.latitude;
-          _currentLng = _routeCoordinates.first.longitude;
-        } else {
-          // _currentLat, _currentLng가 이미 필드 선언 시 기본값(서울시청)을 가지고 있음
-          // debugPrint('초기 위치 가져오기 실패 및 경로 데이터 없어 기본값 사용: $_currentLat, $_currentLng');
-        }
-      }
-
-      _anchorPointLat = 0.0;
-      _anchorPointLng = 0.0;
-      _isAnchorPointSet = false;
-      _accumulatedDistanceInMeters = 0.0;
-      _currentTotalDistance = 0.0;
-      _currentAltitude = 0.0;
-      _elapsedSeconds = 0;
-      _elapsedMinutes = 0;
-      debugPrint('새로운 트래킹 시작 (초기 위치 시도 후)');
-    }
-
-    // 3. 나머지 트래킹 관련 기능 시작
-    _checkLocationPermission(); // 내부에서 _startLocationTracking() 호출
-    _startTracking(); // 타이머, 심박수, AI 서버 전송 등
-    _startCompassTracking();
-    _startTrackingRecords();
-  }
-
   void _onSheetChanged() {
     final isExpanded = _sheetController.size >= 0.5;
     if (isExpanded != _isSheetExpanded) {
@@ -484,11 +507,22 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       _currentLifecycleState = state;
     });
     debugPrint('App lifecycle state changed to: $state');
+    if (state == AppLifecycleState.paused) {
+      debugPrint('[BG] 앱이 백그라운드로 진입했습니다. 백그라운드 로직 정상 동작 중인지 확인하세요.');
+    } else if (state == AppLifecycleState.resumed) {
+      debugPrint('[BG] 앱이 포그라운드로 복귀했습니다.');
+    }
   }
 
   // 트래킹 시작
   void _startTracking() {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) async {
+      if (!mounted) {
+        // mounted 체크 추가
+        timer.cancel();
+        return;
+      }
+
       if (!_isPaused) {
         setState(() {
           _elapsedSeconds++;
@@ -497,13 +531,49 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
           }
         });
 
-        // _calculateTotalDistance(); // 이 함수는 새로운 로직으로 대체됨
+        if (_elapsedSeconds % 10 == 0) {
+          debugPrint(
+              '[BG] 타이머 동작 중: $_elapsedSeconds초 경과, 백그라운드 상태: $_currentLifecycleState');
+        }
+
+        // 이동 거리는 _startLocationTracking()에서 실시간으로 계산됨
 
         if (_elapsedSeconds % 5 == 0) {
           _updateHeartRate();
         }
 
         _calculateRemainingDistanceAndTime();
+
+        // 워치 연결되어 있는 경우 예상 도착시간과 남은 거리 정보 전송
+        if (_isWatchPaired) {
+          // 예상 도착 시간 계산 (현재 시간 + 남은 시간)
+          String etaFormatted;
+          final totalSeconds = _estimatedRemainingSeconds;
+
+          // 현재 시간에 남은 시간을 더해 실제 도착 예상 시각 계산
+          final now = DateTime.now();
+          final estimatedArrivalTime = now.add(Duration(seconds: totalSeconds));
+
+          // "12시 03분" 형식으로 포맷팅
+          final arrivalHour = estimatedArrivalTime.hour;
+          final arrivalMinute = estimatedArrivalTime.minute;
+          etaFormatted = '$arrivalHour시 $arrivalMinute분';
+
+          // 남은 거리를 미터 단위로 변환
+          final distanceInMeters = (_remainingDistance * 1000).toInt();
+
+          try {
+            _watch.sendMessage({
+              'path': '/ETA_DISTANCE',
+              'eta': etaFormatted,
+              'distance': distanceInMeters
+            });
+            debugPrint(
+                '워치로 ETA/거리 정보 전송: $etaFormatted, $distanceInMeters미터');
+          } catch (e) {
+            debugPrint('워치 메시지(ETA/거리) 전송 실패: $e');
+          }
+        }
 
         if (_modeData?.opponent != null) {
           if (_elapsedSeconds % 5 == 0) {
@@ -532,9 +602,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       }
     });
 
-    // 트래킹 시작 시 워치에 메시지 전송 (워치 연결된 경우)
+    // 트래킹 시작 시 워치에 메시지 전송 (워치가 연결된 경우)
     if (_isWatchPaired) {
-      // _watch.isPaired -> _isWatchPaired로 수정하여 린터 오류 해결
       try {
         _watch.sendMessage({
           'path': '/START_TRACKING',
@@ -543,24 +612,27 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       } catch (e) {
         debugPrint('워치 메시지(/START_TRACKING) 전송 실패: $e');
       }
+    } else {
+      debugPrint('백그라운드 상태: /START_TRACKING 메시지 전송 생략');
     }
   }
 
   // 심박수 업데이트 (실제 데이터 사용 또는 목데이터 백업)
   void _updateHeartRate() {
-    // 워치에서 최근 5초 이내에 받은 심박수 데이터가 있는지 확인
-    // 없으면 목데이터 사용 (테스트용)
-    bool useRealData = _isWatchPaired; // 실제 워치 연동 시 true로 변경 가정
+    // 워치가 연결된 경우만 실제 데이터 사용
+    bool useRealData = _isWatchPaired;
 
     if (useRealData) {
       // 실제 데이터 사용 로직 (예: _currentHeartRate가 워치에서 직접 업데이트된다고 가정)
       // 이 부분은 워치 연동 방식에 따라 달라짐
       debugPrint('현재 심박수 (워치): $_currentHeartRate');
+      debugPrint('심박수 업데이트: $_currentHeartRate bpm');
     } else {
-      // 목데이터 사용 (실제 워치 연동 전 테스트용)
-      // _currentHeartRate 값을 직접 업데이트 (예: 80 ~ 139 사이의 랜덤 값)
-      _currentHeartRate = 0;
-      debugPrint('현재 심박수 (목데이터): $_currentHeartRate');
+      // 워치가 연결되지 않은 경우 심박수 값을 0으로 설정
+      if (!_isWatchPaired) {
+        _currentHeartRate = 0; // 워치 연결이 없는 경우 0으로 설정
+        debugPrint('워치 연결 없음: 심박수 0으로 설정');
+      }
     }
   }
 
@@ -865,14 +937,32 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
   // 실시간 위치 추적 시작
   void _startLocationTracking() {
+    // 거리 추적 관련 변수들 초기화
+    _isAnchorPointSet = false;
+    _accumulatedDistanceInMeters = 0.0;
+    _currentTotalDistance = 0.0;
+    _lastDistanceCalcTime = null;
+    _anchorPointLat = 0.0;
+    _anchorPointLng = 0.0;
+
+    // 칼만 필터 초기화
+    _gpsFilter = null;
+    _isFilterInitialized = false;
+    _lastFilteredLat = 0.0;
+    _lastFilteredLng = 0.0;
+
     const LocationSettings locationSettings = LocationSettings(
       accuracy: LocationAccuracy.high,
-      distanceFilter: 10, // 10m 이상 이동했을 때만 위치 업데이트 수신 (노이즈 감소)
+      distanceFilter: 1, // 1m 이상 이동 시 콜백 발생
     );
 
     _positionStream =
         Geolocator.getPositionStream(locationSettings: locationSettings)
             .listen((Position position) {
+      if (!mounted) return;
+
+      debugPrint(
+          '[BG] 위치 업데이트 수신: ${position.latitude}, ${position.longitude}, 백그라운드 상태: $_currentLifecycleState');
       // 현재 위치 기록
       final now = DateTime.now();
       final double newLat = position.latitude;
@@ -888,60 +978,128 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
         return; // 이 위치 업데이트는 완전히 무시하고 다음 업데이트를 기다림
       }
 
-      double tempCurrentTotalDistanceKm = _currentTotalDistance;
+      // 칼만 필터 처리
+      double filteredLat = newLat;
+      double filteredLng = newLng;
+
+      // 칼만 필터 초기화 또는 업데이트
+      if (!_isFilterInitialized) {
+        // 첫 위치 수신 시 필터 초기화 (정확도가 양호한 경우)
+        if (currentAccuracy < 10.0) {
+          _gpsFilter = GpsKalmanFilter(initialLat: newLat, initialLng: newLng);
+          _isFilterInitialized = true;
+          _lastFilteredLat = newLat;
+          _lastFilteredLng = newLng;
+          debugPrint(
+              '칼만 필터 초기화: 처음 위치(${newLat.toStringAsFixed(6)}, ${newLng.toStringAsFixed(6)})');
+        } else {
+          // 정확도가 낮은 경우 필터 초기화 미루기
+          debugPrint(
+              '필터 초기화 대기 중: GPS 정확도 미달 (${currentAccuracy.toStringAsFixed(1)}m)');
+        }
+      } else if (_gpsFilter != null) {
+        // 급격한 위치 변화 감지 (완전히 다른 위치로 이동한 경우, 예: 앱 재시작 등)
+        double distance = _calculateDistanceSync({
+          'lat1': _lastFilteredLat,
+          'lng1': _lastFilteredLng,
+          'lat2': newLat,
+          'lng2': newLng,
+        });
+
+        if (distance > 100.0) {
+          // 100m 이상 순간 이동은 필터 재설정
+          debugPrint('급격한 위치 변화 감지(${distance.toStringAsFixed(1)}m): 필터 재설정');
+          _gpsFilter!.reset(newLat, newLng);
+          _lastFilteredLat = newLat;
+          _lastFilteredLng = newLng;
+        } else {
+          // 정상적인 필터 업데이트
+          _gpsFilter!.update(newLat, newLng, currentAccuracy);
+          filteredLat = _gpsFilter!.latitude;
+          filteredLng = _gpsFilter!.longitude;
+
+          // 필터링 효과 로깅 (10초마다)
+          if (_elapsedSeconds % 10 == 0) {
+            final rawToFilteredDistance = _calculateDistanceSync({
+              'lat1': newLat,
+              'lng1': newLng,
+              'lat2': filteredLat,
+              'lng2': filteredLng,
+            });
+            debugPrint(
+                '칼만 필터 적용: 원본(${newLat.toStringAsFixed(6)}, ${newLng.toStringAsFixed(6)}) → '
+                '필터링(${filteredLat.toStringAsFixed(6)}, ${filteredLng.toStringAsFixed(6)}), '
+                '필터 보정량: ${rawToFilteredDistance.toStringAsFixed(2)}m');
+          }
+
+          _lastFilteredLat = filteredLat;
+          _lastFilteredLng = filteredLng;
+        }
+      }
+
       NLatLng? newUserPathPointForAppstate;
 
       // --- 1. 기준점 기반 5초 간격 이동 거리 계산 ---
       if (!_isAnchorPointSet) {
-        // 첫 기준점 설정 (정확도 < 15m 조건)
+        // 첫 기준점 설정 (정확도 < 10m 조건)
         if (currentAccuracy < 10.0) {
-          _anchorPointLat = newLat;
-          _anchorPointLng = newLng;
+          _anchorPointLat = filteredLat;
+          _anchorPointLng = filteredLng;
           _lastDistanceCalcTime = now;
           _isAnchorPointSet = true;
           _accumulatedDistanceInMeters = 0.0; // 새 트래킹 시작 시 누적거리 초기화
-          tempCurrentTotalDistanceKm = 0.0; // UI용 거리도 초기화
+          _currentTotalDistance = 0.0; // UI용 거리도 초기화
           debugPrint(
-              '이동 거리 계산 기준점 설정: Lat: ${_anchorPointLat.toStringAsFixed(5)}, Lng: ${_anchorPointLng.toStringAsFixed(5)} (정확도: ${currentAccuracy.toStringAsFixed(1)}m)');
+              '이동 거리 계산 기준점 설정: Lat: ${_anchorPointLat.toStringAsFixed(6)}, Lng: ${_anchorPointLng.toStringAsFixed(6)} (정확도: ${currentAccuracy.toStringAsFixed(1)}m)');
         } else {
           debugPrint(
               '기준점 설정 대기 중: GPS 정확도 미달 (${currentAccuracy.toStringAsFixed(1)}m). 현재 위치: $newLat, $newLng');
         }
       } else if (_lastDistanceCalcTime != null) {
-        // 기준점 설정 후, 5초마다 거리 계산
+        // 기준점 설정 후 더 실시간으로 거리 계산 (1초 간격)
         final timeSinceLastCalcSeconds =
             now.difference(_lastDistanceCalcTime!).inSeconds;
 
-        if (timeSinceLastCalcSeconds >= 5) {
+        if (timeSinceLastCalcSeconds >= 1) {
+          // 1초 이상 간격으로 변경
           final double segmentDistanceMeters = _calculateDistanceSync({
             'lat1': _anchorPointLat,
             'lng1': _anchorPointLng,
-            'lat2': newLat,
-            'lng2': newLng,
+            'lat2': filteredLat,
+            'lng2': filteredLng,
           });
 
-          const double minDeltaForUpdateMeters = 5.0; // 5초간 최소 2m 이동해야 유효
-          const double maxDeltaForUpdateMeters =
-              25.0; // 5초간 최대 25m 이동 (5m/s * 5s)
+          // 시간에 비례한 최소/최대 합리적 이동 거리 설정
+          final double minDeltaForUpdateMeters = 0.0; // 최소 이동 거리 제한 제거
+          final double maxDeltaForUpdateMeters =
+              _maxReasonableSpeed * timeSinceLastCalcSeconds; // 최대 5m/s * 경과 시간
 
+          // 거리가 합리적 범위 내에 있는 경우만 추가
           if (segmentDistanceMeters >= minDeltaForUpdateMeters &&
               segmentDistanceMeters <= maxDeltaForUpdateMeters) {
             _accumulatedDistanceInMeters += segmentDistanceMeters;
-            tempCurrentTotalDistanceKm = _accumulatedDistanceInMeters / 1000.0;
-            debugPrint(
-                '${timeSinceLastCalcSeconds}s 간격 이동 거리 추가: ${segmentDistanceMeters.toStringAsFixed(1)}m. 누적: ${tempCurrentTotalDistanceKm.toStringAsFixed(3)}km');
+            _currentTotalDistance = _accumulatedDistanceInMeters;
+
+            // 로그 출력 줄이기 (5초 간격)
+            if (timeSinceLastCalcSeconds >= 5 || _elapsedSeconds % 10 == 0) {
+              debugPrint(
+                  '${timeSinceLastCalcSeconds}s 간격 이동 거리 추가: ${segmentDistanceMeters.toStringAsFixed(1)}m. 누적: ${_currentTotalDistance.toStringAsFixed(1)}m');
+            }
           } else if (segmentDistanceMeters < minDeltaForUpdateMeters) {
-            debugPrint(
-                '${timeSinceLastCalcSeconds}s 간격 이동 거리 무시 (너무 짧음): ${segmentDistanceMeters.toStringAsFixed(1)}m / ${minDeltaForUpdateMeters}m)');
+            if (_elapsedSeconds % 30 == 0) {
+              // 로그 간소화
+              debugPrint(
+                  '이동 거리 무시 (너무 짧음): ${segmentDistanceMeters.toStringAsFixed(1)}m');
+            }
           } else {
-            // segmentDistanceMeters > maxDeltaForUpdateMeters
+            // 비정상적으로 긴 거리인 경우
             debugPrint(
-                '${timeSinceLastCalcSeconds}s 간격 이동 거리 무시 (너무 김): ${segmentDistanceMeters.toStringAsFixed(1)}m / ${maxDeltaForUpdateMeters}m)');
+                '이동 거리 이상 감지: ${segmentDistanceMeters.toStringAsFixed(1)}m / ${maxDeltaForUpdateMeters.toStringAsFixed(1)}m ($timeSinceLastCalcSeconds초)');
           }
 
           // 새 기준점으로 현재 위치 설정 및 시간 업데이트
-          _anchorPointLat = newLat;
-          _anchorPointLng = newLng;
+          _anchorPointLat = filteredLat;
+          _anchorPointLng = filteredLng;
           _lastDistanceCalcTime = now;
         }
       }
@@ -951,13 +1109,13 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
         // UserPath의 첫 점은 정확도만 보고 추가 (최초 위치 설정)
         if (currentAccuracy < 15.0) {
           // UserPath 첫 점도 약간 더 엄격한 정확도
-          final firstPoint = NLatLng(newLat, newLng);
+          final firstPoint = NLatLng(filteredLat, filteredLng);
           _userPath.add(firstPoint);
           newUserPathPointForAppstate = firstPoint;
           _isFirstLocationUpdateForUserPath = false;
           _lastLocationUpdateTimeForUserPath = now;
           debugPrint(
-              'UserPath 첫 점 추가: Lat: ${newLat.toStringAsFixed(5)}, Lng: ${newLng.toStringAsFixed(5)}');
+              'UserPath 첫 점 추가: Lat: ${filteredLat.toStringAsFixed(6)}, Lng: ${filteredLng.toStringAsFixed(6)}');
         }
       } else if (_lastLocationUpdateTimeForUserPath != null &&
           _userPath.isNotEmpty) {
@@ -965,8 +1123,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
         final double distanceSinceLastUserPathPoint = _calculateDistanceSync({
           'lat1': prevUserPathPoint.latitude,
           'lng1': prevUserPathPoint.longitude,
-          'lat2': newLat,
-          'lng2': newLng,
+          'lat2': filteredLat,
+          'lng2': filteredLng,
         });
 
         final timeDiffMillis =
@@ -985,7 +1143,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
               currentAccuracy < 20.0) {
             // GPS 정확도 양호
 
-            final newPoint = NLatLng(newLat, newLng);
+            final newPoint = NLatLng(filteredLat, filteredLng);
             _userPath.add(newPoint);
             newUserPathPointForAppstate = newPoint;
             _lastLocationUpdateTimeForUserPath = now;
@@ -1001,28 +1159,72 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       // --- 3. 최종 상태 업데이트 (setState) ---
       if (mounted) {
         setState(() {
-          _currentLat = newLat;
-          _currentLng = newLng;
+          _currentLat = filteredLat;
+          _currentLng = filteredLng;
           _currentAltitude = newAltitude;
-          _currentTotalDistance = tempCurrentTotalDistanceKm;
+          _currentTotalDistance = _currentTotalDistance;
 
-          // Geolocator.speed 사용
-          if (currentSpeedFromSensor >= 0) {
-            // 유효한 속도 값 (0 또는 양수)
-            // Geolocator.speed의 정확도(position.speedAccuracy)도 고려하면 좋지만, 일단 값 자체로 판단
-            _currentSpeed = currentSpeedFromSensor * 3.6; // km/h
-          } else {
-            _currentSpeed = 0.0; // 음수거나 유효하지 않으면 0으로
+          // 현재 속도 계산 개선 (Position.speed 사용)
+          double newSpeed = 0.0;
+
+          // 1. GPS 속도 센서 값 사용 (m/s -> km/h 변환)
+          if (currentSpeedFromSensor >= 0 && currentSpeedFromSensor <= 10.0) {
+            // 최대 36km/h 속도 제한
+            newSpeed = currentSpeedFromSensor * 3.6; // m/s -> km/h
           }
+          // 2. GPS 속도 센서 값이 없거나 비정상적인 경우, 위치 변화로 속도 계산
+          else if (_lastLocationUpdateTimeForUserPath != null &&
+              _userPath.length > 1) {
+            // 마지막 위치부터 현재 위치까지의 거리와 시간으로 속도 계산
+            final timeDiffSeconds = now
+                    .difference(_lastLocationUpdateTimeForUserPath!)
+                    .inMilliseconds /
+                1000.0;
+            if (timeDiffSeconds > 0) {
+              // 현재 위치와 마지막 위치 사이의 거리 계산
+              final distanceMeters = _calculateDistanceSync({
+                'lat1': _userPath.last.latitude,
+                'lng1': _userPath.last.longitude,
+                'lat2': filteredLat,
+                'lng2': filteredLng,
+              });
+
+              // 속도 계산 (m/s)
+              final calculatedSpeed = distanceMeters / timeDiffSeconds;
+
+              // 합리적인 값인지 검증 (최대 5m/s = 18km/h)
+              if (calculatedSpeed >= 0 &&
+                  calculatedSpeed <= _maxReasonableSpeed) {
+                newSpeed = calculatedSpeed * 3.6; // m/s -> km/h
+                if (_elapsedSeconds % 10 == 0) {
+                  debugPrint(
+                      'GPS 속도 센서 대체 계산: ${newSpeed.toStringAsFixed(1)}km/h (거리: ${distanceMeters.toStringAsFixed(1)}m, 시간: ${timeDiffSeconds.toStringAsFixed(1)}s)');
+                }
+              }
+            }
+          }
+
+          // 3. 급격한 변화 방지를 위한 스무딩 적용 (이전 값과 가중 평균)
+          if (_currentSpeed > 0 && newSpeed > 0) {
+            // 이전 값에 70%, 새 값에 30% 가중치 부여
+            _currentSpeed = (_currentSpeed * 0.7) + (newSpeed * 0.3);
+          } else {
+            // 첫 계산이거나 둘 중 하나가 0인 경우는 그대로 사용
+            _currentSpeed = newSpeed;
+          }
+
+          // 4. 최종 속도가 합리적인 범위를 벗어나면 보정
+          if (_currentSpeed < 0) _currentSpeed = 0.0;
+          if (_currentSpeed > 20.0) _currentSpeed = 20.0; // 최대 20km/h로 제한
         });
 
         // AppState 업데이트 (currentLat/Lng, newUserPathPoint 등)
         final appState = Provider.of<AppState>(context, listen: false);
         appState.updateTrackingData(
-          currentLat: newLat, // 항상 최신 GPS 위치로 업데이트
-          currentLng: newLng,
+          currentLat: filteredLat, // 항상 최신 GPS 위치로 업데이트
+          currentLng: filteredLng,
           currentAltitude: newAltitude,
-          distance: tempCurrentTotalDistanceKm, // 새로 계산된 거리 반영
+          distance: _currentTotalDistance, // 새로 계산된 거리 반영
           newUserPathPoint:
               newUserPathPointForAppstate, // _userPath에 추가된 경우에만 값 전달
           deviceHeading: _deviceHeading,
@@ -1032,9 +1234,10 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
         if (_mapController != null && _isNavigationMode) {
           _mapController!.updateCamera(
             NCameraUpdate.withParams(
-              target: NLatLng(newLat, newLng), // 항상 최신 GPS 위치로
-              zoom: 17,
-              tilt: 50,
+              target: NLatLng(filteredLat, filteredLng), // 항상 최신 GPS 위치로
+              zoom: 17.0,
+              bearing: _deviceHeading,
+              tilt: 50.0,
             ),
           );
         }
@@ -1267,57 +1470,59 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
   // 드래그 가능한 바텀 시트 위젯
   Widget _buildDraggableBottomSheet() {
-    return DraggableScrollableSheet(
-      controller: _sheetController,
-      initialChildSize: 0.25,
-      minChildSize: 0.25,
-      maxChildSize: 0.9,
-      builder: (BuildContext context, ScrollController scrollController) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.grey[300],
-            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black26,
-                blurRadius: 10,
-                spreadRadius: 0,
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              // 바텀 시트 핸들 - 고정 영역
-              _buildBottomSheetHandle(),
-              // 스크롤 가능한 내용 영역
-              Expanded(
-                child: ListView(
-                  controller: scrollController,
-                  padding: EdgeInsets.zero,
-                  children: [
-                    // 정보 패널
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // 기본 정보 (항상 표시)
-                          _buildBasicInfoSection(),
-
-                          // 올려진 상태에서만 보이는 정보
-                          if (_isSheetExpanded) _buildExpandedInfoSection(),
-                        ],
-                      ),
-                    ),
-                  ],
+    return // 드래그 가능한 바텀 시트 위젯
+      DraggableScrollableSheet(
+        controller: _sheetController,
+        initialChildSize: 0.25,
+        minChildSize: 0.25,
+        maxChildSize: 0.9,
+        builder: (BuildContext context, ScrollController scrollController) {
+          return Container(
+            decoration: BoxDecoration(
+              color: Color(0xFFEAF7F2), 
+              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 10,
+                  spreadRadius: 0,
                 ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+              ],
+            ),
+            child: Column(
+              children: [
+                // 바텀 시트 핸들 - 고정 영역
+                _buildBottomSheetHandle(),
+                // 스크롤 가능한 내용 영역
+                Expanded(
+                  child: ListView(
+                    controller: scrollController,
+                    padding: EdgeInsets.zero,
+                    children: [
+                      // 정보 패널
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // 기본 정보 (항상 표시)
+                            _buildBasicInfoSection(),
+
+                            // 올려진 상태에서만 보이는 정보
+                            if (_isSheetExpanded) _buildExpandedInfoSection(),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
   }
+
 
   // 바텀 시트 핸들 위젯
   Widget _buildBottomSheetHandle() {
@@ -1359,79 +1564,751 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     );
   }
 
-  // 기본 정보 섹션 위젯
-  Widget _buildBasicInfoSection() {
-    // 거리 변환: 미터를 km로 표시
-    String distanceText = '';
-    if (_remainingDistance < 1.0) {
-      // 1km 미만은 미터로 표시
-      distanceText = '${(_remainingDistance * 1000).toInt()}m';
-    } else {
-      // 1km 이상은 소수점 한 자리까지 km로 표시
-      distanceText = '${_remainingDistance.toStringAsFixed(1)}km';
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '남은 거리 : $distanceText',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        SizedBox(height: 4),
-        Text(
-          '예상 남은 시간 : $_formattedRemainingTime',
-          style: TextStyle(fontSize: 14),
-        ),
-        SizedBox(height: 4), // 심박수 표시 전에 SizedBox 추가
-        if (_isWatchPaired)
-          Text(
-            '현재 심박수 : $_currentHeartRate bpm',
-            style: TextStyle(fontSize: 14),
-          )
-        else
-          Text(
-            '현재 심박수 : 워치와 연동해주세요',
-            style: TextStyle(fontSize: 14, color: Colors.grey),
-          ),
-        SizedBox(height: 4),
-        Text(
-          '현재 속도 : ${_currentSpeed.toStringAsFixed(1)} km/h',
-          style: TextStyle(fontSize: 14),
-        ),
-      ],
-    );
+  // 기본 정보 섹션 위젯 - 색상 일관성 개선
+Widget _buildBasicInfoSection() {
+  // 거리 변환: 미터를 km로 표시
+  String distanceText = '';
+  if (_remainingDistance < 1.0) {
+    // 1km 미만은 미터로 표시
+    distanceText = '${(_remainingDistance * 1000).toInt()}m';
+  } else {
+    // 1km 이상은 소수점 한 자리까지 km로 표시
+    distanceText = '${_remainingDistance.toStringAsFixed(1)}km';
   }
+
+  // 이동 거리 텍스트 포맷팅
+  String movedDistanceText = '';
+  if (_currentTotalDistance < 1000) {
+    movedDistanceText = '${_currentTotalDistance.toInt()}m';
+  } else {
+    movedDistanceText = '${(_currentTotalDistance / 1000).toStringAsFixed(2)}km';
+  }
+
+  const Color badgeColor = Color(0xFF52A486);  
+  const Color textColor = Color.fromARGB(255, 58, 133, 106);  
+  const Color lightBadgeColor = Color.fromARGB(255, 190, 233, 203);  
+  
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      // 현재 등반 상태 뱃지
+      Center(
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: textColor.withOpacity(0.15), 
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.insert_chart_outlined,
+                size: 12,
+                color: badgeColor,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '현재 등반 상태',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: textColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      
+      // 첫 번째 줄 - 메인 정보 카드
+      Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+              spreadRadius: 0,
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            // 남은 거리 & 예상 시간
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  // 남은 거리
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: textColor.withOpacity(0.15), // 텍스트 색상으로 배경색 변경
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                Icons.directions_walk,
+                                size: 16,
+                                color: badgeColor, // 아이콘 색상 변경
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Text(
+                              '남은 거리',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF666666),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          distanceText,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF333333),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // 세로 구분선
+                  Container(
+                    height: 40,
+                    width: 1,
+                    color: Colors.grey.withOpacity(0.2),
+                  ),
+                  // 예상 시간
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: textColor.withOpacity(0.15), // 텍스트 색상으로 배경색 변경
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  Icons.timer_outlined,
+                                  size: 16,
+                                  color: badgeColor, // 아이콘 색상 변경
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                '예상 시간',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF666666),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _formattedRemainingTime,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF333333),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // 구분선
+            Container(
+              height: 1,
+              color: Colors.grey.withOpacity(0.1),
+            ),
+            // 속도 & 고도
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  // 현재 속도
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: textColor.withOpacity(0.15), // 텍스트 색상으로 배경색 변경
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                Icons.speed,
+                                size: 16,
+                                color: badgeColor, // 아이콘 색상 변경
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Text(
+                              '현재 속도',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF666666),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${_currentSpeed.toStringAsFixed(1)} km/h',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF333333),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // 세로 구분선
+                  Container(
+                    height: 40,
+                    width: 1,
+                    color: Colors.grey.withOpacity(0.2),
+                  ),
+                  // 고도
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: textColor.withOpacity(0.15), // 텍스트 색상으로 배경색 변경
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  Icons.terrain,
+                                  size: 16,
+                                  color: badgeColor, // 아이콘 색상 변경
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                '현재 고도',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF666666),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '${_currentAltitude.toStringAsFixed(1)}m',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF333333),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      
+      // 두 번째 줄 카드 - 등산 시간 & 이동 거리
+      Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+              spreadRadius: 0,
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              // 등산 시간
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: textColor.withOpacity(0.15), // 텍스트 색상으로 배경색 변경
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.access_time,
+                            size: 16,
+                            color: badgeColor, // 아이콘 색상 변경
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          '등산 시간',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF666666),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _formattedTime,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF333333),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // 세로 구분선
+              Container(
+                height: 40,
+                width: 1,
+                color: Colors.grey.withOpacity(0.2),
+              ),
+              // 이동 거리
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: textColor.withOpacity(0.15), // 텍스트 색상으로 배경색 변경
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.straighten,
+                              size: 16,
+                              color: badgeColor, // 아이콘 색상 변경
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            '이동 거리',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF666666),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        movedDistanceText,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF333333),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      
+      // 심박수 카드
+      Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: _isWatchPaired 
+                ? Colors.red.withOpacity(0.2) 
+                : Colors.grey.withOpacity(0.2),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+              spreadRadius: 0,
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: _isWatchPaired 
+                      ? Colors.red.withOpacity(0.1) 
+                      : Colors.grey.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  _isWatchPaired ? Icons.favorite : Icons.favorite_border,
+                  size: 16,
+                  color: _isWatchPaired ? Colors.red : Colors.grey,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '현재 심박수',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: _isWatchPaired ? const Color(0xFF666666) : Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _isWatchPaired ? '$_currentHeartRate bpm' : '워치와 연동해주세요',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: _isWatchPaired ? Colors.red : Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              if (_isWatchPaired)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.watch_outlined,
+                        size: 14,
+                        color: Colors.red,
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        '연결 중',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.red,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+      
+      // 페이스메이커 메시지 카드 - 여기도 동일한 색상 변경
+      if (_pacemakerMessage != null)
+        Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: _pacemakerLevel == '고강도'
+                  ? Colors.red.withOpacity(0.3)
+                  : _pacemakerLevel == '저강도'
+                      ? Colors.blue.withOpacity(0.3)
+                      : badgeColor.withOpacity(0.3), // 아이콘 색상 사용
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+                spreadRadius: 0,
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: _pacemakerLevel == '고강도'
+                        ? Colors.red.withOpacity(0.1)
+                        : _pacemakerLevel == '저강도'
+                            ? Colors.blue.withOpacity(0.1)
+                            : textColor.withOpacity(0.15), // 텍스트 색상으로 배경색 변경
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    _pacemakerLevel == '고강도'
+                        ? Icons.directions_run
+                        : _pacemakerLevel == '저강도'
+                            ? Icons.directions_walk
+                            : Icons.directions_bike,
+                    size: 18,
+                    color: _pacemakerLevel == '고강도'
+                        ? Colors.red
+                        : _pacemakerLevel == '저강도'
+                            ? Colors.blue
+                            : badgeColor, // 아이콘 색상 변경
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _pacemakerLevel == '고강도'
+                            ? '고강도 운동 중'
+                            : _pacemakerLevel == '저강도'
+                                ? '저강도 운동 중'
+                                : '적정 페이스',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF666666),
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      // 저강도 메시지
+                      _pacemakerLevel == '저강도' ?
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '운동 강도가 낮아요',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.blue.shade700,
+                            ),
+                          ),
+                          Text(
+                            '조금 더 힘내볼까요?',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.blue.shade700,
+                            ),
+                          ),
+                        ],
+                      ) :
+                      // 고강도 메시지
+                      _pacemakerLevel == '고강도' ?
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '운동 강도가 높아요!',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.red.shade700,
+                            ),
+                          ),
+                          Text(
+                            '무리하지 않게 조심하세요',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.red.shade700,
+                            ),
+                          ),
+                        ],
+                      ) :
+                      // 중강도 메시지
+                      Text(
+                        _pacemakerMessage!,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: badgeColor, // 아이콘 색상 변경
+                        ),
+                      )
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+    ],
+  );
+}
 
   // 이전 기록과 현재 기록 비교
   Future<void> _compareWithPastRecord({bool sendNotification = false}) async {
     if (_modeData == null || _modeData?.opponent == null) return;
 
     try {
-      // 현재 시간에 해당하는 이전 기록의 진행 거리 계산
-      // (간단한 비례식으로 계산: 전체 시간 대비 현재 진행 시간의 비율로 계산)
-      final totalTime = _modeData!.path.estimatedTime * 60; // 초 단위로 변환
-      if (totalTime <= 0) return;
+      // ModeData의 opponent 확인 로그 출력
+      debugPrint('=== _compareWithPastRecord에서 ModeData 확인 ===');
+      debugPrint(
+          'ModeData.opponent: ${_modeData?.opponent != null ? '있음' : '없음'}');
+      debugPrint(
+          'Path Distance: ${_modeData?.path.distance}km (${_modeData?.path.distance != null ? (_modeData!.path.distance * 1000).toInt() : 0}m)');
 
-      // 현재 진행 시간이 전체 예상 시간보다 적을 때만 계산
-      final currentElapsedTime = _elapsedMinutes * 60 + _elapsedSeconds;
-      if (currentElapsedTime > totalTime) return;
+      if (_modeData?.opponent != null &&
+          _modeData!.opponent!.records.isNotEmpty) {
+        final recordsCount = _modeData!.opponent!.records.length;
+        debugPrint('Records 개수: $recordsCount');
 
-      // 현재 시간에 해당하는 이전 기록의 예상 진행 거리
-      _pastDistanceAtCurrentTime =
-          (_modeData!.path.distance * currentElapsedTime) / totalTime;
+        if (recordsCount > 0) {
+          final lastRecord = _modeData!.opponent!.records.last;
+          debugPrint('마지막 레코드 distance: ${lastRecord.distance}m');
+        }
+      }
 
-      // 현재 총 이동 거리 계산 (이미 계산되어 있으므로 추가 계산 불필요)
-      // 비동기 처리를 위해 await 추가
-      await _calculateTotalDistance();
+      // opponent의 records 배열에서 현재 시간에 해당하는 기록 찾기
+      final opponentRecords = _modeData?.opponent?.records;
 
+      if (opponentRecords == null || opponentRecords.isEmpty) {
+        // 기록이 없는 경우 기존 방식 사용
+        // 현재 시간에 해당하는 이전 기록의 진행 거리 계산
+        final totalTime = _modeData!.path.estimatedTime * 60; // 초 단위로 변환
+        if (totalTime <= 0) return;
+
+        // 현재 진행 시간이 전체 예상 시간보다 적을 때만 계산
+        final currentElapsedTime = _elapsedMinutes * 60 + _elapsedSeconds;
+        if (currentElapsedTime > totalTime) return;
+
+        // 현재 시간에 해당하는 이전 기록의 예상 진행 거리
+        _pastDistanceAtCurrentTime =
+            (_modeData!.path.distance * currentElapsedTime) / totalTime;
+
+        // 경쟁자 데이터 업데이트 (간단한 비례 계산 방식)
+        _competitorData['distance'] =
+            (_pastDistanceAtCurrentTime * 1000).toInt(); // km -> m 변환
+        _competitorData['formattedRemainingTime'] =
+            _formattedRemainingTime; // 현재 사용자의 예상 남은 시간
+        _competitorData['maxHeartRate'] =
+            _currentHeartRate > 0 ? _currentHeartRate : 100; // 기본값
+        _competitorData['avgHeartRate'] =
+            _currentHeartRate > 0 ? _currentHeartRate * 0.9 : 90.0; // 기본값
+      } else {
+        // records 배열을 사용하여 현재 시간에 해당하는 상대방 진행 거리 계산
+        final currentElapsedTime = _elapsedSeconds;
+
+        // 현재 시간보다 작거나 같은 마지막 기록과 큰 첫 번째 기록 찾기
+        OpponentRecord? beforeRecord;
+        OpponentRecord? afterRecord;
+
+        for (var record in opponentRecords) {
+          final recordTime = record.time;
+          if (recordTime <= currentElapsedTime) {
+            beforeRecord = record;
+          } else {
+            afterRecord = record;
+            break;
+          }
+        }
+
+        if (beforeRecord != null) {
+          if (afterRecord != null) {
+            // 두 기록 사이에 현재 시간이 있는 경우 보간
+            final beforeTime = beforeRecord.time;
+            final afterTime = afterRecord.time;
+            final beforeDistance = beforeRecord.distance;
+            final afterDistance = afterRecord.distance;
+
+            // 시간 비율로 거리 보간
+            final ratio =
+                (currentElapsedTime - beforeTime) / (afterTime - beforeTime);
+            _pastDistanceAtCurrentTime =
+                beforeDistance + (afterDistance - beforeDistance) * ratio;
+          } else {
+            // 마지막 기록보다 현재 시간이 더 큰 경우, 마지막 기록 사용
+            _pastDistanceAtCurrentTime = beforeRecord.distance;
+          }
+        } else if (afterRecord != null) {
+          // 현재 시간이 첫 번째 기록보다 작은 경우, 첫 번째 기록의 비율로 계산
+          final afterTime = afterRecord.time;
+          final afterDistance = afterRecord.distance;
+          final ratio = currentElapsedTime / afterTime;
+          _pastDistanceAtCurrentTime = afterDistance * ratio;
+        } else {
+          _pastDistanceAtCurrentTime = 0.0;
+        }
+
+        // 경쟁자 데이터 처리 재호출 (심박수, 남은 시간 등 계산)
+        _processOpponentData();
+
+        // 디버깅용 로그
+        debugPrint(
+            '상대 기록 분석: 현재 시간 $currentElapsedTime초, 진행 거리 ${_pastDistanceAtCurrentTime.toStringAsFixed(2)}m');
+        debugPrint(
+            '상대 심박수 정보: 최대 ${_competitorData['maxHeartRate']}, 평균 ${_competitorData['avgHeartRate']?.toStringAsFixed(1)}');
+      }
+
+      // 현재 총 이동 거리는 이미 실시간으로 계산되어 _currentTotalDistance에 반영되어 있음
       // 현재 기록과 이전 기록 비교
       final oldAheadState = _isAheadOfRecord;
       _distanceDifference = _currentTotalDistance - _pastDistanceAtCurrentTime;
       _isAheadOfRecord = _distanceDifference > 0;
+
+      // 항상 _competitorData 업데이트
+      _competitorData['isAhead'] = !_isAheadOfRecord; // 내가 앞서면 경쟁자는 뒤처짐
 
       debugPrint(
           '기록 비교: 현재=${_currentTotalDistance.toStringAsFixed(2)}km, 이전=${_pastDistanceAtCurrentTime.toStringAsFixed(2)}km, 차이=${_distanceDifference.toStringAsFixed(2)}km');
@@ -1490,89 +2367,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     }
   }
 
-  // 현재까지 이동한 총 거리 계산
-  Future<void> _calculateTotalDistance() async {
-    if (_userPath.length < 2) {
-      setState(() {
-        _currentTotalDistance = 0.0;
-      });
-      return;
-    }
-
-    try {
-      double total = 0.0;
-
-      // 처음부터 모든 경로 포인트 간의 거리를 계산
-      // 최적화: 마지막 계산 이후 추가된 포인트만 계산
-      if (_userPath.length > 2 && _currentTotalDistance > 0) {
-        // 마지막 두 포인트 간의 거리만 계산해서 기존 총 거리에 더함
-        final lastIndex = _userPath.length - 1;
-        final params = {
-          'lat1': _userPath[lastIndex - 1].latitude,
-          'lng1': _userPath[lastIndex - 1].longitude,
-          'lat2': _userPath[lastIndex].latitude,
-          'lng2': _userPath[lastIndex].longitude,
-        };
-        final distance = _calculateDistanceSync(params);
-
-        // 1초에 5미터 이상 이동 필터링 (급격한 변화 방지)
-        // 마지막 포인트가 추가된 시간을 알 수 없으므로,
-        // 마지막 측정 이후 이동 거리가 극단적으로 큰 경우 무시 (임계값: 20미터)
-        const double maxReasonableDistance =
-            20.0; // 한 번의 측정에서 예상되는 최대 합리적 거리 (미터)
-
-        if (distance <= maxReasonableDistance) {
-          total = _currentTotalDistance + distance; // 미터 단위로 변환 후 계산
-          total = total / 1000; // 다시 킬로미터로 변환
-        } else {
-          total = _currentTotalDistance; // 거리가 너무 크면 이전 값 유지
-          debugPrint(
-              '비정상적인 거리 변화 감지 및 무시: ${distance.toStringAsFixed(2)}m (현재 누적 거리: ${_currentTotalDistance.toStringAsFixed(2)}km)');
-        }
-      } else {
-        // 처음 계산이거나 경로 포인트가 2개뿐인 경우, 모든 구간 계산
-        DateTime? prevTimestamp;
-        NLatLng? prevPoint;
-
-        for (int i = 1; i < _userPath.length; i++) {
-          final params = {
-            'lat1': _userPath[i - 1].latitude,
-            'lng1': _userPath[i - 1].longitude,
-            'lat2': _userPath[i].latitude,
-            'lng2': _userPath[i].longitude,
-          };
-          final distance = _calculateDistanceSync(params);
-
-          // 속도 기반 필터링 - i번째와 i-1번째 포인트 사이의 속도 추정
-          // 정확한 타임스탬프가 없으므로, 포인트 간 예상 시간 차이를
-          // 1초로 가정하고, 급격한 거리 변화 필터링
-          // (1초당 5미터 이상 필터링)
-          if (distance <= _maxReasonableSpeed) {
-            total += distance; // 미터 단위로 더함
-            debugPrint(
-                '경로 포인트 ${i - 1}->$i 거리 반영: ${distance.toStringAsFixed(2)}m');
-          } else {
-            debugPrint(
-                '경로 포인트 ${i - 1}->$i 거리 무시: ${distance.toStringAsFixed(2)}m (초당 5미터 초과)');
-          }
-        }
-        total = total / 1000; // 미터를 킬로미터로 변환
-      }
-
-      if (_elapsedSeconds % 10 == 0) {
-        debugPrint('현재 이동 거리: ${total.toStringAsFixed(2)}km');
-      }
-
-      // UI 갱신
-      if (mounted) {
-        setState(() {
-          _currentTotalDistance = total;
-        });
-      }
-    } catch (e) {
-      debugPrint('거리 계산 중 오류: $e');
-    }
-  }
+  // 현재까지 이동한 총 거리는 _startLocationTracking() 메서드에서 실시간으로 계산하여
+  // _currentTotalDistance에 저장됩니다. 기존의 _calculateTotalDistance() 함수는 삭제하였습니다.
 
   // 목적지 도착 감지
   void _checkDestinationReached() {
@@ -1613,17 +2409,18 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
             _notifyWatch('destination');
             _hasNotifiedWatchForDestination = true;
 
-            // 앱이 백그라운드이고 워치 연결 시 추가 메시지 전송
-            if (_isWatchPaired &&
-                _currentLifecycleState == AppLifecycleState.paused) {
+            // 워치가 연결된 경우 메시지 전송
+            if (_isWatchPaired) {
               try {
                 _watch.sendMessage({
                   'path': '/REACHED',
                 });
-                debugPrint('백그라운드에서 목적지 도착 메시지 (/REACHED) 워치로 전송됨');
+                debugPrint('목적지 도착 메시지 (/REACHED) 워치로 전송됨');
               } catch (e) {
-                debugPrint('백그라운드 워치 메시지(/REACHED) 전송 실패: $e');
+                debugPrint('워치 메시지(/REACHED) 전송 실패: $e');
               }
+            } else {
+              debugPrint('워치 연결 없음 또는 백그라운드 상태: 목적지 도착 메시지 전송 생략');
             }
           }
         }
@@ -1634,53 +2431,136 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   }
 
   // 목적지 도착 다이얼로그
-  void _showDestinationReachedDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        title: const Text(
-          '등산 완료',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: const Text(
-          '목적지에 도착했습니다. 등산을 종료하시겠습니까?',
-          style: TextStyle(fontSize: 16),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              // 취소해도 isDestinationReached는 true로 유지
-            },
-            child: const Text('취소'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              // 기록 저장 여부를 묻는 다이얼로그 표시
-              _showSaveOptionDialog(context);
-            },
-            child: const Text(
-              '종료',
+void _showDestinationReachedDialog() {
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (ctx) => Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+      ),
+      insetPadding: EdgeInsets.symmetric(horizontal: 24),
+      child: Container(
+        padding: EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 상단 아이콘 영역
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  height: 80,
+                  width: 80,
+                  decoration: BoxDecoration(
+                    color: Color(0xFFE8F5EC),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                Icon(
+                  Icons.location_on,
+                  size: 40,
+                  color: Color(0xFF52A486),
+                ),
+              ],
+            ),
+            SizedBox(height: 20),
+            
+            // 타이틀
+            Text(
+              '목적지 도착',
               style: TextStyle(
-                color: Colors.red,
+                fontSize: 24,
                 fontWeight: FontWeight.bold,
+                color: Color(0xFF333333),
               ),
             ),
-          ),
-        ],
+            SizedBox(height: 16),
+            
+            // 안내 텍스트
+            Container(
+              margin: EdgeInsets.symmetric(horizontal: 12),
+              child: Text(
+                '목적지에 성공적으로 도착했어요!\n등산을 종료하시겠어요?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Color(0xFF666666),
+                  height: 1.4,
+                ),
+              ),
+            ),
+            SizedBox(height: 24),
+            
+            // 버튼 영역
+            Row(
+              children: [
+                // 계속 등산 버튼
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: Colors.grey[200],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: Text(
+                      '계속 등산',
+                      style: TextStyle(
+                        color: Color(0xFF666666),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 12),
+                // 종료 버튼
+                Expanded(
+                  child: TextButton(
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      // 기록 저장 여부를 묻는 다이얼로그 표시
+                      _showSaveOptionDialog(context);
+                    },
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: Color(0xFF52A486),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 2,
+                      shadowColor: Color(0xFF52A486).withOpacity(0.5),
+                    ),
+                    child: Text(
+                      '등산 종료',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
-    );
-  }
+    ),
+  );
+}
 
-  // 워치에 알림 전송 (목데이터 사용)
+  // 워치에 알림 전송 (워치가 연결된 경우에만)
   void _notifyWatch(String status) {
+    // 워치가 연결되어 있지 않으면 알림 전송 생략
+    if (!_isWatchPaired) {
+      debugPrint('워치 연결 없음: 알림 전송 생략 ($status)');
+      return;
+    }
+
     // 워치 알림 메시지 구성
     String notificationTitle = '등산 상태 알림';
     String notificationBody = '';
@@ -1718,7 +2598,9 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     try {
       debugPrint('워치 알림 전송 시작: $title - $messageBody');
 
-      // 워치가 연결되어 있는지 확인
+      // 필요한 초기 검사는 _notifyWatch에서 이미 수행했음
+
+      // 워치가 연결되어 있는지 한번 더 확인
       if (!await _watch.isPaired) {
         debugPrint('워치가 연결되어 있지 않습니다.');
         return;
@@ -1747,132 +2629,340 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     }
   }
 
-  // 확장된 정보 섹션 위젯
   Widget _buildExpandedInfoSection() {
-    // 일반 모드 여부 확인 (opponent가 없으면 일반 모드)
-    final bool isGeneralMode = _modeData?.opponent == null;
+  // 일반 모드 여부 확인 (opponent가 없으면 일반 모드)
+  final bool isGeneralMode = _modeData?.opponent == null;
 
-    // 경쟁자의 남은 시간 포맷팅 (일반 모드가 아닌 경우만)
-    String competitorTimeFormatted = '';
-    if (!isGeneralMode) {
-      final compMinutes = _competitorData['time'] as int;
-      if (compMinutes >= 60) {
-        final hours = compMinutes ~/ 60;
-        final mins = compMinutes % 60;
-        competitorTimeFormatted = '$hours시 $mins분 00초';
-      } else {
-        competitorTimeFormatted = '$compMinutes분 00초';
-      }
+  // 경쟁자의 남은 시간 포맷팅 (일반 모드가 아닌 경우만)
+  String competitorTimeFormatted = '';
+  if (!isGeneralMode) {
+    final compMinutes = _competitorData['time'] as int;
+    if (compMinutes >= 60) {
+      final hours = compMinutes ~/ 60;
+      final mins = compMinutes % 60;
+      competitorTimeFormatted = '$hours시 $mins분 00초';
+    } else {
+      competitorTimeFormatted = '$compMinutes분 00초';
     }
+  }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        SizedBox(height: 20),
+  // 앱 테마 컬러 - 현재 등반 상태 뱃지와 동일한 색상으로 통일
+  const Color badgeColor = Color(0xFF52A486);  // 현재 등반 상태 뱃지의 아이콘 색상
+  const Color textColor = Color.fromARGB(255, 58, 133, 106);  // 현재 등반 상태 뱃지의 텍스트 색상
+  const Color lightBadgeColor = Color.fromARGB(255, 190, 233, 203);  // 현재 등반 상태 뱃지의 배경색
+  
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: <Widget>[
+      SizedBox(height: 20),
 
-        // 비교 모드 정보 (일반 모드가 아닐 때만 표시)
-        if (!isGeneralMode) ...<Widget>[
-          Row(
-            children: <Widget>[
-              Text(
-                '내 정보',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue,
+      // 비교 모드 정보 (일반 모드가 아닐 때만 표시)
+      if (!isGeneralMode) ...<Widget>[
+        // 비교 정보 뱃지
+        Center(
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: textColor.withOpacity(0.15), // '현재 등반 상태'와 동일한 배경색
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.compare_arrows,
+                  size: 12,
+                  color: badgeColor, // badgeColor 변수 사용
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '비교 정보',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: textColor, // textColor 변수 사용
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        
+        // 경쟁 모드 헤더 카드
+        Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+                spreadRadius: 0,
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6), // 6으로 변경하여 남은 거리 아이콘과 동일하게
+                decoration: BoxDecoration(
+                  color: textColor.withOpacity(0.15), // 텍스트 색상으로 배경색 변경
+                  borderRadius: BorderRadius.circular(8), // 8로 변경하여 남은 거리 아이콘과 동일하게
+                ),
+                child: Icon(
+                  Icons.compare_arrows,
+                  size: 16, // 16으로 변경하여 남은 거리 아이콘과 동일하게
+                  color: badgeColor, // 아이콘 색상 변경
                 ),
               ),
-              SizedBox(width: 10),
-              Text(
-                'vs',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '기록 비교 모드',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF666666),
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                    _getComparisonModeText(),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF333333),
+                    ),
+                  ),
+                  ],
                 ),
               ),
             ],
           ),
-          SizedBox(height: 10),
-          Text(
-            _modeData?.opponent?.nickname ?? '이전 기록',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.purple,
-            ),
+        ),
+      
+        Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+                spreadRadius: 0,
+              ),
+            ],
           ),
-          SizedBox(height: 4),
-          Text(
-            '(과거 기록과 비교 중)',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.green,
-            ),
+          child: Column(
+            children: [
+              // 상대 남은 거리 & 남은 시간
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    // 상대 남은 거리
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(6), // 6으로 변경
+                                decoration: BoxDecoration(
+                                  color: textColor.withOpacity(0.15), // 텍스트 색상으로 배경색 변경
+                                  borderRadius: BorderRadius.circular(8), // 8로 변경
+                                ),
+                                child: Icon(
+                                  Icons.straighten,
+                                  size: 16, // 16으로 변경
+                                  color: badgeColor, // 아이콘 색상 변경
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                '상대의 남은 거리',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF666666),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '${_competitorData['distance']}km',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF333333),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // 세로 구분선
+                    Container(
+                      height: 40,
+                      width: 1,
+                      color: Colors.grey.withOpacity(0.2),
+                    ),
+                    // 상대 남은 시간
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(6), // 6으로 변경
+                                  decoration: BoxDecoration(
+                                    color: textColor.withOpacity(0.15), // 텍스트 색상으로 배경색 변경
+                                    borderRadius: BorderRadius.circular(8), // 8로 변경
+                                  ),
+                                  child: Icon(
+                                    Icons.timer_outlined,
+                                    size: 16, // 16으로 변경
+                                    color: badgeColor, // 아이콘 색상 변경
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  '상대의 남은 시간',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: Color(0xFF666666),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              competitorTimeFormatted,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF333333),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          SizedBox(height: 10),
-          Text(
-            '남은 거리 : ${_competitorData['distance']}km',
-            style: TextStyle(fontSize: 14),
+        ),
+                
+        // 피드백 메시지 카드
+        if (_distanceDifference != 0) _buildFeedbackMessage(),
+      ]
+      // 일반 모드 정보
+      else ...<Widget>[
+        Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+                spreadRadius: 0,
+              ),
+            ],
           ),
-          SizedBox(height: 4),
-          Text(
-            '예상 남은 시간 : $competitorTimeFormatted',
-            style: TextStyle(fontSize: 14),
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6), // 6으로 변경
+                decoration: BoxDecoration(
+                  color: textColor.withOpacity(0.15), // 텍스트 색상으로 배경색 변경
+                  borderRadius: BorderRadius.circular(8), // 8로 변경
+                ),
+                child: Icon(
+                  Icons.hiking,
+                  size: 16, // 16으로 변경
+                  color: badgeColor, // 아이콘 색상 변경
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '등산 모드',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF666666),
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      '일반 등산 모드',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: badgeColor, // 아이콘 색상과 동일하게 변경
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          SizedBox(height: 4),
-          // Text(
-          //   '최고 심박수 : ${_competitorData['maxHeartRate']} bpm',
-          //   style: TextStyle(fontSize: 14),
-          // ),
-          // SizedBox(height: 4),
-          // Text(
-          //   '평균 심박수 : ${_competitorData['avgHeartRate']} bpm',
-          //   style: TextStyle(fontSize: 14),
-          // ),
-        ]
-        // 일반 모드 정보
-        else ...<Widget>[
-          Text(
-            '일반 등산 모드',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.blue,
-            ),
-          ),
-          SizedBox(height: 10),
-          Text(
-            '고도 변화: ${_currentAltitude.toStringAsFixed(1)}m',
-            style: TextStyle(fontSize: 14),
-          ),
-          SizedBox(height: 4),
-          Text(
-            '등산 시간: $_formattedTime',
-            style: TextStyle(fontSize: 14),
-          ),
-          SizedBox(height: 4),
-          Text(
-            '이동 거리: ${_currentTotalDistance.toStringAsFixed(2)}km',
-            style: TextStyle(fontSize: 14),
-          ),
-        ],
-
-        // 피드백 메시지 (일반 모드가 아닐 때만 표시)
-        if (!isGeneralMode) _buildFeedbackMessage(),
-
-        // 등산 종료 버튼
-        _buildEndTrackingButton(),
-
-        // 여분의 공간 추가해서 스크롤이 잘 되도록 함
-        SizedBox(height: 30),
+        ),
       ],
-    );
+
+      // 등산 종료 버튼
+      _buildEndTrackingButton(),
+
+      // 여분의 공간 추가해서 스크롤이 잘 되도록 함
+      SizedBox(height: 30),
+    ],
+  );
+}
+
+String _getComparisonModeText() {
+  final appState = Provider.of<AppState>(context, listen: false);
+  final String selectedMode = appState.selectedMode ?? '일반 등산';
+  
+  if (selectedMode == '나 vs 나') {
+    return '나와의 대결';
+  } else if (selectedMode == '나 vs 친구') {
+    return '친구와의 대결';
+  } else {
+    // 기본값은 기존처럼 nickname 또는 '이전 기록'
+    return _modeData?.opponent?.nickname ?? '이전 기록';
   }
+}
 
   // 피드백 메시지 위젯
   Widget _buildFeedbackMessage() {
     // 이전 기록이 있는 경우만 표시
-    if (_modeData?.opponent == null) {
+    if (_modeData?.opponent == null ||
+        _modeData?.opponent?.records == null ||
+        _modeData!.opponent!.records.isEmpty) {
       return SizedBox.shrink();
     }
 
@@ -1909,11 +2999,13 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   }
 
   // 등산 종료 버튼 위젯
-  Widget _buildEndTrackingButton() {
-    return Container(
-      margin: EdgeInsets.only(top: 30, left: 50, right: 50),
+Widget _buildEndTrackingButton() {
+  return Center(
+    child: Container(
+      margin: EdgeInsets.only(top: 30, bottom: 20),
+      width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.red,
+        color: const Color(0xFF52A486),
         borderRadius: BorderRadius.circular(50),
       ),
       child: TextButton.icon(
@@ -1939,216 +3031,444 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
-  // 등산 기록 저장 여부 확인 다이얼로그
   void _showSaveOptionDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        insetPadding: EdgeInsets.symmetric(horizontal: 10),
-        child: Container(
-          padding: EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '등산 기록 저장',
+  showDialog(
+    context: context,
+    builder: (ctx) => Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+      ),
+      insetPadding: EdgeInsets.symmetric(horizontal: 24),
+      child: Container(
+        padding: EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 상단 아이콘 영역
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  height: 80,
+                  width: 80,
+                  decoration: BoxDecoration(
+                    color: Color(0xFFE8F5EC),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                Icon(
+                  Icons.save_outlined,
+                  size: 40,
+                  color: Color(0xFF52A486),
+                ),
+              ],
+            ),
+            SizedBox(height: 20),
+            
+            // 타이틀
+            Text(
+              '등산 기록 저장',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF333333),
+              ),
+            ),
+            SizedBox(height: 16),
+            
+            // 안내 텍스트
+            Container(
+              margin: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Text(
+                '등산 기록을 저장하시겠어요?',
+                textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Color(0xFF666666),
+                  height: 1.4,
                 ),
               ),
-              SizedBox(height: 20),
-              Text(
-                '등산 기록을 저장하시겠습니까?',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16),
+            ),
+            SizedBox(height: 8),
+            
+            // 기록 저장 설명 카드
+            Container(
+              margin: EdgeInsets.symmetric(vertical: 12),
+              padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              decoration: BoxDecoration(
+                color: Color(0xFFF0F9F4),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Color(0xFFDCEFE2),
+                  width: 1,
+                ),
               ),
-              SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              child: Row(
                 children: [
-                  // 저장 안 함 버튼
-                  TextButton(
+                  Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0xFF52A486).withOpacity(0.2),
+                          blurRadius: 4,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.check_circle_outline,
+                      color: Color(0xFF52A486),
+                      size: 20,
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(height: 4),
+                        Text(
+                          '저장하면 경험치를 얻고\n나중에 기록도 비교할 수 있어요',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF666666),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            SizedBox(height: 8),
+            
+            // 버튼 영역
+            Row(
+              children: [
+                // 저장 안 함 버튼
+                Expanded(
+                  child: TextButton(
                     onPressed: () {
                       Navigator.of(ctx).pop();
                       // 저장하지 않고 종료 확인 다이얼로그 표시
                       _showEndTrackingDialog(context, false);
                     },
-                    child: Container(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(30),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: Colors.grey[200],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      child: Text(
-                        '저장 안 함',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.bold,
-                        ),
+                    ),
+                    child: Text(
+                      '저장 안 함',
+                      style: TextStyle(
+                        color: Color(0xFF666666),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
                       ),
                     ),
                   ),
-                  // 저장 버튼
-                  TextButton(
+                ),
+                SizedBox(width: 12),
+                // 저장 버튼
+                Expanded(
+                  child: TextButton(
                     onPressed: () {
                       Navigator.of(ctx).pop();
                       // 저장하고 종료 확인 다이얼로그 표시
                       _showEndTrackingDialog(context, true);
                     },
-                    child: Container(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.blue,
-                        borderRadius: BorderRadius.circular(30),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: Color(0xFF52A486),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      child: Text(
-                        '저장',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      elevation: 2,
+                      shadowColor: Color(0xFF52A486).withOpacity(0.5),
+                    ),
+                    child: Text(
+                      '저장',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
                       ),
                     ),
                   ),
-                ],
-              ),
-            ],
-          ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
-  // 등산 종료 확인 다이얼로그
-  void _showEndTrackingDialog(BuildContext context, bool shouldSave,
-      {bool isEarlyExit = false}) {
-    showDialog(
-      context: context,
-      builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        insetPadding: EdgeInsets.symmetric(horizontal: 10),
-        child: Container(
-          padding: EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '등산 종료',
+  void _showEndTrackingDialog(BuildContext context, bool shouldSave, {bool isEarlyExit = false}) {
+  // 색상 정의 - 색상을 초록색 계열로 변경 (빨간색에서 변경)
+  final Color themeColor = Color(0xFF52A486); // 초록색으로 변경
+  final Color lightThemeColor = Color(0xFFE8F5EC); // 연한 초록색 배경
+  final Color borderThemeColor = Color(0xFFDCEFE2); // 초록색 테두리
+  
+  showDialog(
+    context: context,
+    builder: (ctx) => Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+      ),
+      insetPadding: EdgeInsets.symmetric(horizontal: 24),
+      child: Container(
+        padding: EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 상단 아이콘 영역 - 초록색으로 변경
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  height: 80,
+                  width: 80,
+                  decoration: BoxDecoration(
+                    color: lightThemeColor, // 연한 초록색 배경
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                Icon(
+                  isEarlyExit ? Icons.warning_rounded : Icons.help_outline_rounded,
+                  size: 40,
+                  color: themeColor, // 초록색 아이콘
+                ),
+              ],
+            ),
+            SizedBox(height: 20),
+            
+            // 타이틀
+            Text(
+              '등산 종료',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF333333),
+              ),
+            ),
+            SizedBox(height: 16),
+            
+            // 안내 텍스트
+            Container(
+              margin: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              child: Text(
+                '정말로 등산을 종료하시겠어요?',
+                textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF555555),
+                  height: 1.4,
                 ),
               ),
-              SizedBox(height: 20),
-              Text(
-                '정말로 등산을 \n종료하시겠습니까?',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16),
+            ),
+            SizedBox(height: 8),
+            
+            // 저장 상태 표시 컨테이너
+            Container(
+              margin: EdgeInsets.symmetric(vertical: 4), // 8에서 4로 줄임
+              padding: EdgeInsets.symmetric(vertical: 6, horizontal: 16), // 10에서 6으로 줄임
+              decoration: BoxDecoration(
+                color: shouldSave ? Color(0xFFF0F9F4) : Color(0xFFF0F9F4),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: shouldSave ? Color(0xFFDCEFE2) : Color(0xFFDCEFE2),
+                  width: 1,
+                ),
               ),
-              SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              child: Row(
                 children: [
-                  Icon(
-                    shouldSave ? Icons.save : Icons.do_not_disturb,
-                    color: shouldSave ? Colors.blue : Colors.grey,
-                    size: 18,
+                  Container(
+                    padding: EdgeInsets.all(4), // 6에서 4로 줄임
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: shouldSave ? themeColor.withOpacity(0.2) : Colors.grey.withOpacity(0.2),
+                          blurRadius: 3,
+                          offset: Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      shouldSave ? Icons.save : Icons.do_not_disturb_alt,
+                      color: shouldSave ? themeColor : themeColor,
+                      size: 16, // 18에서 16으로 줄임
+                    ),
                   ),
-                  SizedBox(width: 5),
-                  Text(
-                    shouldSave ? '등산 기록이 저장됩니다.' : '등산 기록이 저장되지 않습니다.',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: shouldSave ? Colors.blue : Colors.grey,
-                      fontStyle: FontStyle.italic,
+                  SizedBox(width: 8), // 12에서 8로 줄임
+                  Expanded(
+                    child: Text(
+                      shouldSave ? '등산 기록이 저장돼요' : '등산 기록이 저장되지 않아요',
+                      style: TextStyle(
+                        fontSize: 12, // 크기는 그대로 유지
+                        fontWeight: FontWeight.w500,
+                        color: shouldSave ? themeColor : themeColor,
+                      ),
                     ),
                   ),
                 ],
               ),
-              // 목적지 미도달 시 추가 경고 문구
-              if (isEarlyExit)
-                Padding(
-                  padding: const EdgeInsets.only(top: 10.0),
-                  child: Text(
-                    '목적지에 도달하지 않고 종료 시에는\n기록이 저장되지 않고 경험치도 주어지지 않습니다.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.red,
-                      fontWeight: FontWeight.bold,
+            ),
+
+            // 목적지 미도달 시 경고 컨테이너
+            if (isEarlyExit || (!shouldSave && !isEarlyExit))
+              Container(
+                margin: EdgeInsets.only(top: 4, bottom: 8),
+                padding: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                decoration: BoxDecoration(
+                  color: isEarlyExit ? Colors.red.withOpacity(0.1) : lightThemeColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isEarlyExit ? Colors.red.withOpacity(0.3) : borderThemeColor,
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  // crossAxisAlignment를 center로 변경하여 수직 중앙 정렬
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(4),
+                      // margin 제거 (불필요한 위치 조정 방지)
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: isEarlyExit ? Colors.red.withOpacity(0.2) : themeColor.withOpacity(0.2),
+                            blurRadius: 3,
+                            offset: Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        isEarlyExit ? Icons.error_outline : Icons.info_outline,
+                        color: isEarlyExit ? Colors.red : themeColor,
+                        size: 14,
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        // mainAxisSize 추가하여 컬럼이 필요한 높이만 차지하도록
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (isEarlyExit)
+                            Text(
+                              '목적지에 도달하지 않았어요',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red,
+                              ),
+                            ),
+                          // isEarlyExit이 true일 때만 간격 추가
+                          if (isEarlyExit) SizedBox(height: 2),
+                          Text(
+                            isEarlyExit
+                                ? '경험치도 얻을 수 없어요'
+                                : '경험치도 얻을 수 없어요',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isEarlyExit ? Colors.red[700] : themeColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            // 버튼 영역과의 간격 조정
+            SizedBox(height: 12), // 16에서 12로 줄임
+            
+            // 버튼 영역
+            Row(
+              children: [
+                // 취소 버튼
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: Colors.grey[200],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: Text(
+                      '취소',
+                      style: TextStyle(
+                        color: Color(0xFF666666),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
                     ),
                   ),
                 ),
-              SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(ctx).pop(),
-                    child: Container(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      child: Text(
-                        '취소',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                  TextButton(
+                SizedBox(width: 12),
+                // 종료 버튼 - 초록색으로 변경
+                Expanded(
+                  child: TextButton(
                     onPressed: () {
                       Navigator.of(ctx).pop();
-                      // 등산 종료 처리 및 서버 전송
-                      // 중간 종료(isEarlyExit=true)일 경우 결과 화면 표시하지 않음
-                      _finishTracking(shouldSave,
-                          showResultScreen: !isEarlyExit);
+                      _finishTracking(shouldSave, showResultScreen: !isEarlyExit);
                     },
-                    child: Container(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(30),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: themeColor, // 초록색 배경
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      child: Text(
-                        '종료',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      elevation: 2,
+                      shadowColor: themeColor.withOpacity(0.5), // 초록색 그림자
+                    ),
+                    child: Text(
+                      '종료',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
                       ),
                     ),
                   ),
-                ],
-              ),
-            ],
-          ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   // 등산 종료 처리 및 서버 전송
   Future<void> _finishTracking(bool shouldSave,
       {bool showResultScreen = true}) async {
     try {
+      // 백그라운드 서비스 종료
+      stopTrackingService();
       // 현재 상태의 데이터 저장
       _saveCurrentTrackingData();
 
@@ -2163,18 +3483,33 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
       // 대결 관련 설정
       final opponentId = _modeData?.opponent?.opponentId;
-      final recordId = null; // ModeData에 recordId가 없으므로 null로 설정
+      final recordId = appState.recordId; // AppState에서 저장된 recordId를 가져옴
 
       // 선택된 모드 (서버 형식으로 변환)
       final String selectedMode = appState.selectedMode ?? '일반 등산';
       final String serverMode = _convertToServerMode(selectedMode);
 
       debugPrint(
-          '등산 종료 요청 준비: mountainId=$mountainId, pathId=$pathId, 기록 저장: $shouldSave, 모드: $serverMode');
+          '등산 종료 요청 준비: mountainId=$mountainId, pathId=$pathId, opponentId=$opponentId, recordId=$recordId, 기록 저장: $shouldSave, 모드: $serverMode');
 
       // 서버에 전송할 데이터
       // 기록 저장 여부에 관계없이 API는 항상 호출, isSave 값만 다르게 전달
       final modeService = ModeService();
+
+      // 친구 기록 데이터 미리 저장 (endTracking 전에)
+      final String? opponentRecordDate = appState.opponentRecordDate;
+      final int? opponentRecordTime = appState.opponentRecordTime;
+      final int? opponentMaxHeartRate = appState.opponentMaxHeartRate;
+      final int? opponentAvgHeartRate = appState.opponentAvgHeartRate;
+
+      // 디버그 로그 추가
+      debugPrint('[finishTracking] AppState에서 가져온 친구 기록 데이터:');
+      debugPrint('  - date: $opponentRecordDate');
+      debugPrint('  - time: $opponentRecordTime');
+      debugPrint('  - maxHeartRate: $opponentMaxHeartRate');
+      debugPrint('  - avgHeartRate: $opponentAvgHeartRate');
+
+      debugPrint('  - elapsedMinutes: $_elapsedMinutes');
 
       // 종료 API 호출
       final Map<String, dynamic> response = await modeService.endTracking(
@@ -2186,37 +3521,80 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
         isSave: shouldSave, // 사용자 선택에 따라 저장 여부 설정
         finalLatitude: _currentLat,
         finalLongitude: _currentLng,
-        finalTime: _elapsedSeconds,
+        finalTime: _elapsedMinutes,
         finalDistance: _currentTotalDistance.toInt(), // km -> m 변환
         records: _trackingRecords,
         token: token,
       );
 
       debugPrint('등산 종료 요청 성공 (기록 저장: $shouldSave)');
+      debugPrint('서버 응답 데이터: ${response['data']}');
+
+      if (_isWatchPaired) {
+        if (shouldSave) {
+          _watch.sendMessage({
+            "path": "/STOP_TRACKING_CONFIRM",
+            "badge": response['data']['badge'],
+            "averageHeartRate": response['data']['averageHeartRate'],
+            "maxHeartRate": response['data']['maxHeartRate'],
+            "timeDiff": response['data']['timeDiff'],
+          });
+        } else {
+          _watch.sendMessage({
+            "path": "/STOP_TRACKING_CANCEL",
+          });
+        }
+      }
 
       // 종료 처리 (앱 상태 초기화)
-      appState.endTracking(); // isTracking = false, AppState 리스너들에게 알림
+      // appState.endTracking(); // isTracking = false, AppState 리스너들에게 알림
 
       // 결과 화면으로 이동 또는 홈으로 이동
-      if (response['status'] == true && mounted && showResultScreen) {
+      if (response['status'] == true &&
+          mounted &&
+          showResultScreen &&
+          shouldSave) {
+        // 저장하지 않는 경우 바로 홈화면으로 이동
+        if (!shouldSave) {
+          debugPrint('기록 저장하지 않음: 바로 홈화면으로 이동합니다.');
+          appState.endTracking(); // 트래킹 상태 초기화
+          appState.changePage(0);
+          return;
+        }
+
+        // shouldSave가 true일 때만 결과 화면 표시
+        final int finalElapsedMinutes = _elapsedMinutes;
+        final double finalDistanceMeters = _currentTotalDistance;
+        // 이전 기록(AppState에 이미 설정된 값) 캡처
+        final String? prevRecordDate = appState.previousRecordDate;
+        final int? prevRecordTimeSeconds = appState.previousRecordTime;
+        final int? prevMaxHeartRate = appState.previousMaxHeartRate;
+        final int? prevAvgHeartRate = appState.previousAvgHeartRate;
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (context) => TrackingResultScreen(
               resultData: response['data'],
               selectedMode: selectedMode, // 선택된 모드 전달
+              opponentRecordDate: opponentRecordDate,
+              opponentRecordTime: opponentRecordTime,
+              opponentMaxHeartRate: opponentMaxHeartRate,
+              opponentAvgHeartRate: opponentAvgHeartRate,
+              currentElapsedMinutes: finalElapsedMinutes,
+              currentDistanceMeters: finalDistanceMeters,
+              previousRecordDate: prevRecordDate,
+              previousRecordTimeSeconds: prevRecordTimeSeconds,
+              previousMaxHeartRate: prevMaxHeartRate,
+              previousAvgHeartRate: prevAvgHeartRate,
             ),
           ),
         );
       } else {
-        // 결과 데이터가 없거나 실패했거나 showResultScreen이 false인 경우 홈 화면으로 이동
+        // 결과 데이터가 없거나 실패했거나 showResultScreen이 false이거나 shouldSave가 false인 경우 홈 화면으로 이동
+        appState.endTracking(); // 트래킹 상태 초기화
         appState.changePage(0);
       }
     } catch (e) {
       debugPrint('등산 종료 요청 오류: $e');
-      // 오류 발생 시에도 트래킹은 종료
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('등산 기록 저장 중 오류가 발생했습니다: $e')),
-      );
 
       // 홈 화면으로 이동
       final appState = Provider.of<AppState>(context, listen: false);
@@ -2476,7 +3854,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     // 나침반 센서가 사용 가능한지 확인
     if (FlutterCompass.events != null) {
       _compassStream = FlutterCompass.events!.listen((CompassEvent event) {
-        if (!mounted) return;
+        if (!mounted) return; // mounted 체크 추가
 
         // 유효한 방향 데이터가 있을 때만 업데이트
         if (event.heading != null) {
@@ -2606,9 +3984,19 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
               'name': _modeData?.opponent?.nickname ?? '이전 기록',
               'distance': _modeData?.path.distance ?? 0.0,
               'time': _modeData?.path.estimatedTime ?? 0,
-              'isAhead': true,
+              'isAhead': false,
+              'maxHeartRate': appState.opponentMaxHeartRate ?? 0,
+              'avgHeartRate': appState.opponentAvgHeartRate ?? 0.0,
+              'formattedRemainingTime': '0분 0초', // 초기값
             };
             debugPrint('경쟁자 데이터 설정: ${_competitorData['name']}');
+            debugPrint('경쟁자 거리: ${_competitorData['distance']}km');
+            debugPrint('경쟁자 시간: ${_competitorData['time']}분');
+            debugPrint('경쟁자 최고 심박수: ${_competitorData['maxHeartRate']}bpm');
+            debugPrint('경쟁자 평균 심박수: ${_competitorData['avgHeartRate']}bpm');
+
+            // 경쟁자 데이터 처리
+            _processOpponentData();
           }
         });
       } else {
@@ -2616,6 +4004,118 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       }
     } catch (e) {
       debugPrint('모드 데이터 로드 오류: $e');
+    }
+  }
+
+  // 상대방 데이터 처리
+  void _processOpponentData() {
+    if (_modeData?.opponent == null || _modeData?.opponent?.records == null) {
+      debugPrint('상대방 데이터가 없거나 레코드가 없습니다.');
+      return;
+    }
+
+    // ModeData의 opponent 내부의 records 확인
+    debugPrint('=== ModeData.opponent 데이터 확인 (로그 추가) ===');
+    debugPrint('Opponent ID: ${_modeData?.opponent?.opponentId}');
+    debugPrint('Opponent Nickname: ${_modeData?.opponent?.nickname}');
+    debugPrint('Records 개수: ${_modeData?.opponent?.records.length}');
+
+    if (_modeData?.opponent?.records.isNotEmpty ?? false) {
+      // 첫번째 레코드와 마지막 레코드 정보 출력
+      final firstRecord = _modeData!.opponent!.records.first;
+      final lastRecord = _modeData!.opponent!.records.last;
+
+      debugPrint(
+          '첫번째 레코드 - 시간: ${firstRecord.time}초, 거리: ${firstRecord.distance}m, 심박수: ${firstRecord.heartRate}');
+      debugPrint(
+          '마지막 레코드 - 시간: ${lastRecord.time}초, 거리: ${lastRecord.distance}m, 심박수: ${lastRecord.heartRate}');
+    }
+
+    try {
+      final opponentRecords = _modeData!.opponent!.records;
+      final totalPathLength = _modeData!.path.distance; // 전체 경로 길이(km)
+
+      // 1. 상대의 진행 거리 (마지막 기록 사용) - m 단위로 변환하고 int로 캐스팅
+      final lastRecord = opponentRecords[opponentRecords.length - 1];
+      final int opponentDistance = lastRecord.distance.toInt(); // m 단위
+
+      // 2. 상대의 최고 심박수 계산
+      int maxHeartRate = 0;
+      int totalHeartRate = 0;
+      int validHeartRateCount = 0;
+
+      for (var record in opponentRecords) {
+        if (record.heartRate > 0) {
+          // 0보다 큰 심박수만 고려
+          if (record.heartRate > maxHeartRate) {
+            maxHeartRate = record.heartRate;
+          }
+          totalHeartRate += record.heartRate;
+          validHeartRateCount++;
+        }
+      }
+
+      // 3. 상대의 평균 심박수 계산 (int로 변환)
+      int avgHeartRate = 0;
+      if (validHeartRateCount > 0) {
+        avgHeartRate = (totalHeartRate / validHeartRateCount).round();
+      }
+
+      // 4. 상대의 평균 속도 및 예상 남은 시간 계산
+      double opponentAvgSpeed = 0; // 미터/초
+      int opponentRemainingSeconds = 0;
+
+      if (lastRecord.time > 0) {
+        // 평균 속도 계산 (m/초)
+        opponentAvgSpeed = opponentDistance / lastRecord.time;
+
+        // 남은 거리 계산 (m)
+        double remainingDistance = (totalPathLength * 1000) - opponentDistance;
+        if (remainingDistance < 0) remainingDistance = 0;
+
+        // 남은 시간 계산 (초)
+        if (opponentAvgSpeed > 0) {
+          opponentRemainingSeconds =
+              (remainingDistance / opponentAvgSpeed).round();
+        }
+      }
+
+      // 5. 시간 형식 변환 (시:분:초)
+      String formattedRemainingTime = _formatSeconds(opponentRemainingSeconds);
+
+      // 6. UI 업데이트를 위한 데이터 저장
+      setState(() {
+        _competitorData = {
+          'name': _modeData?.opponent?.nickname ?? '이전 기록',
+          'distance': opponentDistance, // m 단위 int 값
+          'time': lastRecord.time, // 초 단위
+          'formattedRemainingTime': formattedRemainingTime,
+          'maxHeartRate': maxHeartRate,
+          'avgHeartRate': avgHeartRate,
+          'isAhead': false, // 기본값, 실제 비교 후 업데이트
+        };
+      });
+
+      debugPrint('상대 데이터 처리 완료:');
+      debugPrint('- 진행 거리: ${opponentDistance}m');
+      debugPrint('- 예상 남은 시간: $formattedRemainingTime');
+      debugPrint('- 최고 심박수: $maxHeartRate bpm');
+      debugPrint('- 평균 심박수: $avgHeartRate bpm');
+    } catch (e) {
+      debugPrint('상대 데이터 처리 중 오류 발생: $e');
+    }
+  }
+
+  // 초를 시:분:초 형식으로 변환
+  String _formatSeconds(int totalSeconds) {
+    final hours = totalSeconds ~/ 3600;
+    final minutes = (totalSeconds % 3600) ~/ 60;
+    final seconds = totalSeconds % 60;
+
+    if (hours > 0) {
+      return '$hours시간 $minutes분 $seconds초';
+    } else {
+      return '$minutes분 $seconds초';
     }
   }
 
@@ -2813,8 +4313,13 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
   // 등산 기록 저장 시작
   void _startTrackingRecords() {
-    // 5초마다 현재 데이터 저장
-    _recordTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+    _recordTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      if (!mounted) {
+        // mounted 체크 추가
+        timer.cancel();
+        return;
+      }
+
       if (!_isPaused) {
         _saveCurrentTrackingData();
       }
@@ -2829,16 +4334,16 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     // 처음 기록하는 경우 lastRecordTime 초기화
     _lastRecordTime ??= now;
 
-    // 30초마다 records에 데이터 추가
+    // 10초마다 records에 데이터 추가
     final secondsSinceLastRecord = now.difference(_lastRecordTime!).inSeconds;
     if (secondsSinceLastRecord >= _recordIntervalSeconds) {
       // 추가할 기록 생성
       final record = {
-        'time': _elapsedSeconds,
-        'distance': (_currentTotalDistance * 1000).toInt(), // km -> m 변환
+        'time': _elapsedMinutes,
+        'distance': _currentTotalDistance.toInt(), // 이미 m 단위로 저장
         'latitude': _currentLat,
         'longitude': _currentLng,
-        'heartRate': _currentHeartRate, // _avgHeartRate를 _currentHeartRate로 변경
+        'heartRate': _currentHeartRate,
       };
 
       // 기록 추가
@@ -2846,7 +4351,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       _lastRecordTime = now;
 
       debugPrint(
-          '기록 저장: ${_trackingRecords.length}번째 기록 ($_elapsedSeconds초, ${_currentTotalDistance.toStringAsFixed(2)}km)');
+          '기록 저장: ${_trackingRecords.length}번째 기록 ($_elapsedSeconds초, ${(_currentTotalDistance / 1000).toStringAsFixed(2)}km)');
     }
   }
 
@@ -2870,27 +4375,63 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   Future<void> _checkWatchConnection() async {
     if (_isCheckingWatch) return;
 
+    if (!mounted) return; // mounted 체크 추가
+
     setState(() {
       _isCheckingWatch = true;
       _watchStatus = '워치 연결 확인 중...';
     });
 
     try {
-      // watch_connectivity 라이브러리를 사용해 워치 연결 상태 확인
+      // 1. 기본 연결 상태 확인
       final isPaired = await _watch.isPaired;
 
+      if (!mounted) return; // mounted 체크 추가
+
+      // 2. 실제 통신 가능 여부 확인을 위한 테스트 메시지 전송
+      bool isActuallyConnected = false;
+      if (isPaired) {
+        try {
+          await Future.delayed(const Duration(seconds: 1));
+          await _watch.sendMessage({'path': '/PING'});
+          isActuallyConnected = true;
+        } catch (e) {
+          debugPrint('워치 통신 테스트 실패: $e');
+          isActuallyConnected = false;
+        }
+      }
+
+      if (!mounted) return; // mounted 체크 추가
+
+      // 3. 최종 연결 상태 결정
+      final finalConnectionState = isPaired && isActuallyConnected;
+
       setState(() {
-        _isWatchPaired = isPaired;
-        _watchStatus = isPaired ? '워치가 연결되어 있습니다' : '워치가 연결되어 있지 않습니다';
+        _isWatchPaired = finalConnectionState;
+        _watchStatus =
+            finalConnectionState ? '워치가 연결되어 있습니다' : '워치가 연결되어 있지 않습니다';
         _isCheckingWatch = false;
       });
 
-      debugPrint('워치 연결 상태: ${isPaired ? '연결됨' : '연결되지 않음'}');
+      debugPrint(
+          '워치 연결 상태: ${finalConnectionState ? '연결됨' : '연결되지 않음'} (isPaired: $isPaired, isActuallyConnected: $isActuallyConnected)');
+
+      // 4. 연결이 끊어진 경우 관련 기능 비활성화
+      if (!finalConnectionState) {
+        setState(() {
+          _currentHeartRate = 0;
+          _pacemakerMessage = null;
+          _pacemakerLevel = null;
+        });
+      }
     } catch (e) {
       setState(() {
         _isWatchPaired = false;
         _watchStatus = '워치 연결 확인 중 오류 발생: $e';
         _isCheckingWatch = false;
+        _currentHeartRate = 0;
+        _pacemakerMessage = null;
+        _pacemakerLevel = null;
       });
       debugPrint('워치 연결 확인 중 오류: $e');
     }
@@ -2898,6 +4439,9 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
   // 워치에 메시지 전송 (watch_connectivity 사용)
   Future<void> _sendMessageToWatch() async {
+    // 1. 연결 상태 재확인
+    await _checkWatchConnection();
+
     if (!_isWatchPaired) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('워치가 연결되어 있지 않습니다.')),
@@ -2908,7 +4452,12 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     try {
       debugPrint('워치에 메시지 전송 시도...');
 
-      // 테스트 메시지 전송
+      // 2. 메시지 전송 전 최종 연결 상태 확인
+      if (!await _watch.isPaired) {
+        throw Exception('워치 연결이 끊어졌습니다.');
+      }
+
+      // 3. 테스트 메시지 전송
       await _watch.sendMessage(
           {'path': '/PROGRESS', "type": "FAST", "difference": 300});
 
@@ -2919,6 +4468,16 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       );
     } catch (e) {
       debugPrint('워치 메시지 전송 오류: $e');
+
+      // 4. 오류 발생 시 연결 상태 재설정
+      setState(() {
+        _isWatchPaired = false;
+        _watchStatus = '워치 연결이 끊어졌습니다';
+        _currentHeartRate = 0;
+        _pacemakerMessage = null;
+        _pacemakerLevel = null;
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('워치 메시지 전송 실패: $e')),
       );
@@ -3008,13 +4567,14 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
       final body = jsonEncode({
         'heartRate': _currentHeartRate,
-        'distance': (_currentTotalDistance * 1000).toInt(), // km를 m로 변환
+        'distance': _currentTotalDistance.toInt(), // 이미 m 단위로 저장
         'speed': _currentSpeed, // km/h
         'time': _elapsedSeconds,
         'altitude': _currentAltitude,
       });
 
       debugPrint('AI 서버로 데이터 전송 요청: $url, body: $body');
+      debugPrint('[BG] AI 서버 데이터 전송 시도, 백그라운드 상태: $_currentLifecycleState');
 
       final response = await http.post(url, headers: headers, body: body);
 
@@ -3034,8 +4594,38 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
         debugPrint('level: $level');
         debugPrint('message: $message');
 
-        _watch.sendMessage(
-            {"path": "/PACEMAKER", "level": level, "message": message});
+        // 페이스메이커 level이 변경되었는지 확인
+        if (_previousPacemakerLevel != level) {
+          debugPrint('페이스메이커 level 변경: $_previousPacemakerLevel -> $level');
+
+          // 페이스메이커 level이 변경되었는지 확인
+          if (_previousPacemakerLevel != level) {
+            debugPrint('페이스메이커 level 변경: $_previousPacemakerLevel -> $level');
+            // 워치에 알람 전송 (앱이 백그라운드 상태가 아니거나 워치가 연결된 경우만)
+            if (_isWatchPaired) {
+              try {
+                await _watch.sendMessage({
+                  "path": "/PACEMAKER_ALERT",
+                  "level": level,
+                  "message": message
+                });
+                debugPrint('페이스메이커 level 변경 알람 전송 완료');
+              } catch (e) {
+                debugPrint('페이스메이커 level 변경 알람 전송 실패: $e');
+              }
+            } else {
+              debugPrint('워치 연결 없음 또는 백그라운드 상태: 페이스메이커 알람 전송 생략');
+            }
+            // 이전 level 업데이트
+            _previousPacemakerLevel = level;
+          }
+
+          // 바텀시트에 메시지 표시
+          setState(() {
+            _pacemakerMessage = message;
+            _pacemakerLevel = level;
+          });
+        }
       } else {
         debugPrint('Error: ${response.statusCode}');
       }
@@ -3054,4 +4644,177 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
         return 'GENERAL';
     }
   }
+
+  // 등산 종료/결과 페이지 진입 시 서비스 완전 종료 함수 보강
+  void stopTrackingService() {
+    debugPrint('트래킹 서비스 종료 요청');
+    final FlutterBackgroundService service = FlutterBackgroundService();
+    service.invoke('stop');
+  }
+
+  // 지도 및 트래킹 관련 초기화 함수
+  Future<void> _initializeMapAndTracking(AppState appState) async {
+    // 1. 현재 위치를 먼저 가져오기 시도 (지도 초기화용)
+    try {
+      PermissionStatus status = await Permission.locationWhenInUse.status;
+      if (status.isDenied) {
+        status = await Permission.locationWhenInUse.request();
+      }
+      if (status.isGranted) {
+        Position position = await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.high,
+            timeLimit: const Duration(seconds: 5)); // 5초 타임아웃
+        if (mounted) {
+          setState(() {
+            _currentLat = position.latitude;
+            _currentLng = position.longitude;
+
+            // 초기 위치로 칼만 필터 초기화
+            if (position.accuracy < 20.0) {
+              _gpsFilter = GpsKalmanFilter(
+                  initialLat: position.latitude,
+                  initialLng: position.longitude);
+              _lastFilteredLat = position.latitude;
+              _lastFilteredLng = position.longitude;
+              _isFilterInitialized = true;
+              debugPrint(
+                  '초기 위치로 칼만 필터 초기화: Lat: ${position.latitude}, Lng: ${position.longitude}, 정확도: ${position.accuracy}m');
+            }
+
+            debugPrint('초기 위치 가져오기 성공: Lat: $_currentLat, Lng: $_currentLng');
+          });
+        }
+      } else {
+        debugPrint('초기 위치 권한 거부됨, 기본값 또는 AppState 값 사용');
+      }
+    } catch (e) {
+      debugPrint('초기 위치 가져오기 실패: $e');
+    }
+
+    // 2. AppState의 트래킹 상태에 따라 데이터 로드 또는 새 트래킹 준비
+    if (appState.isTracking) {
+      // ModeData 확인 로그 추가
+      if (appState.modeData != null) {
+        debugPrint('=== AppState에 저장된 ModeData 확인 ===');
+        debugPrint('ModeData: ${appState.modeData != null ? '있음' : '없음'}');
+        debugPrint('Mountain: ${appState.modeData?.mountain.name}');
+        debugPrint(
+            'Path: ${appState.modeData?.path.name}, 거리: ${appState.modeData?.path.distance}km');
+
+        if (appState.modeData?.opponent != null) {
+          debugPrint('Opponent: ${appState.modeData?.opponent?.nickname}');
+          debugPrint(
+              'Opponent Records: ${appState.modeData?.opponent?.records.length}개');
+
+          if (appState.modeData!.opponent!.records.isNotEmpty) {
+            final lastRecord = appState.modeData!.opponent!.records.last;
+            debugPrint(
+                '마지막 Record - 시간: ${lastRecord.time}초, 거리: ${lastRecord.distance}m');
+          }
+        } else {
+          debugPrint('Opponent: 없음 (일반 등산 모드)');
+        }
+      }
+
+      final List<NLatLng> previousUserPath = List.from(appState.userPath);
+      final List<NLatLng> previousRouteCoordinates =
+          List.from(appState.routeCoordinates);
+      final double prevLat = appState.currentLat;
+      final double prevLng = appState.currentLng;
+      final double prevDist = appState.distance;
+      final double prevAltitude = appState.currentAltitude;
+      final int prevElapsedSeconds = appState.elapsedSeconds;
+      final int prevElapsedMinutes = appState.elapsedMinutes;
+      final bool prevIsNavigationMode = appState.isNavigationMode;
+      final double prevDeviceHeading = appState.deviceHeading;
+
+      bool isPrevDataValid = (prevLat.abs() > 0.001 &&
+          prevLng.abs() > 0.001 &&
+          prevLat >= -90 &&
+          prevLat <= 90 &&
+          prevLng >= -180 &&
+          prevLng <= 180 &&
+          prevDist >= 0 &&
+          prevDist < 10000);
+
+      if (isPrevDataValid) {
+        _userPath.addAll(previousUserPath);
+        if (previousRouteCoordinates.isNotEmpty) {
+          _routeCoordinates = previousRouteCoordinates;
+        }
+        if (!(await Geolocator.isLocationServiceEnabled()) ||
+            await Permission.locationWhenInUse.isDenied) {
+          _currentLat = prevLat;
+          _currentLng = prevLng;
+        }
+        _anchorPointLat = _currentLat;
+        _anchorPointLng = _currentLng;
+        _isAnchorPointSet = true;
+        _lastDistanceCalcTime = DateTime.now();
+        _currentTotalDistance = prevDist;
+        _accumulatedDistanceInMeters = _currentTotalDistance * 1000;
+        _currentAltitude = prevAltitude;
+        _elapsedSeconds = prevElapsedSeconds;
+        _elapsedMinutes = prevElapsedMinutes;
+        _isNavigationMode = prevIsNavigationMode;
+        _deviceHeading = prevDeviceHeading;
+        _calculateRemainingDistanceAndTime();
+      } else {
+        _userPath.clear();
+        _routeCoordinates.clear();
+        _loadSelectedRouteData();
+        _anchorPointLat = 0.0;
+        _anchorPointLng = 0.0;
+        _isAnchorPointSet = false;
+        _accumulatedDistanceInMeters = 0.0;
+        _currentTotalDistance = 0.0;
+        _currentAltitude = 0.0;
+        _elapsedSeconds = 0;
+        _elapsedMinutes = 0;
+        _isNavigationMode = true;
+        _deviceHeading = 0.0;
+        _remainingDistance = 0.0;
+        _estimatedRemainingSeconds = 0;
+        _completedPercentage = 0.0;
+      }
+    } else {
+      _loadSelectedRouteData();
+      if (!(await Geolocator.isLocationServiceEnabled()) ||
+          await Permission.locationWhenInUse.isDenied) {
+        if (_routeCoordinates.isNotEmpty) {
+          _currentLat = _routeCoordinates.first.latitude;
+          _currentLng = _routeCoordinates.first.longitude;
+        }
+      }
+      _anchorPointLat = 0.0;
+      _anchorPointLng = 0.0;
+      _isAnchorPointSet = false;
+      _accumulatedDistanceInMeters = 0.0;
+      _currentTotalDistance = 0.0;
+      _currentAltitude = 0.0;
+      _elapsedSeconds = 0;
+      _elapsedMinutes = 0;
+    }
+
+    // 3. 나머지 트래킹 관련 기능 시작
+    _checkLocationPermission();
+    _startTracking();
+    _startCompassTracking();
+    _startTrackingRecords();
+  }
+
+  // 경쟁자 데이터 초기화 메서드
+  void _initCompetitorData() {
+    _competitorData = {
+      'name': '이전 기록',
+      'distance': 0,
+      'time': 0,
+      'isAhead': false,
+      'maxHeartRate': 0,
+      'avgHeartRate': 0.0,
+      'formattedRemainingTime': '0분 0초',
+    };
+    debugPrint('경쟁자 데이터 기본값 초기화 완료');
+  }
 }
+

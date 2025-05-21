@@ -64,6 +64,23 @@ class AppState extends ChangeNotifier {
 
   // ===== 모드 데이터 =====
   ModeData? _modeData;
+  int? _recordId;
+
+  // ===== 친구 기록 데이터 =====
+  String? _opponentRecordDate;
+  int? _opponentRecordTime;
+  int? _opponentMaxHeartRate;
+  int? _opponentAvgHeartRate;
+
+  // ===== 현재 기록 데이터 =====
+  String? _currentRecordDate;
+  int? _currentRecordTime;
+
+  // ====== 이전 기록 데이터 =====
+  String? _previousRecordDate;
+  int? _previousRecordTime;
+  int? _previousMaxHeartRate;
+  int? _previousAvgHeartRate;
 
   // ===== 생성자 =====
   AppState() {
@@ -98,6 +115,23 @@ class AppState extends ChangeNotifier {
   double get deviceHeading => _deviceHeading;
   ModeData? get modeData => _modeData;
   int? get climbingIndex => _climbingIndex;
+  int? get recordId => _recordId;
+
+  // 친구 기록 데이터 getters
+  String? get opponentRecordDate => _opponentRecordDate;
+  int? get opponentRecordTime => _opponentRecordTime;
+  int? get opponentMaxHeartRate => _opponentMaxHeartRate;
+  int? get opponentAvgHeartRate => _opponentAvgHeartRate;
+
+  // ===== 현재 기록 데이터 getters =====
+  String? get currentRecordDate => _currentRecordDate;
+  int? get currentRecordTime => _currentRecordTime;
+
+  // ===== 이전 기록 데이터 getters =====
+  String? get previousRecordDate => _previousRecordDate;
+  int? get previousRecordTime => _previousRecordTime;
+  int? get previousMaxHeartRate => _previousMaxHeartRate;
+  int? get previousAvgHeartRate => _previousAvgHeartRate;
 
   // ===== 인증 관련 메서드 =====
 
@@ -266,12 +300,12 @@ class AppState extends ChangeNotifier {
   // AppState의 fetchClimbingIndex 메서드 수정
   Future<void> fetchClimbingIndex() async {
     if (!_isLoggedIn || _accessToken == null) return;
-    
+
     try {
       debugPrint('등산지수 가져오기 시작');
       final baseUrl = dotenv.env['AI_BASE_URL']!;
       final url = Uri.parse('$baseUrl/weather');
-      
+
       final resp = await http.post(
         url,
         headers: {
@@ -297,7 +331,6 @@ class AppState extends ChangeNotifier {
       debugPrint('등산지수 조회 오류: $e');
     }
   }
-  
 
   // ===== 네비게이션 관련 메서드 =====
 
@@ -354,6 +387,24 @@ class AppState extends ChangeNotifier {
   Future<void> startTracking(String mode,
       {int? opponentId, int? recordId}) async {
     _selectedMode = mode;
+    _recordId = recordId;
+
+    // 디버그 로그 추가 - 트래킹 시작 시 전달받은 값들
+    debugPrint('===== 트래킹 시작 정보 =====');
+    debugPrint('선택된 모드: $mode');
+    debugPrint('레코드 ID: $recordId');
+    debugPrint('상대방 ID: $opponentId');
+    if (_previousRecordTime != null) {
+      debugPrint('저장된 이전 기록 시간(분): $_previousRecordTime');
+      if (_previousRecordTime! > 60) {
+        final hrs = (_previousRecordTime! / 60).floor();
+        final mins = (_previousRecordTime! % 60).toInt();
+        debugPrint('시간 변환: $hrs시간 $mins분');
+      } else {
+        debugPrint('시간 변환: $_previousRecordTime분');
+      }
+    }
+    debugPrint('==========================');
 
     try {
       if (_selectedRoute == null) {
@@ -579,6 +630,51 @@ class AppState extends ChangeNotifier {
     debugPrint('트래킹 상태 복원 완료: ${data.mountain.name}, ${data.path.name}');
   }
 
+  /// 친구 기록 데이터 설정
+  void setOpponentRecordData({
+    required String date,
+    required int time,
+    int? maxHeartRate,
+    int? avgHeartRate,
+
+  }) {
+    _opponentRecordDate = date;
+    _opponentRecordTime = time;
+    _opponentMaxHeartRate = maxHeartRate;
+    _opponentAvgHeartRate = avgHeartRate;
+    notifyListeners();
+  }
+
+  /// 이전 기록 데이터 설정
+  void setPreviousRecordData({
+    required String date,
+    required int time,
+    int? maxHeartRate,
+    int? avgHeartRate,
+  }) {
+    // 디버그 로그 추가
+    debugPrint('===== setPreviousRecordData 호출됨 =====');
+    debugPrint('날짜: $date');
+    debugPrint('원본 시간 값(분): $time');
+    if (time > 60) {
+      final hrs = (time / 60).floor();
+      final mins = (time % 60).toInt();
+      debugPrint('시간 변환: $hrs시간 $mins분');
+    } else {
+      debugPrint('시간 변환: $time분');
+    }
+    debugPrint('====================================');
+
+    // 상태 변경을 마이크로태스크로 지연시켜 빌드 중에 발생하지 않도록 함
+    Future.microtask(() {
+      _previousRecordDate = date;
+      _previousRecordTime = time;
+      _previousMaxHeartRate = maxHeartRate;
+      _previousAvgHeartRate = avgHeartRate;
+      notifyListeners();
+    });
+  }
+
   /// 트래킹 종료
   void endTracking() {
     _isTracking = false;
@@ -587,6 +683,12 @@ class AppState extends ChangeNotifier {
     _selectedRoute = null;
     _selectedMode = null;
     _modeData = null;
+    _recordId = null;
+    // 친구 기록 데이터도 초기화
+    _opponentRecordDate = null;
+    _opponentRecordTime = null;
+    _opponentMaxHeartRate = null;
+    _opponentAvgHeartRate = null;
     _resetTrackingData();
     notifyListeners();
   }
