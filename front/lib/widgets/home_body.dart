@@ -229,7 +229,7 @@ class _HomeBodyState extends State<HomeBody> {
         
         // 설명 텍스트
         _buildHelpText(
-          '산에 오를수록 레벨이 올라가는 시스템이에요'
+          '산에 오를수록 레벨이 올라가는 시스템'
         ),
         SizedBox(height: 16),
         
@@ -634,61 +634,49 @@ class _HomeBodyState extends State<HomeBody> {
     }
   }
 
-  // 로딩 오버레이 표시 메서드
-  OverlayEntry _showLoadingOverlay(BuildContext context) {
-    final overlay = Overlay.of(context);
-    final overlayEntry = OverlayEntry(
-      builder: (context) => Container(
-        color: Colors.black.withOpacity(0.3),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-          child: Center(
-            child: Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 16,
-                    spreadRadius: 0,
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const SizedBox(
-                    width: 40,
-                    height: 40,
-                    child: CircularProgressIndicator(
-                      color: Color(0xFF64B792),
-                      strokeWidth: 3,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    '로딩중...',
-                    style: TextStyle(
-                      color: Colors.grey[800],
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
+  // 로딩 오버레이 표시 메서드 - 텍스트 없이 아이콘만 표시
+OverlayEntry _showLoadingOverlay(BuildContext context) {
+  final overlay = Overlay.of(context);
+  final overlayEntry = OverlayEntry(
+    builder: (context) => Container(
+      color: Colors.black.withOpacity(0.3),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+        child: Center(
+          child: Container(
+            width: 80,  // 크기 축소 (텍스트가 없으므로)
+            height: 80, // 크기 축소 (텍스트가 없으므로)
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 16,
+                  spreadRadius: 0,
+                ),
+              ],
+            ),
+            // 로딩 아이콘만 표시
+            child: Center(
+              child: SizedBox(
+                width: 48,
+                height: 48,
+                child: CircularProgressIndicator(
+                  color: const Color(0xFF52A486),
+                  strokeWidth: 4,
+                ),
               ),
             ),
           ),
         ),
       ),
-    );
+    ),
+  );
 
-    overlay.insert(overlayEntry);
-    return overlayEntry;
-  }
+  overlay.insert(overlayEntry);
+  return overlayEntry;
+}
 
   // 설문 안내 다이얼로그 표시
   void _showSurveyDialog() {

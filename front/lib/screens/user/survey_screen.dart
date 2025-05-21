@@ -507,8 +507,7 @@ class _SurveyScreenState extends State<SurveyScreen> {
                             ),
                           )
                         : Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
+                            mainAxisAlignment: MainAxisAlignment.center,                            children: [
                               Text(
                                 '제출하기',
                                 style: TextStyle(

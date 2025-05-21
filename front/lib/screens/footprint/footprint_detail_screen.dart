@@ -65,7 +65,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
     _overlayEntry = OverlayEntry(
       builder: (context) => Positioned(
         right: 28, // 오른쪽에서의 거리
-        bottom: 85, // 하단에서의 거리 (FAB 위에 위치하도록)
+        bottom: 60, // 하단에서의 거리 (FAB 위에 위치하도록)
         child: Material(
           color: Colors.transparent,
           child: AnimatedOpacity(
@@ -128,14 +128,13 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                           ),
                         ],
                       ),
-                      SizedBox(height: 12),
                       Padding(
                         padding: EdgeInsets.only(left: 4),
                         child: Text(
-                          '그래프의 날짜를 클릭해서 상세 내역과 비교 결과를 조회해보세요',
+                          '그래프의 날짜를 클릭해서 상세 내역과\n비교 결과를 조회해보세요',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 14,
+                            fontSize: 13,
                             height: 1.4,
                           ),
                         ),
@@ -219,7 +218,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
         });
 
         if (detailResponse.isExceed) {
-          _showSnackBar('설정하신 기간의 등산 기록이 5개를 초과하여\n종료일 기준 최근 5개만 조회했어요');
+          _showSnackBar('설정하신 기간의 등산 기록이 5개를 초과했어요!\n종료일 기준 최근 5개만 조회할게요');
         } else if (detailResponse.records.isEmpty) {
           _showSnackBar('설정하신 기간의 등산 기록이 존재하지 않아요');
         }
@@ -275,7 +274,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
               child: Text(
                 message,
                 style: const TextStyle(
-                  fontSize: 14,
+                  fontSize: 12,
                   color: Colors.white,
                   fontWeight: FontWeight.w500,
                 ),
@@ -285,7 +284,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
         ),
         backgroundColor: const Color(0xFF52A486),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        duration: const Duration(seconds: 2), // 더 짧은 시간으로 수정
+        duration: const Duration(seconds: 3), // 더 짧은 시간으로 수정
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),
