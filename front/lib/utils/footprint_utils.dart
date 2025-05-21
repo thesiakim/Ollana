@@ -1,8 +1,26 @@
 import '../../models/path_detail.dart';
 import 'package:intl/intl.dart';
 
-String formatDate(DateTime date) {
-  return '${date.year % 100}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}';
+String formatDate(dynamic date) {
+  // DateTime 객체인 경우
+  if (date is DateTime) {
+    return '${date.year % 100}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}';
+  } 
+  // 문자열인 경우 (예: "2025-05-21")
+  else if (date is String) {
+    try {
+      final parts = date.split('-');
+      if (parts.length == 3) {
+        return '${int.parse(parts[0]) % 100}/${parts[1].padLeft(2, '0')}/${parts[2].padLeft(2, '0')}';
+      }
+    } catch (e) {
+      // 파싱 실패 시 원본 반환
+      print('날짜 포맷 변환 실패: $e');
+    }
+    return date;
+  }
+  // 알 수 없는 타입
+  return '날짜 정보 없음';
 }
 
 String formatDateForApi(DateTime date) {
