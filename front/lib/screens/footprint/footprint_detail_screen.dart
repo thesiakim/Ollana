@@ -113,7 +113,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                             child: Icon(
                               Icons.info_outline,
                               color: Colors.white,
-                              size: 18,
+                              size: 14,
                             ),
                           ),
                           SizedBox(width: 10),
@@ -122,7 +122,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                             style: TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                              fontSize: 14,
                               letterSpacing: 0.5,
                             ),
                           ),
@@ -134,7 +134,7 @@ class _FootprintDetailScreenState extends State<FootprintDetailScreen> {
                           '그래프의 날짜를 클릭해서 상세 내역과\n비교 결과를 조회해보세요',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 13,
+                            fontSize: 12,
                             height: 1.4,
                           ),
                         ),

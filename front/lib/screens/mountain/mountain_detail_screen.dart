@@ -228,98 +228,99 @@ Widget _buildLoadingView() {
   }
   
   // 슬라이버 앱바 (이미지 슬라이더 포함)
-  Widget _buildSliverAppBar() {
-    final List<dynamic> images = _mountainData['images'] ?? [];
-    
-    return SliverAppBar(
-      expandedHeight: 320,
-      pinned: true,
-      stretch: true,
-      backgroundColor: Colors.white,
-      elevation: 0,
-      surfaceTintColor: Colors.white,
-      scrolledUnderElevation: 0,
-      systemOverlayStyle: SystemUiOverlayStyle.dark,
-      // 스크롤 상태에 따라 leading 위젯 변경
-      leading: _isCollapsed
-          // 축소된 상태 - 기본 뒤로가기 버튼 사용
-          ? null
-          // 확장된 상태 - 둥근 컨테이너
-          : Container(
-              margin: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.5),
-                shape: BoxShape.circle,
-              ),
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
+Widget _buildSliverAppBar() {
+  final List<dynamic> images = _mountainData['images'] ?? [];
+  
+  return SliverAppBar(
+    expandedHeight: 320,
+    pinned: true,
+    stretch: true,
+    backgroundColor: Colors.white,
+    elevation: 0,
+    surfaceTintColor: Colors.white,
+    scrolledUnderElevation: 0,
+    systemOverlayStyle: SystemUiOverlayStyle.dark,
+    // 스크롤 상태에 따라 leading 위젯 변경
+    leading: _isCollapsed
+        // 축소된 상태 - 기본 뒤로가기 버튼 사용
+        ? null
+        // 확장된 상태 - 둥근 컨테이너
+        : Container(
+            margin: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.5),
+              shape: BoxShape.circle,
             ),
-      iconTheme: IconThemeData(color: Colors.black), // 아이콘 색상 설정
-      foregroundColor: Colors.black, // 텍스트 색상 설정
-      flexibleSpace: FlexibleSpaceBar(
-        background: Stack(
-          fit: StackFit.expand,
-          children: [
-            // 이미지 슬라이더
-            images.isNotEmpty
-                ? CarouselSlider.builder(
-                    itemCount: images.length,
-                    itemBuilder: (context, index, realIndex) {
-                      final imageUrl = images[index];
-                      final safeUrl = getImageUrl(imageUrl);
-                      return Image.network(
-                        safeUrl,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            color: Colors.grey[300],
-                            child: const Center(
-                              child: Icon(Icons.error, color: Colors.grey),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                    options: CarouselOptions(
-                      height: 350,
-                      viewportFraction: 1.0,
-                      enlargeCenterPage: false,
-                      enableInfiniteScroll: images.length > 1,
-                      autoPlay: images.length > 1,
-                      autoPlayInterval: const Duration(seconds: 5),
-                      onPageChanged: (index, reason) {
-                        setState(() {
-                          _currentImageIndex = index;
-                        });
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+    iconTheme: IconThemeData(color: Colors.black), // 아이콘 색상 설정
+    foregroundColor: Colors.black, // 텍스트 색상 설정
+    flexibleSpace: FlexibleSpaceBar(
+      background: Stack(
+        fit: StackFit.expand,
+        children: [
+          // 이미지 슬라이더
+          images.isNotEmpty
+              ? CarouselSlider.builder(
+                  itemCount: images.length,
+                  itemBuilder: (context, index, realIndex) {
+                    final imageUrl = images[index];
+                    final safeUrl = getImageUrl(imageUrl);
+                    return Image.network(
+                      safeUrl,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        // 오류 발생 시 로컬 에셋 이미지 표시
+                        return Image.asset(
+                          'lib/assets/images/mount_default.png',
+                          width: double.infinity,
+                          height: double.infinity,
+                          fit: BoxFit.cover,
+                        );
                       },
-                    ),
-                  )
-                : Container(
-                    color: Colors.grey[400],
-                    child: const Center(
-                      child: Icon(Icons.landscape, size: 80, color: Colors.white70),
-                    ),
+                    );
+                  },
+                  options: CarouselOptions(
+                    height: 350,
+                    viewportFraction: 1.0,
+                    enlargeCenterPage: false,
+                    enableInfiniteScroll: images.length > 1,
+                    autoPlay: images.length > 1,
+                    autoPlayInterval: const Duration(seconds: 5),
+                    onPageChanged: (index, reason) {
+                      setState(() {
+                        _currentImageIndex = index;
+                      });
+                    },
                   ),
-            
-            // 그라데이션 효과
-            IgnorePointer(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withOpacity(0.1),
-                      Colors.black.withOpacity(0.7),
-                    ],
-                    stops: const [0.5, 1.0],
-                  ),
+                )
+              : Image.asset(
+                  'lib/assets/images/mount_default.png',
+                  width: double.infinity,
+                  height: double.infinity,
+                  fit: BoxFit.cover,
+                ),
+          
+          // 그라데이션 효과
+          IgnorePointer(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.1),
+                    Colors.black.withOpacity(0.7),
+                  ],
+                  stops: const [0.5, 1.0],
                 ),
               ),
             ),
+          ),
             
             // 이미지 인디케이터
             if (images.length > 1)
@@ -957,100 +958,106 @@ Widget _buildLoadingView() {
                 }
               }
 
-              return Card(
-                elevation: 0,
-                margin: const EdgeInsets.only(right: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(
-                    color: Colors.grey.shade200,
-                    width: 1,
+              // 날씨 정보 섹션의 카드 내부 컬럼 수정
+return Card(
+  elevation: 0,
+  margin: const EdgeInsets.only(right: 12),
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(16),
+    side: BorderSide(
+      color: Colors.grey.shade200,
+      width: 1,
+    ),
+  ),
+  child: Container(
+    width: 90,
+    padding: const EdgeInsets.all(12),
+    // height 추가로 명시적 크기 제한 - 기존 디자인 방해하지 않으면서 overflow 방지
+    height: 130, // 기존 SizedBox 높이 140에서 내부 패딩 12*2 감안하여 130으로 설정
+    child: Column(
+      // mainAxisSize를 min으로 유지하되 mainAxisAlignment를 spaceEvenly로 변경
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          dayText,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: index == 0 ? _primaryColor : Colors.black87,
+          ),
+        ),
+        // SizedBox 높이 약간 조정
+        const SizedBox(height: 4),
+        Image.network(
+          'https://openweathermap.org/img/wn/$weatherIcon@2x.png',
+          width: 42,
+          height: 42,
+          errorBuilder: (context, error, stackTrace) {
+            return const Icon(Icons.cloud, size: 42);
+          },
+        ),
+        // SizedBox 높이 약간 조정
+        const SizedBox(height: 4),
+        // 나머지 코드는 그대로 유지
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 최고 온도
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '최고',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black,
                   ),
                 ),
-                child: Container(
-                  width: 90,
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min, // 추가: 필요한 최소 크기만 사용
-                    children: [
-                      Text(
-                        dayText,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: index == 0 ? _primaryColor : Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Image.network(
-                        'https://openweathermap.org/img/wn/$weatherIcon@2x.png',
-                        width: 42, // 크기를 약간 줄임
-                        height: 42, // 크기를 약간 줄임
-                        errorBuilder: (context, error, stackTrace) {
-                          return const Icon(Icons.cloud, size: 42);
-                        },
-                      ),
-                      const SizedBox(height: 6),
-                      // 온도 상하 배치 디자인
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // 최고 온도
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                '최고',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.black,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                '$maxTemp°',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.black,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 2),
-                          // 최저 온도
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                '최저',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.black,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                '$minTemp°',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.black,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
+                const SizedBox(width: 6),
+                Text(
+                  '$maxTemp°',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black,
                   ),
                 ),
-              );
+              ],
+            ),
+            const SizedBox(height: 2),
+            // 최저 온도
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '최저',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '$minTemp°',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
+    ),
+  ),
+);
             },
           ),
         ),
