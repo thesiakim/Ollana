@@ -182,6 +182,7 @@ public class TrackingService {
         );
 
         User opponent = null;
+        HikingHistory hikingHistory = null;
         OpponentResponseDto opponentDto = null;
 
         // mode가 ME이면 userId로 조회
@@ -194,10 +195,15 @@ public class TrackingService {
             opponent = userRepository.findById(request.getOpponentId())
                                      .orElseThrow(NotFoundException::new);
         }
+
+        if (request.getRecordId() != null) {
+            hikingHistory = hikingHistoryRepository.findById(request.getRecordId())
+                                                   .orElseThrow(NotFoundException::new);
+        }
         List<HikingLiveRecords> records = hikingLiveRecordsRepository.findByHikingHistoryId(request.getRecordId());
 
         if (opponent != null) {
-            opponentDto = OpponentResponseDto.from(opponent, records);
+            opponentDto = OpponentResponseDto.from(opponent, hikingHistory, records);
         }
 
         // redis에 등산 상태 저장
