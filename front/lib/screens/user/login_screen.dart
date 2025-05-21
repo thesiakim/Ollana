@@ -308,7 +308,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 16),
                       ],
                       
-                      // 이메일 입력
+                      // 이메일 입력..
                       TextFormField(
                         controller: _emailController,
                         decoration: _inputDecoration(

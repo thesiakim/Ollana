@@ -954,7 +954,6 @@ Widget _buildMountainDetailDialog(MountainMap mountain) {
   );
 }
   
-  // 리스트 아이템 디자인 - 깔끔하게 한 줄에 고도와 난이도 표시
 Widget _buildMountainListItem(dynamic mountain) {
   final level = mountain['level'] as String? ?? 'M';
   final difficultyText = () {
@@ -999,7 +998,7 @@ Widget _buildMountainListItem(dynamic mountain) {
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
-              // 이미지
+              // 이미지 - 없을 경우 로컬 에셋 이미지 사용
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: hasImage
@@ -1008,9 +1007,20 @@ Widget _buildMountainListItem(dynamic mountain) {
                       width: 100,
                       height: 100,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => _buildMountainPlaceholder(),
+                      errorBuilder: (context, error, stackTrace) => 
+                        Image.asset(
+                          'lib/assets/images/mount_default.png',
+                          width: 100,
+                          height: 100,
+                          fit: BoxFit.cover,
+                        ),
                     )
-                  : _buildMountainPlaceholder(),
+                  : Image.asset(
+                      'lib/assets/images/mount_default.png',
+                      width: 100,
+                      height: 100,
+                      fit: BoxFit.cover,
+                    ),
               ),
               const SizedBox(width: 12),
               

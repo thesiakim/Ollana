@@ -2226,7 +2226,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
                             Text(
                               _pacemakerMessage ?? '',
                               style: TextStyle(
-                                fontSize: 14,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w500,
                                 color: _pacemakerLevel == '고강도'
                                     ? Colors.red.shade700
@@ -2902,8 +2902,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
-                                  color: competitorTimeFormatted == '도착'
-                                      ? Colors.red
+                                  color: competitorTimeFormatted == '도착했어요!'
+                                      ? Color(0xFF333333)
                                       : Color(0xFF333333),
                                 ),
                               ),
@@ -4966,7 +4966,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
     // 남은 시간이 음수이면 '도착'으로 표시
     if (remainingSeconds <= 0) {
-      return '도착';
+      return '도착했어요!';
     }
 
     // 양수인 경우, 시간 형식으로 변환

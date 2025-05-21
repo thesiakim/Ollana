@@ -137,7 +137,7 @@ class ExperienceBar extends StatelessWidget {
                 '${currentXp}xp / ${xpForNext}xp',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 9,
                   color: Colors.grey[600],
                   fontWeight: FontWeight.w500,
                   letterSpacing: 0.2,
