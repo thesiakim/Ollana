@@ -21,7 +21,7 @@ const trackingFinishErrors = new Counter('tracking_finish_errors');
 
 // 테스트 시나리오
 export default function() {
-  const token = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0aXBvczI3NjcxQG1hZ3BpdC5jb20iLCJ1c2VySWQiOjMyLCJpYXQiOjE3NDc3NTczNTcsImV4cCI6MTc4Mzc1NzM1N30.8lN_PbGbTuZLxJ8YnfTvERQtklSlk0KG05EYk5Nyz-4';
+  const token = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0aXBvczI3NjcxQG1hZ3BpdC5jb20iLCJ1c2VySWQiOjMyLCJpYXQiOjE3NDc4MDI0OTIsImV4cCI6MTc4MzgwMjQ5Mn0.jCO5pmcAOa1l8lumJwuLXtu9TRHZ6zLkg8ZCuaHC370';
   
   // 각 사용자별 트래킹 데이터 생성
   const recordSize = Math.floor(Math.random() * 1000) + 100; // 100~1100개의 기록 포인트

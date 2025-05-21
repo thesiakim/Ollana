@@ -1,5 +1,6 @@
 package com.ssafy.ollana.tracking.service;
 
+import com.ssafy.ollana.common.config.RabbitMQConfig;
 import com.ssafy.ollana.footprint.persistent.entity.Footprint;
 import com.ssafy.ollana.footprint.persistent.entity.HikingHistory;
 import com.ssafy.ollana.footprint.persistent.repository.FootprintRepository;
@@ -27,6 +28,7 @@ import com.ssafy.ollana.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.locationtech.jts.geom.Coordinate;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -34,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -49,6 +52,7 @@ public class TrackingService {
     private final BattleHistoryService battleHistoryService;
     private final ApplicationEventPublisher eventPublisher;
     private final RedisTemplate<String, String> redisTemplate;
+    private final RabbitTemplate rabbitTemplate;
     private static final String TRACKING_STATUS_KEY_PREFIX = "tracking:";
 
 
@@ -260,7 +264,23 @@ public class TrackingService {
             max = history.getMaxHeartRate();
 
             List<HikingLiveRecords> entityList = TrackingUtils.toEntities(request.getRecords(), user, mountain, path, history);
-            hikingLiveRecordsRepository.saveAll(entityList);
+            // DTO로 변환하여 RabbitMQ로 전송
+            List<HikingLiveRecordsDTO> dtoList = entityList.stream()
+                    .map(entity -> HikingLiveRecordsDTO.builder()
+                            .id(entity.getId())
+                            .userId(user.getId())
+                            .mountainId(mountain.getId())
+                            .pathId(path.getId())
+                            .hikingHistoryId(history.getId())
+                            .totalTime(entity.getTotalTime())
+                            .totalDistance(entity.getTotalDistance())
+                            .latitude(entity.getLatitude())
+                            .longitude(entity.getLongitude())
+                            .heartRate(entity.getHeartRate())
+                            .build())
+                    .collect(Collectors.toList());
+
+            rabbitTemplate.convertAndSend(RabbitMQConfig.HIKING_RECORDS_QUEUE, dtoList);
 
             // 경험치 및 거리 갱신
             userService.updateUserInfoAfterTracking(user, request.getFinalDistance(), mountain.getLevel());
