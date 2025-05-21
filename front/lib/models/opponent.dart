@@ -4,11 +4,15 @@ class Opponent {
   final int opponentId;
   final String nickname;
   final List<OpponentRecord> records;
+  final int? maxHeartRate;
+  final double? averageHeartRate;
 
   Opponent({
     required this.opponentId,
     required this.nickname,
     required this.records,
+    this.maxHeartRate,
+    this.averageHeartRate,
   });
 
   factory Opponent.fromJson(Map<String, dynamic> json) {
@@ -19,6 +23,8 @@ class Opponent {
           .map((record) =>
               OpponentRecord.fromJson(record as Map<String, dynamic>))
           .toList(),
+      maxHeartRate: json['maxHeartRate'] as int?,
+      averageHeartRate: json['averageHeartRate'] as double?,
     );
   }
 
@@ -27,6 +33,8 @@ class Opponent {
       'opponentId': opponentId,
       'nickname': nickname,
       'records': records.map((record) => record.toJson()).toList(),
+      'maxHeartRate': maxHeartRate,
+      'averageHeartRate': averageHeartRate,
     };
   }
 }
