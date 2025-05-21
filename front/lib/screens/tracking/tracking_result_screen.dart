@@ -1311,7 +1311,7 @@ class _TrackingResultScreenState extends State<TrackingResultScreen> {
         ? (widget.resultData['averageHeartRate'] as double).round()
         : widget.resultData['averageHeartRate'] ?? 0;
     final int distance = appState.distance;
-    final String distanceFormatted = distance < 1.0
+    final String distanceFormatted = distance < 1000
         ? '${(distance * 1000).toInt()}m'
         : '${distance.toStringAsFixed(1)}km';
 
