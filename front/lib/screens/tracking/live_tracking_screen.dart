@@ -2449,45 +2449,46 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
         'lng2': destination.longitude,
       };
 
-      compute(_BackgroundTask.calculateDistance, params).then((distance) {
-        // 10초마다 현재 위치와 목적지 간 거리 로그 출력 (디버깅용)
-        if (_elapsedSeconds % 10 == 0) {
-          logger.d(
-              '목적지까지 남은 거리: ${distance.toStringAsFixed(2)}m, 도착 반경: ${_destinationRadius}m');
-        }
+      // 거리 계산을 동기적으로 처리하여 지연 없이 즉시 확인
+      final double distance = _calculateDistanceSync(params).toDouble();
 
-        // 목적지 반경 내에 있는지 확인
-        if (distance <= _destinationRadius && !_isDestinationReached) {
-          setState(() {
-            _isDestinationReached = true;
-          });
+      // 10초마다 현재 위치와 목적지 간 거리 로그 출력 (디버깅용)
+      if (_elapsedSeconds % 10 == 0) {
+        logger.d(
+            '목적지까지 남은 거리: ${distance.toStringAsFixed(2)}m, 도착 반경: ${_destinationRadius}m');
+      }
 
-          logger.d('목적지 도착! 현재 위치와의 거리: ${distance.toStringAsFixed(2)}m');
+      // 목적지 반경 내에 있는지 확인
+      if (distance <= _destinationRadius && !_isDestinationReached) {
+        setState(() {
+          _isDestinationReached = true;
+        });
 
-          // 도착 알림 표시
-          _showDestinationReachedDialog();
+        logger.d('목적지 도착! 현재 위치와의 거리: ${distance.toStringAsFixed(2)}m');
 
-          // 워치에 도착 알림 전송 (이전에 알림 안 보냈을 경우)
-          if (!_hasNotifiedWatchForDestination) {
-            _notifyWatch('destination');
-            _hasNotifiedWatchForDestination = true;
+        // 도착 알림 표시
+        _showDestinationReachedDialog();
 
-            // 워치가 연결된 경우 메시지 전송
-            if (_isWatchPaired) {
-              try {
-                _watch.sendMessage({
-                  'path': '/REACHED',
-                });
-                logger.d('목적지 도착 메시지 (/REACHED) 워치로 전송됨');
-              } catch (e) {
-                logger.e('워치 메시지(/REACHED) 전송 실패: $e');
-              }
-            } else {
-              logger.d('워치 연결 없음 또는 백그라운드 상태: 목적지 도착 메시지 전송 생략');
+        // 워치에 도착 알림 전송 (이전에 알림 안 보냈을 경우)
+        if (!_hasNotifiedWatchForDestination) {
+          _notifyWatch('destination');
+          _hasNotifiedWatchForDestination = true;
+
+          // 워치가 연결된 경우 메시지 전송
+          if (_isWatchPaired) {
+            try {
+              _watch.sendMessage({
+                'path': '/REACHED',
+              });
+              logger.d('목적지 도착 메시지 (/REACHED) 워치로 전송됨');
+            } catch (e) {
+              logger.e('워치 메시지(/REACHED) 전송 실패: $e');
             }
+          } else {
+            logger.d('워치 연결 없음: 목적지 도착 메시지 전송 생략');
           }
         }
-      });
+      }
     } catch (e) {
       logger.e('목적지 도착 감지 중 오류: $e');
     }
@@ -4719,6 +4720,9 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
       final response = await http.post(url, headers: headers, body: body);
 
+      logger.d('AI 서버 응답: ${response.statusCode}');
+      logger.d('AI 서버 응답 데이터: ${response.body}');
+
       if (response.statusCode == 200) {
         // 1) UTF-8로 바이트 디코딩
         final decoded = utf8.decode(response.bodyBytes);
@@ -4738,32 +4742,27 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
         // 페이스메이커 level이 변경되었는지 확인
         if (_previousPacemakerLevel != level) {
           logger.d('페이스메이커 level 변경: $_previousPacemakerLevel -> $level');
-
-          // 페이스메이커 level이 변경되었는지 확인
-          if (_previousPacemakerLevel != level) {
-            logger.d('페이스메이커 level 변경: $_previousPacemakerLevel -> $level');
-            // 워치에 알람 전송 (앱이 백그라운드 상태가 아니거나 워치가 연결된 경우만)
-            if (_isWatchPaired) {
-              try {
-                await _watch.sendMessage(
-                    {"path": "/PACEMAKER", "level": level, "message": message});
-                logger.d('페이스메이커 level 변경 알람 전송 완료');
-              } catch (e) {
-                logger.e('페이스메이커 level 변경 알람 전송 실패: $e');
-              }
-            } else {
-              logger.d('워치 연결 없음 또는 백그라운드 상태: 페이스메이커 알람 전송 생략');
+          // 워치에 알람 전송 (앱이 백그라운드 상태가 아니거나 워치가 연결된 경우만)
+          if (_isWatchPaired) {
+            try {
+              await _watch.sendMessage(
+                  {"path": "/PACEMAKER", "level": level, "message": message});
+              logger.d('페이스메이커 level 변경 알람 전송 완료');
+            } catch (e) {
+              logger.e('페이스메이커 level 변경 알람 전송 실패: $e');
             }
-            // 이전 level 업데이트
-            _previousPacemakerLevel = level;
+          } else {
+            logger.d('워치 연결 없음 또는 백그라운드 상태: 페이스메이커 알람 전송 생략');
           }
-
-          // 바텀시트에 메시지 표시
-          setState(() {
-            _pacemakerMessage = message;
-            _pacemakerLevel = level;
-          });
+          // 이전 level 업데이트
+          _previousPacemakerLevel = level;
         }
+
+        // 바텀시트에 메시지 표시
+        setState(() {
+          _pacemakerMessage = message;
+          _pacemakerLevel = level;
+        });
       } else {
         logger.e('Error: ${response.statusCode}');
       }

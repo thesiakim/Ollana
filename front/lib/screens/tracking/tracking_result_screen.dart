@@ -107,7 +107,14 @@ class _TrackingResultScreenState extends State<TrackingResultScreen> {
     final int hours = seconds ~/ 3600;
     final int minutes = (seconds % 3600) ~/ 60;
     final int remainingSeconds = seconds % 60;
-    return '$hours시간 $minutes분 $remainingSeconds초';
+
+    if (seconds < 60) {
+      return '$remainingSeconds초';
+    } else if (seconds < 3600) {
+      return '$minutes분 $remainingSeconds초';
+    } else {
+      return '$hours시간 $minutes분 $remainingSeconds초';
+    }
   }
 
   // 날짜를 "YY.MM.DD" 형식으로 포맷팅
