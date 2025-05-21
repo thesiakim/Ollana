@@ -13,7 +13,11 @@ import androidx.wear.compose.material.MaterialTheme.typography
 @Composable
 fun ETADistanceViewScreen(eta : String, distance : Int ){
 
-    val formatted = String.format("%.1fkm", distance.toDouble() / 1000)
+    val formatted = if (distance < 1000) {
+        "${distance}m"
+    } else {
+        String.format("%.1fkm", distance.toDouble() / 1000)
+    }
 
     Box(
         modifier =Modifier
