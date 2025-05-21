@@ -346,7 +346,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
   // 목적지 도착 관련 변수
   bool _isDestinationReached = false;
-  final double _destinationRadius = 130.0; // 도착 감지 반경 (미터)
+  final double _destinationRadius = 30.0; // 도착 감지 반경 (미터)
 
   // 이전 기록 비교 관련 변수
   bool _isAheadOfRecord = false;
