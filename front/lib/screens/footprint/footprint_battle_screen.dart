@@ -658,7 +658,7 @@ Color _getResultBackgroundColor(String result) {
           ),
           const SizedBox(height: 24),
           Text(
-            '아직 대결 결과가 없어요',
+            '아직 대결 기록이 없어요',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -667,31 +667,11 @@ Color _getResultBackgroundColor(String result) {
           ),
           const SizedBox(height: 8),
           Text(
-            '다른 사람들과 등산 대결을 해보세요!',
+            '친구와 등산 대결을 해보세요!',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
               color: _textSecondaryColor,
-            ),
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _primaryColor,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 0,
-            ),
-            child: const Text(
-              '발자취로 돌아가기',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-              ),
             ),
           ),
         ],

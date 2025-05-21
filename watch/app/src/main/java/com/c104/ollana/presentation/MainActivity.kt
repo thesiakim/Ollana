@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.app.NotificationCompat
 import androidx.wear.compose.material.MaterialTheme
 import com.c104.ollana.presentation.data.MessageSender
+import com.c104.ollana.presentation.screen.BadgeScreen
 import com.c104.ollana.presentation.screen.ConfirmReachedScreen
 import com.c104.ollana.presentation.screen.DefaultHomeScreen
 import com.c104.ollana.presentation.screen.ETADistanceViewScreen
@@ -95,7 +96,11 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
             Log.d(TAG, "progress 트리커 작용")
             val type = intent.getStringExtra("type") ?: ""
             val diff = intent.getIntExtra("difference", 0)
-            val formatted = String.format("%.1fkm", diff.toDouble() / 1000)
+            val formatted = if (diff < 1000) {
+                "${diff}m"
+            } else {
+                String.format("%.1fkm", diff.toDouble() / 1000)
+            }
             progressMessage = when (type) {
                 "FAST" -> "🐇 + $formatted"
                 "SLOW" -> "🐢 - $formatted"
@@ -156,11 +161,7 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
                             level = pacemakerInfo?.first ?: "",
                             message = pacemakerInfo?.second ?: ""
                         )
-                        "badge" -> HomeScreen(
-                            receivedMessage = "트래킹 종료",
-                            badgeImageUrl = badgeUrl.value,
-                            onStopTracking = { /* 사용 안함 */ }
-                        )
+                        "badge" -> BadgeScreen(badgeUrl.value)
                         else -> if (isHome.value) {
                             HomeScreen(
                                 receivedMessage = message.value,
@@ -390,7 +391,11 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
                     val data = JSONObject(payload)
                     val type = data.getString("type")
                     val diffMeters = data.getDouble("difference")
-                    val formatted = String.format("%.1fkm", diffMeters / 1000)
+                    val formatted = if (diffMeters < 1000) {
+                        "${diffMeters.toInt()}m"
+                    } else {
+                        String.format("%.1fkm", diffMeters / 1000)
+                    }
 
                     val result = when (type) {
                         "FAST" -> "🐇 + $formatted"
@@ -416,11 +421,12 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
                 "/STOP_TRACKING_CONFIRM" -> {
                     val data = JSONObject(payload)
                     val badge = data.optString("badge", null)
-                    runOnUiThread {
-                        trigger = "badge"
-                        badgeUrlState?.value = badge
-                        renderScreen()
+                    val intent = Intent(this, MainActivity::class.java).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                        putExtra("trigger", "badge")
+                        putExtra("badge", badge)
                     }
+                    startActivity(intent)
                 }
 
                 "/ETA_DISTANCE" -> {
@@ -477,7 +483,11 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
             val type = intent.getStringExtra("type") ?: ""
             val diff = intent.getIntExtra("difference", 0)
             //Log.d(TAG,"이동 비교 diff=${diff}")
-            val formatted = String.format("%.1fkm", diff.toDouble() / 1000)
+            val formatted = if (diff < 1000) {
+                "${diff}m"
+            } else {
+                String.format("%.1fkm", diff.toDouble() / 1000)
+            }
             progressMessage = when (type) {
                 "FAST" -> "🐇 + $formatted"
                 "SLOW" -> "🐢 - $formatted"
