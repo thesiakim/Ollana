@@ -54,10 +54,23 @@ class WatchMessageListenerService : WearableListenerService() {
                     ContextCompat.startForegroundService(this, intent)
                 }
 
-                "/STOP_TRACKING" -> {
+                "/STOP_TRACKING_CONFIRM" -> {
                     // 트래킹 종료 → 센서 수집 서비스 종료
                     Log.d(TAG, "🛑 트래킹 종료 요청 수신 → 센서 수집 중지")
                     stopService(Intent(this, SensorCollectorService::class.java))
+
+                    val badge=json.optString("badge","")
+
+                    vibrate()
+                    showNotification("트래킹 종료", "기록 요약이 도착했습니다")
+                    val intent = Intent(this, MainActivity::class.java).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                        putExtra("trigger", "badge")
+                        putExtra("badge", badge)
+                    }
+
+                    startActivity(intent)
+                    Log.d(TAG, "📢 뱃지 화면 실행 시도")
                 }
 
                 "/REACHED" -> {

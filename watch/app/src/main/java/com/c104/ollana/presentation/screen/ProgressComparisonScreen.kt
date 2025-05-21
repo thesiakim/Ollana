@@ -13,6 +13,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.wear.compose.material.MaterialTheme.typography
 import com.c104.ollana.R
 
 //실시간 비교 결과를 표시하는 화면
@@ -52,6 +53,7 @@ fun ProgressComparisonScreen(progressMessage : String){
 
             Text(
                 text=distanceInfo,
+                style     = typography.title1,
                 fontSize = 20.sp,
                 color=Color.White,
                 textAlign = TextAlign.Center,

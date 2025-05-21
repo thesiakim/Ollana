@@ -3,6 +3,8 @@ package com.c104.ollana.presentation.screen
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -15,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.c104.ollana.R
 import androidx.wear.compose.material.*
+import androidx.wear.compose.material.MaterialTheme.typography
 import coil.compose.rememberAsyncImagePainter
 
 @Composable
@@ -97,6 +100,7 @@ fun HomeScreen(
                         else->receivedMessage
                     },
                     fontSize = 14.sp,
+                    style     = typography.title1,
                     color=Color.White,
                     textAlign = TextAlign.Center,
                     maxLines = 2,
@@ -105,19 +109,21 @@ fun HomeScreen(
                         .padding(horizontal = 6.dp)
                         .fillMaxWidth()
                 )
+                Spacer(modifier = Modifier.height(20.dp))
                 // 도착 시만 종료 버튼 출력
                     if(isArrived) {
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        Button(
+                        androidx.compose.material3.Button(
                             onClick = onStopTracking,
-                            modifier = Modifier
-                                .fillMaxWidth(0.7f),
-                            colors = ButtonDefaults.buttonColors(
-                                backgroundColor = Color.Red
-                            )
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
+                            shape = CircleShape,
+                            modifier = Modifier.size(width = 140.dp, height = 60.dp)
                         ) {
-                            Text("트래킹 종료", fontSize = 14.sp, color = Color.White)
+                            Text(
+                                "트래킹 종료", style = typography.button,
+                                color = Color.White
+                            )
                         }
                     }
                 }

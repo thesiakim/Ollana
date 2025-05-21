@@ -6,10 +6,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.wear.compose.material.*
+import androidx.wear.compose.material.MaterialTheme.typography
 
 @Composable
 fun PacemakerScreen(level : String, message:String){
@@ -28,27 +28,18 @@ fun PacemakerScreen(level : String, message:String){
         contentAlignment = Alignment.Center
     ){
         Column(horizontalAlignment = Alignment.CenterHorizontally){
-//            Text(
-//                text = "🔥 페이스메이커 안내",
-//                fontSize = 18.sp,
-//                color = Color.White
-//            )
             Text(emoji, fontSize = 36.sp)
             Spacer(modifier = Modifier.height(8.dp))
-//            Text(
-//                text="난이도 : $level",
-//                fontSize = 22.sp,
-//                fontWeight = FontWeight.Bold,
-//                color = Color.Cyan
-//            )
             Text(
                 text = "💪 현재 강도: $level",
                 fontSize = 16.sp,
+                style = typography.title1,
                 color = color
             )
             Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text=message,
+                style = typography.body1,
                 fontSize = 14.sp,
                 color = Color.White,
                 modifier = Modifier.padding(horizontal = 8.dp),

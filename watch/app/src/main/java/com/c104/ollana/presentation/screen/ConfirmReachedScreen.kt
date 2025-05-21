@@ -11,7 +11,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.wear.compose.material.MaterialTheme.typography
+
 
 /**
  * 정상 도착 시 사용자에게 트래킹 종료 여부를 물어보는 UI 화면
@@ -33,11 +34,13 @@ fun ConfirmReachedScreen(
         // 안내 메시지 텍스트
         Text(
             text = "정상 도착!\n트래킹을 종료할까요?",
+            style = typography.body1,
             color = Color.White,
-            fontSize = 16.sp,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(bottom = 20.dp)
         )
+
+        Spacer(modifier = Modifier.height(20.dp))
 
         // 종료 버튼 (적색)
         Button(
@@ -46,7 +49,8 @@ fun ConfirmReachedScreen(
             shape = CircleShape,
             modifier = Modifier.size(width = 140.dp, height = 60.dp)
         ) {
-            Text("트래킹 종료", color = Color.White, fontSize = 14.sp)
+            Text("트래킹 종료", style =typography.button,
+                color = Color.White)
         }
     }
 }

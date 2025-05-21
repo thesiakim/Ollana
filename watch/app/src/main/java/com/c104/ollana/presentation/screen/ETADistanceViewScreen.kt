@@ -8,7 +8,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.wear.compose.material.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.wear.compose.material.MaterialTheme.typography
 
 @Composable
 fun ETADistanceViewScreen(eta : String, distance : Int ){
@@ -22,13 +22,26 @@ fun ETADistanceViewScreen(eta : String, distance : Int ){
         contentAlignment = Alignment.Center
     ){
         Column (horizontalAlignment = Alignment.CenterHorizontally){
-            Text("⏱ 예상 도착 시간", fontSize = 16.sp, color = Color.White)
-            Text(eta, fontSize = 24.sp, color = Color.Cyan)
+            Text("⏱ 예상 도착 시간",
+                style = typography.body1,
+                color = Color.White
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                eta,
+                style = typography.title1,
+                color = Color.Cyan)
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Text("🥾 남은 거리", fontSize = 16.sp, color = Color.White)
-            Text(formatted, fontSize = 24.sp, color = Color.Yellow)
+            Text("🥾 남은 거리",
+               style= typography.body1,
+                color = Color.White
+            )
+            Spacer(modifier = Modifier.height(4.dp))        // 레이블↔값 간격
+            Text(formatted,
+              style = typography.title1,
+                color = Color.Yellow)
         }
     }
 }
