@@ -56,7 +56,7 @@
 
 ---
 ## 시스템 다이어그램
-![alt text](image\image123.png)
+<p align="center"><img src="image/image123.png" width="70%"></p>
 ---
 
 ## 📦 배포 전략
