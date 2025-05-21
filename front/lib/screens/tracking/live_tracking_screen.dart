@@ -386,7 +386,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   // 등산 기록 데이터 저장을 위한 변수들
   final List<Map<String, dynamic>> _trackingRecords = [];
   DateTime? _lastRecordTime;
-  final int _recordIntervalSeconds = 10; // 20분마다 records에 기록 추가
+  final int _recordIntervalSeconds = 1; // 1초마다 records에 기록 추가
   Timer? _recordTimer;
   final bool _isSavingEnabled = true; // 기록 저장 여부 (기본값: true)
 
@@ -500,20 +500,85 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
   @override
   void dispose() {
-    _timer?.cancel();
-    _positionStream?.cancel();
-    _compassStream?.cancel(); // 나침반 센서 구독 해제
-    _locationOverlayTimer?.cancel();
-    _recordTimer?.cancel(); // 기록 타이머 해제
-    _toastTimer?.cancel(); // 토스트 타이머 해제
-    _sheetController.removeListener(_onSheetChanged);
-    _sheetController.dispose();
+    _cleanupAllResources();
+
+    // 맵 컨트롤러 정리
     _mapController = null;
 
     // 앱 생명주기 옵저버 해제
     WidgetsBinding.instance.removeObserver(this);
+
+    // 시트 컨트롤러 정리
+    try {
+      _sheetController.dispose();
+    } catch (e) {
+      logger.e('시트 컨트롤러 정리 중 오류: $e');
+    }
+
     super.dispose();
   }
+
+  // 모든 리소스 정리 메서드 추가
+  void _cleanupAllResources() {
+    logger.i('모든 트래킹 리소스 정리 시작');
+
+    // 타이머 정리
+    if (_timer != null) {
+      _timer!.cancel();
+      _timer = null;
+      logger.d('메인 타이머 정리 완료');
+    }
+
+    if (_recordTimer != null) {
+      _recordTimer!.cancel();
+      _recordTimer = null;
+      logger.d('기록 타이머 정리 완료');
+    }
+
+    if (_locationOverlayTimer != null) {
+      _locationOverlayTimer!.cancel();
+      _locationOverlayTimer = null;
+      logger.d('위치 오버레이 타이머 정리 완료');
+    }
+
+    if (_toastTimer != null) {
+      _toastTimer!.cancel();
+      _toastTimer = null;
+      logger.d('토스트 타이머 정리 완료');
+    }
+
+    if (_watchConnectionTimer != null) {
+      _watchConnectionTimer!.cancel();
+      _watchConnectionTimer = null;
+      logger.d('워치 연결 타이머 정리 완료');
+    }
+
+    // 구독 취소
+    if (_positionStream != null) {
+      _positionStream!.cancel();
+      _positionStream = null;
+      logger.d('위치 스트림 구독 취소 완료');
+    }
+
+    if (_compassStream != null) {
+      _compassStream!.cancel();
+      _compassStream = null;
+      logger.d('나침반 센서 구독 취소 완료');
+    }
+
+    // 컨트롤러 정리
+    if (_sheetController.hasListeners) {
+      _sheetController.removeListener(_onSheetChanged);
+    }
+
+    // 백그라운드 서비스 종료
+    stopTrackingService();
+    logger.d('백그라운드 서비스 종료 완료');
+
+    logger.i('모든 트래킹 리소스 정리 완료');
+  }
+
+  // 유지해야 할 다른 코드는 여기서 제거하지 않도록 주의
 
   // 앱 생명주기 변경 감지
   @override
@@ -591,7 +656,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
           if (_elapsedSeconds % 5 == 0) {
             await _compareWithPastRecord(sendNotification: false);
           }
-          if (_elapsedSeconds % 10 == 0 && _elapsedSeconds > 0) {
+          // 30초마다 친구와 비교
+          if (_elapsedSeconds % 30 == 0 && _elapsedSeconds > 0) {
             await _compareWithPastRecord(sendNotification: true);
           }
         }
@@ -2209,28 +2275,20 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       final opponentRecords = _modeData?.opponent?.records;
 
       if (opponentRecords == null || opponentRecords.isEmpty) {
-        // 기록이 없는 경우 기존 방식 사용
-        // 현재 시간에 해당하는 이전 기록의 진행 거리 계산
-        final totalTime = _modeData!.path.estimatedTime * 60; // 초 단위로 변환
-        if (totalTime <= 0) return;
+        // 기록이 없는 경우 기본값 설정: 거리와 남은 시간을 0으로 유지
+        logger.d('기록이 없거나 비어있어 거리와 남은 시간을 0으로 설정합니다.');
 
-        // 현재 진행 시간이 전체 예상 시간보다 적을 때만 계산
-        final currentElapsedTime = _elapsedMinutes * 60 + _elapsedSeconds;
-        if (currentElapsedTime > totalTime) return;
+        setState(() {
+          _competitorData['distance'] = 0; // 거리 0으로 설정
+          _competitorData['time'] = 0; // 시간 0으로 설정
+          _competitorData['formattedRemainingTime'] = '0분 0초'; // 남은 시간 0으로 설정
+          _competitorData['maxHeartRate'] = 0;
+          _competitorData['avgHeartRate'] = 0.0;
+          _pastDistanceAtCurrentTime = 0.0; // 과거 거리도 0으로 설정
+        });
 
-        // 현재 시간에 해당하는 이전 기록의 예상 진행 거리
-        _pastDistanceAtCurrentTime =
-            (_modeData!.path.distance * currentElapsedTime) / totalTime;
-
-        // 경쟁자 데이터 업데이트 (간단한 비례 계산 방식)
-        _competitorData['distance'] =
-            (_pastDistanceAtCurrentTime * 1000).toInt(); // km -> m 변환
-        _competitorData['formattedRemainingTime'] =
-            _formattedRemainingTime; // 현재 사용자의 예상 남은 시간
-        _competitorData['maxHeartRate'] =
-            _currentHeartRate > 0 ? _currentHeartRate : 100; // 기본값
-        _competitorData['avgHeartRate'] =
-            _currentHeartRate > 0 ? _currentHeartRate * 0.9 : 90.0; // 기본값
+        // 이후 로직은 실행하지 않고 종료
+        return;
       } else {
         // records 배열을 사용하여 현재 시간에 해당하는 상대방 진행 거리 계산
         final currentElapsedTime = _elapsedSeconds;
@@ -2622,14 +2680,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     // 경쟁자의 남은 시간 포맷팅 (일반 모드가 아닌 경우만)
     String competitorTimeFormatted = '';
     if (!isGeneralMode) {
-      final compMinutes = _competitorData['time'] as int;
-      if (compMinutes >= 60) {
-        final hours = compMinutes ~/ 60;
-        final mins = compMinutes % 60;
-        competitorTimeFormatted = '$hours시 $mins분 00초';
-      } else {
-        competitorTimeFormatted = '$compMinutes분 00초';
-      }
+      // 새로운 시간 계산 로직 사용
+      competitorTimeFormatted = _formatOpponentRemainingTime();
     }
 
     // 앱 테마 컬러 - 현재 등반 상태 뱃지와 동일한 색상으로 통일
@@ -2781,7 +2833,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
                                 ),
                                 const SizedBox(width: 8),
                                 const Text(
-                                  '상대의 남은 거리',
+                                  '상대의 이동 거리',
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w500,
@@ -2847,10 +2899,12 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
                               const SizedBox(height: 8),
                               Text(
                                 competitorTimeFormatted,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
-                                  color: Color(0xFF333333),
+                                  color: competitorTimeFormatted == '도착'
+                                      ? Colors.red
+                                      : Color(0xFF333333),
                                 ),
                               ),
                             ],
@@ -3481,8 +3535,9 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   Future<void> _finishTracking(bool shouldSave,
       {bool showResultScreen = true}) async {
     try {
-      // 백그라운드 서비스 종료
-      stopTrackingService();
+      // 모든 리소스 정리 (백그라운드 서비스 포함)
+      _cleanupAllResources();
+
       // 현재 상태의 데이터 저장
       _saveCurrentTrackingData();
 
@@ -3553,10 +3608,12 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
             "maxHeartRate": response['data']['maxHeartRate'],
             "timeDiff": response['data']['timeDiff'],
           });
+          logger.d('워치에 메시지 전송: $response');
         } else {
           _watch.sendMessage({
             "path": "/STOP_TRACKING_CANCEL",
           });
+          logger.d('워치에 메시지 전송: $response');
         }
       }
 
@@ -4025,6 +4082,20 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   void _processOpponentData() {
     if (_modeData?.opponent == null || _modeData?.opponent?.records == null) {
       logger.d('상대방 데이터가 없거나 레코드가 없습니다.');
+
+      // 상대방 데이터가 없을 때 기본값 설정 (남은 거리와 시간을 0으로 유지)
+      setState(() {
+        _competitorData = {
+          'name': _modeData?.opponent?.nickname ?? '이전 기록',
+          'distance': 0, // 거리 0으로 설정
+          'time': 0, // 시간 0으로 설정
+          'formattedRemainingTime': '0분 0초', // 남은 시간 0으로 설정
+          'maxHeartRate': 0,
+          'avgHeartRate': 0.0,
+          'isAhead': false,
+        };
+      });
+
       return;
     }
 
@@ -4033,6 +4104,25 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     logger.d('Opponent ID: ${_modeData?.opponent?.opponentId}');
     logger.d('Opponent Nickname: ${_modeData?.opponent?.nickname}');
     logger.d('Records 개수: ${_modeData?.opponent?.records.length}');
+
+    // 레코드가 비어있을 때도 기본값 설정
+    if (_modeData?.opponent?.records.isEmpty ?? true) {
+      logger.d('상대방 레코드가 비어있습니다.');
+
+      setState(() {
+        _competitorData = {
+          'name': _modeData?.opponent?.nickname ?? '이전 기록',
+          'distance': 0, // 거리 0으로 설정
+          'time': 0, // 시간 0으로 설정
+          'formattedRemainingTime': '0분 0초', // 남은 시간 0으로 설정
+          'maxHeartRate': 0,
+          'avgHeartRate': 0.0,
+          'isAhead': false,
+        };
+      });
+
+      return;
+    }
 
     if (_modeData?.opponent?.records.isNotEmpty ?? false) {
       // 첫번째 레코드와 마지막 레코드 정보 출력
@@ -4366,13 +4456,13 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     // 처음 기록하는 경우 lastRecordTime 초기화
     _lastRecordTime ??= now;
 
-    // 10초마다 records에 데이터 추가
+    // 1초마다 records에 데이터 추가
     final secondsSinceLastRecord = now.difference(_lastRecordTime!).inSeconds;
     if (secondsSinceLastRecord >= _recordIntervalSeconds) {
       // 추가할 기록 생성
       final record = {
-        'time': _elapsedMinutes,
-        'distance': _currentTotalDistance.toInt(), // 이미 m 단위로 저장
+        'time': _elapsedSeconds,
+        'distance': _currentTotalDistance, // 이미 m 단위로 저장
         'latitude': _currentLat,
         'longitude': _currentLng,
         'heartRate': _currentHeartRate,
@@ -4599,7 +4689,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
       final body = jsonEncode({
         'heartRate': _currentHeartRate,
-        'distance': _currentTotalDistance.toInt(), // 이미 m 단위로 저장
+        'distance': _currentTotalDistance, // 이미 m 단위로 저장
         'speed': _currentSpeed, // km/h
         'time': _elapsedSeconds,
         'altitude': _currentAltitude,
@@ -4636,11 +4726,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
             // 워치에 알람 전송 (앱이 백그라운드 상태가 아니거나 워치가 연결된 경우만)
             if (_isWatchPaired) {
               try {
-                await _watch.sendMessage({
-                  "path": "/PACEMAKER_ALERT",
-                  "level": level,
-                  "message": message
-                });
+                await _watch.sendMessage(
+                    {"path": "/PACEMAKER", "level": level, "message": message});
                 logger.d('페이스메이커 level 변경 알람 전송 완료');
               } catch (e) {
                 logger.e('페이스메이커 level 변경 알람 전송 실패: $e');
@@ -4849,5 +4936,48 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       'formattedRemainingTime': '0분 0초',
     };
     logger.d('경쟁자 데이터 기본값 초기화 완료');
+  }
+
+  // 상대방의 최대 기록 시간을 가져오는 함수 추가
+  int _getOpponentMaxTime() {
+    if (_modeData?.opponent == null ||
+        _modeData?.opponent?.records == null ||
+        _modeData!.opponent!.records.isEmpty) {
+      return 0;
+    }
+
+    // 상대방 기록 중 가장 큰 시간 값을 찾아 반환
+    int maxTime = 0;
+    for (var record in _modeData!.opponent!.records) {
+      if (record.time > maxTime) {
+        maxTime = record.time;
+      }
+    }
+    return maxTime;
+  }
+
+  // 상대의 남은 시간을 계산하고 포맷팅하는 함수
+  String _formatOpponentRemainingTime() {
+    // 상대방의 최대 기록 시간
+    int opponentMaxTime = _getOpponentMaxTime();
+
+    // 현재 경과 시간과 비교하여 남은 시간 계산
+    int remainingSeconds = opponentMaxTime - _elapsedSeconds;
+
+    // 남은 시간이 음수이면 '도착'으로 표시
+    if (remainingSeconds <= 0) {
+      return '도착';
+    }
+
+    // 양수인 경우, 시간 형식으로 변환
+    int hours = remainingSeconds ~/ 3600;
+    int minutes = (remainingSeconds % 3600) ~/ 60;
+    int seconds = remainingSeconds % 60;
+
+    if (hours > 0) {
+      return '$hours시간 $minutes분 $seconds초';
+    } else {
+      return '$minutes분 $seconds초';
+    }
   }
 }
