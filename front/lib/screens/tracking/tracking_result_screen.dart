@@ -103,6 +103,13 @@ class _TrackingResultScreenState extends State<TrackingResultScreen> {
     }
   }
 
+  String _formatSeconds(int seconds) {
+    final int hours = seconds ~/ 3600;
+    final int minutes = (seconds % 3600) ~/ 60;
+    final int remainingSeconds = seconds % 60;
+    return '$hours시간 $minutes분 $remainingSeconds초';
+  }
+
   // 날짜를 "YY.MM.DD" 형식으로 포맷팅
   String _formatDate(String? dateString) {
     if (dateString == null || dateString.isEmpty) {
@@ -209,8 +216,8 @@ class _TrackingResultScreenState extends State<TrackingResultScreen> {
         ? (widget.resultData['averageHeartRate'] as double).round()
         : widget.resultData['averageHeartRate'] ?? 0;
     final int prevTime = widget.previousRecordTimeSeconds ?? 0;
-    final int prevMaxHr = widget.previousMaxHeartRate ?? 0;
-    final int prevAvgHr = widget.previousAvgHeartRate ?? 0;
+    final int prevMaxHr = widget.opponentMaxHeartRate ?? 0;
+    final int prevAvgHr = widget.opponentAvgHeartRate ?? 0;
 
     // badge URL 가져오기
     final String badgeUrl = widget.resultData['badge'] ?? '';
@@ -1302,8 +1309,8 @@ class _TrackingResultScreenState extends State<TrackingResultScreen> {
         '${now.year.toString().substring(2)}.${now.month.toString().padLeft(2, '0')}.${now.day.toString().padLeft(2, '0')}';
 
     // 등산 데이터
-    final int timeMinutes = appState.elapsedMinutes;
-    final String timeFormatted = _formatMinutes(timeMinutes);
+    final int timeSeconds = appState.elapsedSeconds;
+    final String timeFormatted = _formatSeconds(timeSeconds);
     final int maxHeartRate = (widget.resultData['maxHeartRate'] is double)
         ? (widget.resultData['maxHeartRate'] as double).round()
         : widget.resultData['maxHeartRate'] ?? 0;
@@ -1311,9 +1318,9 @@ class _TrackingResultScreenState extends State<TrackingResultScreen> {
         ? (widget.resultData['averageHeartRate'] as double).round()
         : widget.resultData['averageHeartRate'] ?? 0;
     final int distance = appState.distance;
-    final String distanceFormatted = distance < 1000
-        ? '${(distance * 1000).toInt()}m'
-        : '${distance.toStringAsFixed(1)}km';
+    logger.d('distance: $distance');
+    final String distanceFormatted =
+        distance < 1000 ? '${distance}m' : '${distance.toStringAsFixed(1)}km';
 
     // 색상 정의 - VsMe/VsFriend와 동일한 컬러 스킴
     final Color primaryColor = Color(0xFF53A487);

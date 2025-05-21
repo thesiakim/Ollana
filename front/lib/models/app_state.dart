@@ -432,6 +432,19 @@ class AppState extends ChangeNotifier {
       _modeData = result;
       debugPrint('모드 데이터 저장: ${result.mountain.name}, ${result.path.name}');
 
+      // 상대방 심박수 정보 저장
+      if (result.opponent != null) {
+        if (result.opponent!.maxHeartRate != null) {
+          _opponentMaxHeartRate = result.opponent!.maxHeartRate;
+          debugPrint('상대방 최대 심박수: $_opponentMaxHeartRate');
+        }
+
+        if (result.opponent!.averageHeartRate != null) {
+          _opponentAvgHeartRate = result.opponent!.averageHeartRate?.toInt();
+          debugPrint('상대방 평균 심박수: $_opponentAvgHeartRate');
+        }
+      }
+
       // 트래킹 상태로 변경
       _isTracking = true;
       _trackingStage = TrackingStage.tracking;
