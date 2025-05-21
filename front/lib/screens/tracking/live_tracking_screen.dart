@@ -4721,7 +4721,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       final response = await http.post(url, headers: headers, body: body);
 
       logger.d('AI 서버 응답: ${response.statusCode}');
-      logger.d('AI 서버 응답 데이터: ${response.body}');
+      // UTF-8로 디코딩하여 한글이 제대로 표시되도록 함
+      logger.d('AI 서버 응답 데이터: ${utf8.decode(response.bodyBytes)}');
 
       if (response.statusCode == 200) {
         // 1) UTF-8로 바이트 디코딩
