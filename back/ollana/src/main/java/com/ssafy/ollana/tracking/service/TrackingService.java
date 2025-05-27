@@ -218,28 +218,28 @@ public class TrackingService {
     public TrackingFinishResponseDto manageTrackingFinish(Integer userId, TrackingFinishRequestDto request) {
         log.info("트래킹 종료 API 호출 -> 요청 데이터 : {}", request);
 
-//        String redisKey = getTrackingStatusKey(userId);
-//        String redisValue = (String) redisTemplate.opsForValue().get(redisKey);
-//        String expectedValue = request.getMountainId() + ":" + request.getPathId();
-//        if (redisValue == null || !redisValue.equals(expectedValue)) {
-//            throw new InvalidTrackingException();
-//        }
+        String redisKey = getTrackingStatusKey(userId);
+        String redisValue = (String) redisTemplate.opsForValue().get(redisKey);
+        String expectedValue = request.getMountainId() + ":" + request.getPathId();
+        if (redisValue == null || !redisValue.equals(expectedValue)) {
+            throw new InvalidTrackingException();
+        }
 
         User user = userRepository.findById(userId).orElseThrow(NotFoundException::new);
         Path path = pathRepository.findById(request.getPathId()).orElseThrow(NotFoundException::new);
         Mountain mountain = mountainRepository.findById(request.getMountainId()).orElseThrow(NotFoundException::new);
 
         // 정상 도착했는지 확인
-//        Coordinate end = path.getRoute().getEndPoint().getCoordinate();
-//        double endLat = end.y;
-//        double endLng = end.x;
-//        double userLat = request.getFinalLatitude();
-//        double userLng = request.getFinalLongitude();
-//        double distance = TrackingUtils.calculateDistance(endLat, endLng, userLat, userLng);
-//
-//        if (distance > 300 && request.isSave()) {
-//            throw new CannotSaveBeforeSummitException();
-//        }
+        Coordinate end = path.getRoute().getEndPoint().getCoordinate();
+        double endLat = end.y;
+        double endLng = end.x;
+        double userLat = request.getFinalLatitude();
+        double userLng = request.getFinalLongitude();
+        double distance = TrackingUtils.calculateDistance(endLat, endLng, userLat, userLng);
+
+        if (distance > 300 && request.isSave()) {
+            throw new CannotSaveBeforeSummitException();
+        }
 
         // 기본 응답값 초기화
         String badge = mountain.getMountainBadge();
@@ -302,7 +302,7 @@ public class TrackingService {
         }
 
         // Redis key 제거
-        //redisTemplate.delete(redisKey);
+        redisTemplate.delete(redisKey);
         return TrackingFinishResponseDto.of(badge, avg, max, timeDiff);
     }
 
