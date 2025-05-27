@@ -20,7 +20,7 @@ public class HikingLiveRecords extends BaseEntity {
     @SequenceGenerator(
             name = "hiking_seq",
             sequenceName = "hiking_live_records_seq",
-            allocationSize = 100
+            allocationSize = 120
     )
     @Column(name = "hiking_live_records_id")
     private Integer id;

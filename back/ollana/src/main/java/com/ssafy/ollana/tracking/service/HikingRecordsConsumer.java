@@ -57,7 +57,7 @@ public class HikingRecordsConsumer {
                 })
                 .collect(Collectors.toList());
 
-        int batchSize = 100;
+        int batchSize = 120;
         try {
             for (int i = 0; i < entityList.size(); i += batchSize) {
                 List<HikingLiveRecords> batch = entityList.subList(i, Math.min(i + batchSize, entityList.size()));
