@@ -310,13 +310,13 @@ void _showSearchResults() {
               _searchFocusNode.unfocus();
               _removeOverlay();
             },
-            // 반투명한 어두운 배경
-            child: Container(color: Colors.black.withOpacity(0.2)),
+            // 이 부분이 변경됨: 완전 투명한 배경으로 변경
+            child: Container(color: Colors.transparent),
           ),
         ),
-        // 검색 결과 카드 - 검색창 아래에 위치하도록 조정
+        // 검색 결과 카드 - 나머지 부분은 그대로 유지
         Positioned(
-          top: position.dy + size.height + 16, // 위치를 더 아래로 조정
+          top: position.dy + size.height + 16,
           left: 20.0,
           right: 20.0,
           child: Material(
