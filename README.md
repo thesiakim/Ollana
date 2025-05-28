@@ -61,6 +61,20 @@
 
 ---
 
+## ⛓️ ERD
+
+<p align="center"><img src="image/ollana_erd.png" width="70%"></p>
+
+---
+
+## 📑 API 문서
+
+`Notion` : https://waiting-gaura-985.notion.site/1dae90344caa8090a724edfff1b977f8?v=1dae90344caa80daaa4e000c2c6f4ec6
+`Postman` : https://documenter.getpostman.com/view/44552592/2sB2qaihDc
+
+---
+
+
 ## 📦 배포 전략
 
 ### 1️⃣ 인프라 구성 (`docker-compose.yml`)
