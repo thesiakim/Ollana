@@ -58,6 +58,7 @@
 ---
 ## 🔗 프로젝트 아키텍처 
 <p align="center"><img src="image/image123.png" width="70%"></p>
+
 ---
 
 ## 📦 배포 전략
